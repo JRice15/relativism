@@ -1,6 +1,5 @@
 from recording_obj import *
-
-
+from utility import *
 
 
 """
@@ -14,12 +13,13 @@ from recording_obj import *
 def mix(rec1, rec2, mix_level=None, offset=0, name=None):
     """
     mix two recordings into new recording object
-        offset: rec2 will be this many seconds behind rec1
+        offset (beat): rec2 will be this beats behind rec1
         mix_level: 0-1: post-mix amplification
     """
     print("\nMixing '" + rec1.name + "' and '" + rec2.name + "'")
-    assert rec1.rate == rec2.rate
-    offset = int(offset * rec1.rate)
+    if rec1.rate != rec2.rate:
+        raise RateError("Two recordings must have the same sample rate to be mixed")
+    offset = int(t(MC_SuperGlobls.TEST_BPM, offset) * rec1.rate)
     new_arr = []
     for i in range(max(rec1.size_samps(), offset + rec2.size_samps())):
         if rec1.size_samps() <= i < offset:
@@ -42,16 +42,24 @@ def mix(rec1, rec2, mix_level=None, offset=0, name=None):
 
 
 
-def mix_multiple(*args, mix_level=None):
+def mix_multiple(*args, mix_level=None, name=None):
     """
     Mix multiple recording objected together
-        *args: Rec objects to mix
+        *args: Rec objects to mix, or list of lists as [rec obj, offset (beats)]
         mix_level: post-mix amplification
     """
     print("\nMixing Multiple ...")
     rec1 = args[0]
+    print(rec1)
+    if isinstance(rec1, list):
+        rec1 = args[0][0]
+    print(rec1)
     for rec2 in args[1:]:
-        rec1 = mix(rec1, rec2, name="mix multiple")
+        offset2 = 0
+        if isinstance(rec2, list):
+            offset2 = rec2[1]
+            rec2 = rec2[0]
+        rec1 = mix(rec1, rec2, offset=offset2, name="mix multiple")
     if mix_level is not None:
         rec1.amplify(mix_level)
     rec1.rename()
@@ -88,11 +96,7 @@ def main_integration():
     """
     infile, outfile = initialize()
 
-    a = simple_sine_wave(440, 3)
-    b = simple_sine_wave(330, 4)
-    c = simple_sine_wave(500, 2)
 
-    d = mix_multiple(a, b, c)
 
 
 

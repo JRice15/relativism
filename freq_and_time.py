@@ -4,17 +4,14 @@ http://pages.mtu.edu/~suits/notefreqs.html
 """
 
 import re
-
-
-
-
+from utility import *
+from errors import *
 
 
 
 def f(note):
     """
-    returns frequency of note as int
-    raises NotANoteError if note name is misformed
+    returns frequency of note as int. raises TypeError if note name is misformed.
     C0-B8 is hard coded, above or below (not recommended anyway) is extrapolated
     Args:
         note: freq as string or name of note in C#1 or Db1 notation
@@ -29,7 +26,7 @@ def f(note):
     note = note.lower().strip()
     # if note is not formed properly
     if re.match(r"^[a-g][b#]{0,1}([0-9]|10)$", note) == None:
-        print("Note '{0}' is not properly formed or out of octave range 0-10".format(note))
+        print("Note '{0}' is not properly formed or out of octave range 0-10 (inclusive)".format(note))
         raise TypeError
     # note is regular
     return get_freq(note)
@@ -236,29 +233,41 @@ def get_freq(note):
     raise UnexpectedIssue
 
 
+
 def t(BPM, note):
     """
-    get time from beat-appreviation
+    get time from beat-appreviation,
+    or pass float for pure seconds
     """
-    ### check validity here
-    note = note.lower().strip()
-    if re.match(r"^[0-9]*[a-z]{1,2}$", note) is None:
+    note = str(note).lower().strip()
+    # if just int
+    if re.match(r"^[0-9]+(\.[0-9]+){0,1}$", note) is not None:
+        return float(note)
+    # split number and beat name
+    note = re.sub(r'%', '', note)
+    if re.match(r"^[0-9]*[a-z]{1,3}$", note) is None:
         raise TypeError
+    temp_split = re.sub(r"^([0-9]*)", r"\1%", note)
+    num, note = temp_split.split("%")
+    # handle number
+    if num == "":
+        num = 1
+    else:
+        num = int(num)
     sec_per_beat = 60 / BPM
     frac = get_beat_frac(note)
-    return frac * sec_per_beat
-
+    return num * frac * sec_per_beat
 
 
 def get_beat_frac(note):
     note_fracs = [
-        ["sf", 1/16, "sixty-fourth note"],
-        ["ts", 1/8, "thirty-second note"],
-        ["s", 1/4, "sixteenth note"],
-        ["e", 1/2, "eighth note"],
-        ["q", 1, "quarter note"],
-        ["h", 2, "half note"],
-        ["w", 4, "whole note (always 4 quarter notes)"]
+        ["sfn", 1/16, "sixty-fourth note"],
+        ["tsn", 1/8, "thirty-second note"],
+        ["sn", 1/4, "sixteenth note"],
+        ["en", 1/2, "eighth note"],
+        ["qn", 1, "quarter note"],
+        ["hn", 2, "half note"],
+        ["wn", 4, "whole note (always 4 quarter notes)"]
     ]
     beat_fracs = [
         ["sb", 1/16, "sixteenth of a beat"],
@@ -277,32 +286,59 @@ def get_beat_frac(note):
 
 
 
+def note_options():
+    print("Notes can be entered either as their direct frequency ('440', '228.3', etc), " +\
+        "or as their musical notation note name and octave ('C4', 'Ab6', 'F#3', etc")
+
 
 def beat_options():
     note_fracs = [
-        ["sf", 1/16, "sixty-fourth note"],
-        ["ts", 1/8, "thirty-second note"],
-        ["s", 1/4, "sixteenth note"],
-        ["e", 1/2, "eighth note"],
-        ["q", 1, "quarter note"],
-        ["h", 2, "half note"],
-        ["w", 4, "whole note (always 4 quarter notes)"]
+        "Music Notation style\t",
+        "sfn: sixty-fourth note\t",
+        "tsn: thirty-second note\t",
+        "sn:  sixteenth note\t\t",
+        "en:  eighth note\t\t",
+        "qn:  quarter note\t\t",
+        "hn:  half note\t\t",
+        "wn:  whole note\t\t"
     ]
     beat_fracs = [
-        ["sb", 1/16, "sixteenth of a beat"],
-        ["eb", 1/8, "eighth of a beat"],
-        ["qb", 1/4, "quarter of a beat"],
-        ["hb", 1/2, "half of a beat"],
-        ["b", 1, "one beat"],
-        ["", "", ""],
-        ["", "", ""]
+        "Beat Notation style",
+        "sb: sixteenth of a beat",
+        "eb: eighth of a beat",
+        "qb: quarter of a beat",
+        "hb: half of a beat",
+        "b:  one beat",
+        "2b",
+        "4b",
     ]
-    print("\n  There are two methods of signifying beat lengths:\n")
-    for i in range(7):
-        print("    ", note_fracs[i][0], note_fracs[i][2], "|", beat_fracs[i][0], beat_fracs[i][2])
+    print("\n  There are two methods of signifying beat lengths. Both work equally well:\n")
+    print("   ", note_fracs[0], "\t" + beat_fracs[0])
+    print("   ", "-" * 20, " "*14, "-"*19)
+    for i in range(1, 8):
+        print("   ", note_fracs[i], "=", "\t" + beat_fracs[i])
+    print("\n    (half notes are always two")
+    print("    quarter notes, whole notes")
+    print("    are always four)\n")
+    print("    Beats are signified by one of these notations, with an optional")
+    print("    leading number. For example, '3qn' would be 3 quarter notes, ")
+    print("    the equivilant of '3b', and also '6en' and '6hb'.")
+    print("\n    Time can also be indicated with just a number, which will be")
+    print("    interpreted as seconds")
 
+
+
+
+def main_freqtime():
+    while True:
+        print(": ", end="")
+        a = input()
+        try:
+            print(t(60, a))
+        except Exception as e:
+            print(type(e), e)
 
 
 
 if __name__ == "__main__":
-    beat_options()
+    main_freqtime()

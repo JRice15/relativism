@@ -10,11 +10,17 @@ import random as rd
 from pydub import AudioSegment as pd
 import tkinter as tk
 from tkinter import filedialog
+
 from freq_and_time import *
 from errors import *
+from name_and_path import *
+from process import *
 
 
 """
+
+add start/end capability
+
 add directory capability
 undo capability
 
@@ -24,9 +30,7 @@ distortion
 
 change pitch without tempo
 change tempo without pitch
-trim
-fade in/out
-face effect in/out
+fade effect in/out
 
 markers
 
@@ -47,7 +51,8 @@ class Recording:
         arr (list or None): wav array, if none is set will be read from file
         source (list): source information for where this recording came from
         name (str or None): name of this object, will be prompted if None
-        savefile (str): filename of where this object saves to automatically (only implemented if name is None)
+        savefile (str): filename of where this object saves to automatically 
+            (only implemented if name is None)
         rate (int): samples per second of this recording
         pan_val (float): number -1 (L) to 1 (R)
         dir (str): directory
@@ -57,6 +62,7 @@ class Recording:
 
     def __init__(self, array=None, source=None, name=None, savefile=None, rate=44100, \
             directory=None, parent=None):
+        self.type = 'Recording'
         if savefile is not None:
             savefile = re.sub(r"\s+", "_", savefile.strip())
         self.savefile = savefile # permanant form of outfile
@@ -66,20 +72,20 @@ class Recording:
         self.rate = rate
         self.source = source
         self.arr = array
+        self.parent = parent
         if array is None:
-            self.read_file(source)
+            self.read_file__(source)
         if name is None:
-            print("  Give this object a name/identifier: ", end="")
-            name = input()
+            self.rename()
             if self.savefile is None:
                 print("  Select savefile for this object: ", end="")
-                self.savefile = input()
+                self.savefile = inpt("file")
                 if self.savefile.lower() in ("none", ""):
                     self.savefile = None
         self.pan_val = 0
-        self.parent = parent
 
 
+    # Representation #
     def __repr__(self):
         string = "'{0}'. Recording object from".format(self.name)
         for ind in range(len(self.source) // 2):
@@ -87,7 +93,6 @@ class Recording:
         return string
 
 
-    # Metadata handlers
     def info(self):
         print("* Info for '{0}'".format(self.name))
         print("  sourced from {0}: {1}".format(self.source[0], self.source[1]))
@@ -99,24 +104,29 @@ class Recording:
         print("  pan: {0}".format(self.pan_val))
 
 
-    def rename(self):
-        print("  Give this object a name/identifier: ", end="")
-        name = input().lower().strip()
-        if self.parent is not None:
-            if name != self.name:
-                self.parent.update_names(self, self.name, name)
+    def get_name(self):
+        return self.name
+
+
+    # Metadata #
+    def rename(self, name=None):
+        if name is None:
+            print("  Give this Recording a name: ", end="")
+            name = inpt("obj")
+            print("  named '{0}'".format(name))
+        else:
+            name = inpt_process(name, 'obj')
         self.name = name
 
 
     def change_savefile(self):
-        print("  Enter a new savefile name: ", end="")
-        name = re.sub(r"\s+", "_", input().strip())
-        if ".wav" not in name:
-            name += ".wav"
+        print("  Enter a new savefile filename: ", end="")
+        name = inpt("file", required=False)
+        name = re.sub(r"\..*", "", name) + ".wav"
         self.savefile = name
 
 
-    def read_file(self, source):
+    def read_file__(self, source):
         """
         reads files for recording object init
         takes multiple formats (via PyDub and Soundfile)
@@ -130,7 +140,7 @@ class Recording:
             root.withdraw()
             source = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
             if source == "":
-                raise NoPathError
+                raise Cancel
         # Handling file types
         if source[-3:] == "wav":
             file = source
@@ -142,14 +152,14 @@ class Recording:
             except FileNotFoundError:
                 print("  > unable to find file '{0}'".format(source))
                 print("  > make sure to include .wav/.mp3/etc extension")
-                return self.read_file(None)
+                return self.read_file__(None)
         self.source = ["file", file]
         # Reading and Processing File
         try:
             recording, rate = sf.read(file)
         except RuntimeError:
             print("  > unable to find or read '{0}'. Is that the correct extension?".format(source))
-            return self.read_file(None)
+            return self.read_file__(None)
         try:
             os.remove(".temp_soundfile.wav")
         except FileNotFoundError:
@@ -158,16 +168,19 @@ class Recording:
         if not isinstance(self.arr[0], list):
             self.arr = [[i, i] for i in self.arr]
         self.rate = rate
-        print("  sound file '{0}' read successfully".format(source))
+        info_block("  sound file '{0}' read successfully".format(source), indent=2)
 
 
-    def playback(self, duration=5):
+    def playback(self, duration=5, start=0):
+        duration = inpt_process(duration, 'flt')
+        start = t(MC_SuperGlobls.TEST_BPM, inpt_process(start, 'beat'))
         print("\n* Playback")
         print("  preparing...")
         if self.pan_val != 0:
-            arr = [[i * (1 - self.pan_val), j * (1 + self.pan_val)] for i, j in self.arr]
+            arr = [[i * (1 - self.pan_val), j * (1 + self.pan_val)] for i, j in \
+                self.arr[int(start * self.rate):]]
         else:
-            arr = self.arr
+            arr = self.arr[int(start * self.rate):]
         print("  playing...")
         if duration <= 0:
             sd.play(arr, self.rate)
@@ -182,7 +195,7 @@ class Recording:
         print("\n* Writing to file")
         if outfile is None:
             print("  select output file name: ", end="")
-            outfile = input("")
+            outfile = inpt("file")
         outfile = re.sub(r"\..*", ".wav", outfile)
         if ".wav" not in outfile:
             outfile += ".wav"
@@ -208,6 +221,7 @@ class Recording:
         stretch by factor
             factor (float): >0
         """
+        factor = inpt_process(factor, 'float', allowed=[0, None])
         print("  stretching by a factor of {0}...".format(factor))
         new_rec = []
         factor_count = 0
@@ -228,11 +242,15 @@ class Recording:
             i_factor, f_factor (float): >0
             (optional) start, end: start and end of sliding stretch in 
         """
-        print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
+        i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
+        f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
+        start = t(MC_SuperGlobls.TEST_BPM, inpt_process(start, "beat"))
         if end is None:
             end = len(self.arr)
         else:
+            end = t(MC_SuperGlobls.TEST_BPM, inpt_process(end, 'beat'))
             end = int(end * self.rate)
+        print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
         start = int(start * self.rate)
         new_rec = self.arr[:start]
         factor_count = 0
@@ -269,7 +287,7 @@ class Recording:
         amount is number of scrambles
             amount (int): >=1
         """
-        amount = int(amount)
+        amount = inpt_process(amount, "int", allowed=[1, None])
         while amount >= 1:
             print("  scrambling, {0} to go...".format(amount))
             chunk = self.rate // rd.randint(2, 8)
@@ -289,6 +307,7 @@ class Recording:
         multiply amplitude by factor
             factor (float): 0 to >1
         """
+        factor = inpt_process(factor, 'float', allowed=[0, None])
         print("  amplifying by {0}x...".format(factor))
         for i in range(len(self.arr)):
             self.arr[i][0] *= factor
@@ -303,7 +322,7 @@ class Recording:
         repeat a number of times
             times (int): >=1
         """
-        times = int(times)
+        times = inpt_process(times, 'int', allowed=[1, None])
         print("  repeating {0} times...".format(times))
         self.arr = self.arr * times
         if self.savefile is not None: 
@@ -317,6 +336,8 @@ class Recording:
             times (int): >=1
             percent: 0 to 100
         """
+        times = inpt_process(times, 'int', allowed=[1, None])
+        percent = inpt_process(percent, 'pcnt', allowed=[0, 100])
         print("  irregular repeat {0} times at {1}%...".format(times, percent))
         orig_size = self.size_samps()
         orig_arr = self.arr
@@ -370,8 +391,8 @@ class Recording:
 
     def trim(self, left, right=None):
         """
-        1
-        trim from left secs to right secs, playsback
+        0, 2;
+        trim from left secs to right secs
         """
         if right is None:
             print("  trimming first {0} seconds".format(left))
@@ -380,11 +401,45 @@ class Recording:
             print("  trimming everything outside {0} to {1} seconds".format(left, right))
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
-            if input().strip().lower() != "y":
+            if not inpt("y-n"):
                 return
             self.arr = []
         else:
             self.arr = self.arr[int(left * self.rate):int(right * self.rate)]  
+
+
+    def fade_in(self, seconds, start=0):
+        """
+        0, 5; 
+        fade in
+        """
+        print("  Fading in {0} seconds starting at {1} seconds...".format(seconds, start))
+        length = int(self.rate * seconds)
+        for i in range(length):
+            try:
+                self.arr[i + start][0] *= i / length
+                self.arr[i + start][1] *= i / length
+            except IndexError:
+                pass
+
+
+    def fade_out(self, seconds, end=None):
+        """
+        0, 5;
+        fade out
+        """
+        if end is None:
+            end == self.size_samps()
+        else:
+            end *= self.rate
+        print("  Fading out {0} seconds ending at {1} seconds...".format(seconds, end))
+        length = int(self.rate * seconds)
+        for i in range(int(end) - length, int(end)):
+            try:
+                self.arr[i][0] *= (length - i) / length
+                self.arr[i][1] *= (length - i) / length
+            except IndexError:
+                pass
 
 
     # Effects #
@@ -456,10 +511,10 @@ class Recording:
         implement random sound-editing on recording, with radnom args
         """
         non_edit_methods = ["size_secs", "size_samps", "change_savefile", "rename", 
-        "options", "process", "random_method", "info", "read_file", "write_to_file",
+        "options", "process", "random_method", "info", "read_file__", "write_to_file",
         "playback"]
         methods = [func for func in dir(Recording) if callable(getattr(Recording, \
-            func)) and not func.startswith("__") and func not in non_edit_methods]
+            func)) and "__" not in func and func not in non_edit_methods]
         func = rd.choice(methods)
         doc = eval("Recording." + func + ".__doc__").split("\n")[1]
         doc = re.sub(r"\s+", "", doc)
@@ -479,59 +534,29 @@ class Recording:
             func(*args)
         except TypeError as e:
             print("  > Wrong number of arguments: {0}".format(e))
-    
-
-    def process(self):
-        print("\n* Processing object '{0}'. Available processes:".format(self.name))
-        self.options()
-        last_command = None
-        command = [None]
-        while command[0] != "q":
-            print("\nWhat process to run on '{0}'? ('q' to quit, 'p' to view processes again): ".format(self.name), end="")
-            last_command = command
-            command = [i.lower() for i in input().split()]
-            if command == []:
-                print("  > No command entered, try again")
-                command = "None"
-                continue
-            if command[0] in ("q", "e"):
-                print("\nexiting...\n")
-                return
-            elif command[0] in ("p", "o"):
-                self.options()
-            else:
-                if command[0] == "\x1b[A":
-                    command[0] = last_command
-                command[0] = re.sub(r"^write$", "write_to_file", command[0])
-                try:
-                    func, args = command[0], [float(i) for i in command[1:]]
-                    func = eval("self." + func)
-                    func(*args)
-                except TypeError as e:
-                    print("  > Wrong number of arguments: {0}".format(e))
-                except ValueError as e:
-                    print("  > Argument entered incorrectly: {0}".format(e))
-                except AttributeError as e:
-                    print("  > Process does not exist: {0}".format(e))
-                except SyntaxError as e:
-                    print("  > Process '{0}' does not exist".format(command[0]))
 
 
-    def options(self):
+    def processes(self):
         print("\n    {process}\n\t{arguments in order, with optional args in [brackets]}\n")
         print("  - Amplify\n\tfactor: 0-1 makes quieter, >1 makes louder")
         print("  - Bitcrusher_1: swaps adjacent bits\n\tamount: 0-100+ (percentage)")
         print("  - Bitcrusher_2: shrink and stretch bitcrushing\n\tamount: 0-100+ (percentage)")
         print("  - Change_Savefile")
-        print("  - Distortion: simple white noise injection\n\tamount: 0-100+")
+        print("  - Distortion_1: simple white noise injection\n\tamount: 0-100+")
         print("  - Extend: add silence to beginning or end\n\t" + \
             "seconds of silence\n\t['b' to extend before]")
+        print("  - Fade_in\n\tseconds: length of fade in\n\t[start: seconds to " + \
+            "start at, default 0. Negative creates\n\t  partial fade-in]")
+        print("  - Fade_out\n\tseconds: length of fade out\n\t[end: seconds to " + \
+            "end fade-out at, default end of recording.\n\t  Number greater than " + \
+            "length of rec gives partial fade in]")
         print("  - Info: get info of this Recording object")
         print("  - Ir_repeat: irregular repeat\n\ttimes\n\tpercent of skips")
-        print("  - Muffler: smoothes waveforms, makes things sound muffled\n\t" + \
-            "amount: integer, number of muffles")
+        print("  - Muffler: smoothes high frequencies, makes things sound muffled\n\t" + \
+            "amount: integer, number of passes through the waveform")
         print("  - Pan\n\tamount: -1 (L) to 1 (R)")
-        print("  - Playback\n\tduration: seconds. defaults to 5, enter 0 to play all")
+        print("  - Playback\n\tduration: seconds. defaults to 5, enter 0 to play whole recording\n\t" + \
+            "[start: time in seconds to start at, defaults to 0]" )
         print("  - Rename")
         print("  - Repeat\n\ttimes: integer >=1")
         print("  - Reverse")
@@ -543,7 +568,8 @@ class Recording:
         print("  - Write\n\tfilename to write to (wav files only)")
 
 
-
+    def process__(self):
+        process(self)
 
 
 
@@ -572,7 +598,7 @@ def main_rec_obj():
     
     a = Recording(source=infile)
 
-    a.process()
+    process(a)
 
 
 if __name__ == "__main__":

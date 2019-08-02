@@ -24,8 +24,13 @@ class Project:
         """
         """
         self.name = name
+        self.type = 'Project'
         self.dir = directory
         self.recs = {}
+
+
+    def get_name(self):
+        return self.name
 
 
     def create_sampler(self):
@@ -33,7 +38,7 @@ class Project:
         create a new sampler object
         """
         print("* Initializing sampler")
-        proj_name, proj_dir, open_mode = NameAndPath.namepath_init("project")
+        proj_name, proj_dir, open_mode = namepath_init("project")
         if open_mode == "c":
             smp = Sampler(proj_name, proj_dir)
         else:
@@ -44,20 +49,18 @@ class Project:
     def update_name(self, obj, old_name, new_name):
         """
         """
-        self.smps[new_name] = obj
-        try:
-            del self.smps[old_name]
-        except:
-            pass
+        pass
 
 
 
-def main_project():
+
+
+def create_project():
     """
     Main project interface
     """
     print("* Initializing Project")
-    proj_name, proj_dir, open_mode = NameAndPath.namepath_init("project")
+    proj_name, proj_dir, open_mode = namepath_init("project")
     if open_mode == "c":
         proj = Project(proj_name, proj_dir)
     else:
@@ -70,12 +73,11 @@ def main_project():
 
 
 
-def main_all():
+def main_master():
     """
-    master main
     """
 
-    #main_project()
+    create_project()
 
     
 
@@ -94,4 +96,4 @@ def help_desk():
 
 
 if __name__ == "__main__":
-    main_all()
+    main_master()

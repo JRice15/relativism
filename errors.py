@@ -1,12 +1,12 @@
 """ SIGNAL ERRORS """
 
-from freq_and_time import beat_options
 
 class NameExistsError(Exception):
     """
     chosen name already exists
     """
     pass
+
 
 class NameDoesntExistError(Exception):
     """
@@ -32,5 +32,10 @@ class Cancel(Exception):
     the user cancelled out of whatever is going on
     """
     pass
+
+class RateError(Exception):
+    """
+    Error with sampe rates
+    """
 
 

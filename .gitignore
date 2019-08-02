@@ -1,0 +1,7 @@
+__pycache__
+*.wav
+*.m4a
+*.mp3
+.DS_Store
+.paths.tsv
+.vscode/
