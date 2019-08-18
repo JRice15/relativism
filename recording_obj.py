@@ -1,27 +1,31 @@
-import sys
 import math
 import os
-import time
-import re
-import sounddevice as sd
-import numpy as np
-import soundfile as sf
 import random as rd
-from pydub import AudioSegment as pd
+import re
+import sys
+import time
 import tkinter as tk
 from tkinter import filedialog
+import numpy as np
 
-from freq_and_time import *
+import sounddevice as sd
+import soundfile as sf
+from pydub import AudioSegment as pd
+
+from data_save import *
 from errors import *
+from freq_and_time import *
 from name_and_path import *
 from process import *
+from utility import *
+from input_processing import *
+from output_and_prompting import *
 
 
 """
 
 add start/end capability
 
-add directory capability
 undo capability
 
 tremelo
@@ -41,98 +45,103 @@ add_to_sampler
 
 
 
-global BPM
 
 
 
 class Recording:
     """
     Attributes:
+        type (str): 'Recording'
         arr (list or None): wav array, if none is set will be read from file
         source (list): source information for where this recording came from
         name (str or None): name of this object, will be prompted if None
-        savefile (str): filename of where this object saves to automatically 
-            (only implemented if name is None)
         rate (int): samples per second of this recording
         pan_val (float): number -1 (L) to 1 (R)
-        dir (str): directory
-        parent: pointer to parent Proj or Sampler, if exists
+        parent: pointer to parent Proj or Sample, if exists
+        recents: array of up to 5 recent arrays
     """
 
 
-    def __init__(self, array=None, source=None, name=None, savefile=None, rate=44100, \
-            directory=None, parent=None):
+    # Initialization #
+    def __init__(self, array=None, source=None, name=None, rate=44100, \
+            parent=None, pan=0, hidden=False):
         self.type = 'Recording'
-        if savefile is not None:
-            savefile = re.sub(r"\s+", "_", savefile.strip())
-        self.savefile = savefile # permanant form of outfile
-        self.name = str(name)
-        print("* Initializing '{0}'...".format(self.name))
-        self.dir = directory
+        self.name = name
+        if name is None:
+            self.rename()
+        if not hidden:
+            section_head("Initializing {0} {1}...".format(self.type, self.name))
         self.rate = rate
         self.source = source
         self.arr = array
         self.parent = parent
         if array is None:
-            self.read_file__(source)
-        if name is None:
-            self.rename()
-            if self.savefile is None:
-                print("  Select savefile for this object: ", end="")
-                self.savefile = inpt("file")
-                if self.savefile.lower() in ("none", ""):
-                    self.savefile = None
-        self.pan_val = 0
+            self.init_mode__()
+        self.pan_val = pan
+        self.recents = None # for undoing
+        self.save(silent=True)
 
 
-    # Representation #
-    def __repr__(self):
-        string = "'{0}'. Recording object from".format(self.name)
-        for ind in range(len(self.source) // 2):
-            string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
-        return string
+    def init_mode__(self):
+        """
+        fill in initialization via input
+        get recording by mode
+        call get_help/playback if asked
+        """
+
+        valid_modes = ("live Record (R)", "read from File (F)", "Help (H)")
+        info_title("Available modes:")
+        info_list(valid_modes)
+        p("Select mode")
+        mode = inpt('letter', allowed='rfh')
+
+        # Record Mode
+        if mode == "r":
+            recording = self.record_live__()
+
+        # File Mode
+        elif mode == "f":
+            recording = self.read_file__()
+
+        # Help
+        elif mode == "h":
+            raise NotImplementedError
 
 
-    def info(self):
-        print("* Info for '{0}'".format(self.name))
-        print("  sourced from {0}: {1}".format(self.source[0], self.source[1]))
-        for ind in range(2, len(self.source) // 2):
-            print("    {0}: {1}".format(self.source[2 * ind], self.source[2 * ind + 1]))
-        print("  savefile: {0}".format(self.savefile))
-        print("  rate: {0} samples per second".format(self.rate))
-        print("  size: {0:.4f} seconds, {1:,} samples".format(self.size_secs(), self.size_samps()))
-        print("  pan: {0}".format(self.pan_val))
+    def record_live__(self):
+        """
+        record -- but get this -- live!
+        """
+        section_head("Record mode")
+        info_block("Enter recording duration (in seconds): ")
+        record_time = inpt('float')
+        p('Choose sample rate to record at, in samples per second. Hit enter to use default 44100')
+        rate = inpt('int', required=False)
+        if rate == '':
+            rate = 44100
+        print("  Enter 'R' to begin recording, or anything else to cancel: ", end="")
+        cont = inpt('lttr')
+        if cont[0] not in ("Y", "y", "yes", "Yes"):
+            print("\nExiting...\n")
+            sys.exit()
+        time.sleep(0.2)
+        section_head("Recording at input {0} ({1}) for {2} seconds".format(device_ind, \
+            device_name, record_time))
+        sd.default.channels = 2
+        recording = sd.rec(int(record_time * rate), rate, device=device_name)
+        sd.wait()
+        print("Finished recording")
+        return recording
 
 
-    def get_name(self):
-        return self.name
-
-
-    # Metadata #
-    def rename(self, name=None):
-        if name is None:
-            print("  Give this Recording a name: ", end="")
-            name = inpt("obj")
-            print("  named '{0}'".format(name))
-        else:
-            name = inpt_process(name, 'obj')
-        self.name = name
-
-
-    def change_savefile(self):
-        print("  Enter a new savefile filename: ", end="")
-        name = inpt("file", required=False)
-        name = re.sub(r"\..*", "", name) + ".wav"
-        self.savefile = name
-
-
-    def read_file__(self, source):
+    def read_file__(self):
         """
         reads files for recording object init
         takes multiple formats (via PyDub and Soundfile)
         updates self.source, self.arr, self.rate
         """
-        print("\n* Reading file")
+        section_head("Reading file")
+        source = self.source
         if source is None:
             print("  Choose an input sound file...")
             time.sleep(1)
@@ -171,10 +180,49 @@ class Recording:
         info_block("  sound file '{0}' read successfully".format(source), indent=2)
 
 
+    # Representation #
+    def __repr__(self):
+        string = "'{0}'. Recording object from".format(self.name)
+        for ind in range(len(self.source) // 2):
+            string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
+        return string
+
+
+    def info(self):
+        section_head("Info for '{0}'".format(self.name))
+        print("  sourced from {0}: {1}".format(self.source[0], self.source[1]))
+        for ind in range(2, len(self.source) // 2):
+            print("    {0}: {1}".format(self.source[2 * ind], self.source[2 * ind + 1]))
+        print("  savefile: {0}".format(self.savefile))
+        print("  rate: {0} samples per second".format(self.rate))
+        print("  size: {0:.4f} seconds, {1:,} samples".format(self.size_secs(), self.size_samps()))
+        print("  pan: {0}".format(self.pan_val))
+
+
+    def get_name(self):
+        return self.name
+
+
+    # Metadata #
+
+    def rename(self, name=None):
+        if name is None:
+            print("  Give this Recording a name: ", end="")
+            name = inpt("obj")
+            print("  named '{0}'".format(name))
+        else:
+            name = inpt_process(name, 'obj')
+        self.name = name
+        try:
+            self.parent.validate_child_name(self)
+        except AttributeError:
+            pass
+
+
     def playback(self, duration=5, start=0):
         duration = inpt_process(duration, 'flt')
-        start = t(MC_SuperGlobls.TEST_BPM, inpt_process(start, 'beat'))
-        print("\n* Playback")
+        start = t(Relativism.TEST_BPM, inpt_process(start, 'beat'))
+        section_head(" Playback")
         print("  preparing...")
         if self.pan_val != 0:
             arr = [[i * (1 - self.pan_val), j * (1 + self.pan_val)] for i, j in \
@@ -191,8 +239,8 @@ class Recording:
         print("  finished playback")
 
 
-    def write_to_file(self, outfile=None):
-        print("\n* Writing to file")
+    def write_to_wav(self, outfile=None):
+        section_head("Writing to file")
         if outfile is None:
             print("  select output file name: ", end="")
             outfile = inpt("file")
@@ -231,8 +279,6 @@ class Recording:
                 new_rec.append(i)
             factor_count = factor_count - int(factor_count)
         self.arr = new_rec
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def sliding_stretch(self, i_factor, f_factor, start=0, end=None):
@@ -244,11 +290,11 @@ class Recording:
         """
         i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
         f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
-        start = t(MC_SuperGlobls.TEST_BPM, inpt_process(start, "beat"))
+        start = t(Relativism.TEST_BPM, inpt_process(start, "beat"))
         if end is None:
             end = len(self.arr)
         else:
-            end = t(MC_SuperGlobls.TEST_BPM, inpt_process(end, 'beat'))
+            end = t(Relativism.TEST_BPM, inpt_process(end, 'beat'))
             end = int(end * self.rate)
         print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
         start = int(start * self.rate)
@@ -264,8 +310,6 @@ class Recording:
             factor += delta_factor
         new_rec += self.arr[end:]
         self.arr = new_rec
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def reverse(self):
@@ -275,8 +319,6 @@ class Recording:
         """
         print("  reversing...")
         self.arr = self.arr[::-1]
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def scramble(self, amount):
@@ -297,8 +339,6 @@ class Recording:
             self.arr = self.arr[:start] + self.arr[start+chunk:]
             self.arr = self.arr[:new] + chunk_arr + self.arr[new:]
             amount -= 1
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def amplify(self, factor):
@@ -312,8 +352,6 @@ class Recording:
         for i in range(len(self.arr)):
             self.arr[i][0] *= factor
             self.arr[i][1] *= factor
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def repeat(self, times):
@@ -325,8 +363,6 @@ class Recording:
         times = inpt_process(times, 'int', allowed=[1, None])
         print("  repeating {0} times...".format(times))
         self.arr = self.arr * times
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def ir_repeat(self, times, percent):
@@ -346,8 +382,6 @@ class Recording:
                 self.arr += [[0, 0] for _ in range(orig_size)]
             else:
                 self.arr += orig_arr
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def extend(self, seconds, placement="a"):
@@ -366,8 +400,6 @@ class Recording:
             self.arr = silence + self.arr
         else:
             self.arr += silence
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def swap_channels(self):
@@ -376,8 +408,6 @@ class Recording:
         """
         print("  swapping stereo channels...")
         self.arr = [[j, i] for i, j in self.arr]
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
     
 
     def pan(self, amount):
@@ -449,13 +479,26 @@ class Recording:
         simple white-noise injection distortion
             amount: 0-100
         """
-        print("  distorting {0}%...".format(amount))
+        print("  Distortion-1 by {0}%...".format(amount))
         for i in range(len(self.arr)):
             dist = amount / 1000 * rd.random()
             self.arr[i][0] += dist
             self.arr[i][1] += dist
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
+
+
+    def distortion_2(self, freq, amount):
+        """
+        15,10000; 10,90;
+        tend wave toward saw of freq
+            freq: 
+        """
+        print("  Distortion-2 at {0} hz and {1}%".format(freq, freq))
+        freq = inpt_process(freq, 'freq')
+        amount = inpt_process(amount, 'pcnt', allowed=[0, 100])
+        
+
+
+        
 
 
     def bitcrusher_1(self, amount):
@@ -470,8 +513,6 @@ class Recording:
             ind = rd.randint(0, end)
             self.arr[ind], self.arr[ind + 1] = \
                 self.arr[ind + 1], self.arr[ind]
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def bitcrusher_2(self, amount):
@@ -484,8 +525,6 @@ class Recording:
         print("  bitcrusher 2, {0}%...".format(amount))
         self.stretch(1/amount)
         self.stretch(amount)
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
 
 
     def muffler(self, amount):
@@ -501,8 +540,11 @@ class Recording:
                     self.arr[ind][0] = (self.arr[ind - 1][0] + self.arr[ind + 1][0]) / 2
                 else:
                     self.arr[ind][1] = (self.arr[ind - 1][1] + self.arr[ind + 1][1]) / 2
-        if self.savefile is not None: 
-            self.write_to_file(self.savefile)
+
+
+    def eq(self):
+        freqs = np.fft.rfft(self.arr)
+        print(freqs)
 
 
     # Meta-functions #
@@ -565,11 +607,54 @@ class Recording:
         print("  - Swap_channels: swap stereo channels")
         print("  - Trim: trim all audio before <left> and after <right> seconds\n\t" + \
             "left: seconds\n\t[right: seconds, no right trim if blank]")
-        print("  - Write\n\tfilename to write to (wav files only)")
+        print("  - Write_to_wav\n\tfilename to write to (wav files only)")
 
 
     def process__(self):
         process(self)
+
+
+    def pre_process__(self, process):
+        """
+        actions to run before process: save current rec to 
+        """
+        if process != 'undo':
+            self.update_recents__()
+    
+    
+    def post_process__(self):
+        """
+        """
+        pass
+
+
+    def update_recents__(self):
+        if len(self.recents) == 0 or (self.recents[0] == self.arr):
+            self.recents.insert(0, self.arr)
+            if len(self.recents) > 5:
+                self.recents.pop()
+
+
+    def undo(self):
+        """
+        arr pulled from most recent
+        """
+        section_head("Undoing ...")
+        self.arr = self.recents.pop(0)
+
+
+    def save(self, silent=False):
+        if (self.parent is None) and (silent is not True):
+            err_mess("{0} {1} has no parent to save under!".format(self.type, self.name))
+        else:
+            # duplicate with no recents
+            dup = Recording(array=self.arr, source=self.source, name=self.name,
+                rate=self.rate, parent=self.parent, pan=self.pan_val, hidden=True)
+            try:
+                self.parent.save_child__(dup)
+            except (AttributeError, NotImplementedError):
+                err_mess("Parent {0} '{1}' has not implemented save feature".format(
+                    self.parent.type, self.parent.get_name()))
 
 
 
@@ -590,6 +675,33 @@ def initialize():
     return infile, outfile
 
 
+
+def sd_select_device(dev_type='in'):
+    """
+    type: in or out
+    returns device name
+    """
+    info_title("Devices by index ({0} found):".format(len(sd.query_devices())))
+    for i in str(sd.query_devices()).split('\n'):
+        info_line(i)
+    while True:
+        p("Enter desired device index")
+        device_ind = inpt('int')
+        try:
+            device = sd.query_devices()[device_ind]
+        except IndexError:
+            err_mess("No device with index {0}".format(device_ind))
+            continue
+        if dev_type in ('in', 'input'):
+            if device['max_input_channels'] < 1:
+                err_mess("Device cannot be used as an input")
+                continue
+        elif dev_type in ('out', 'output'):
+            if device['max_output_channels'] < 1:
+                err_mess("Device cannot be used as an output")
+        name = device['name']
+        info_block("'{0}' selected".format(name))
+        return device['name']
 
 
 def main_rec_obj():

@@ -38,14 +38,15 @@ class Sample:
         if rec is None:
             if rec_source is None:
                 raise UnexpectedIssue
-            self.rec = Recording(source=rec_source, name=name)
+            self.rec = Recording(source=rec_source, name=name, parent=self)
             self.source = ["sampled from Recording from", rec_source.split("/")[-1]]
         else:
             self.rec = Recording(
                     array=rec.arr,
                     source=["sampled from Recording named", rec.name],
                     name=name,
-                    savefile=savefile
+                    savefile=savefile,
+                    parent=self
                 )
         self.on = on
         self.start = start
@@ -85,6 +86,15 @@ class Sample:
     def add_to_sampler(self, sampler_obj):
         sampler_obj.add_sample(self)
 
+    def save_child__(self, child):
+        self.save()
+
+    def save(self):
+        try:
+            self.parent.save_child__(self)
+        except (AttributeError, NotImplementedError):
+            info_block("Parent {0} '{1}' has not implemented save feature".format(
+                self.parent.type, self.parent.get_name()))
 
 
 
@@ -226,6 +236,12 @@ class Rhythm:
         for i in sorted_beats:
             info_block("- " + self.beat_repr__(i), newlines=False)
 
+    def save(self):
+        try:
+            self.parent.save_child__(self)
+        except (AttributeError, NotImplementedError):
+            info_block("Parent {0} '{1}' has not implemented save feature".format(
+                self.parent.type, self.parent.get_name()))
 
 
 class Active:
@@ -276,7 +292,7 @@ class Sampler:
     def __init__(self, name, directory, BPM=None):
         print("\n* Initializing sampler")
         self.type = 'Sampler'
-        self.dir = directory
+        self.directory = directory
         self.name = name
         self.smps = []
         self.rhythms = []
@@ -352,10 +368,11 @@ class Sampler:
         print("\n  Samples loaded into '{0}':".format(self.name))
         empty = True
         for obj in self.smps:
-            info_block("- " + str(obj), newlines=False)
+            info_list(str(obj))
             empty = False
         if empty:
-            info_block("None")
+            info_block("No samples loaded")
+            return False
 
 
     # Handling Rhythms #
@@ -390,9 +407,10 @@ class Sampler:
         empty = True
         for obj in self.rhythms:
             empty = False
-            info_block("- " + str(obj), newlines=False)
+            info_list(str(obj))
         if empty:
-            info_block("None")
+            info_block("No rhythms loaded")
+            return False
 
 
     # Handling Active #
@@ -408,21 +426,24 @@ class Sampler:
 
 
     def list_active(self):
-        print("\n  Active pairs in '{0}':".format(self.name))
+        info_title("Active pairs in '{0}':".format(self.name))
         empty = True
         for a in self.active:
-            info_block("- " + str(a), newlines=False)
+            info_list(str(a))
             empty = False
         if empty:
-            info_block("None")
+            info_list("No active pairs created")
+            return False
 
 
     def mute(self):
         """
         mute an active pair
         """
+        info_block("Choose an active pair to mute")
         act = self.choose__('active')
-        act.muted = True
+        if act is not None:
+            act.muted = True
 
 
     def unmute(self):
@@ -446,29 +467,38 @@ class Sampler:
 
 
     # Meta-functions & Helpers #
-    def choose__(self, attr):
+    def choose__(self, attr, name=None):
         """
         get an object from attribute ('sample', 'rhythm', or 'active') by name
         """
         if attr == 'active':
-            self.list_active()
-            name = inpt('name')
+            if name is None:
+                if self.list_active() is False:
+                    return
+                print("  : ", end="")
+                name = inpt('name')
             for i in self.active:
                 if i.get_name() == name:
                     return i
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
             return self.choose__(attr)
         elif attr == "sample":
-            self.list_samples()
-            name = inpt('name')
+            if name is None:
+                if self.list_samples() is False:
+                    return
+                print("  : ", end="")
+                name = inpt('name')
             for i in self.smps:
                 if i.get_name() == name:
                     return i
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
             return self.choose__(attr)
         elif attr == "rhythm":
-            self.list_rhythms()
-            name = inpt('name')
+            if name is None:
+                if self.list_rhythms() is False:
+                    return
+                print("  : ", end="")
+                name = inpt('name')
             for i in self.rhythms:
                 if i.get_name() == name:
                     return i
@@ -488,9 +518,18 @@ class Sampler:
         process(self)
 
 
+    def save_child__(self, child):
+        filename = child.type.lower() + "_" + child.get_name() + ".rel-obj"
+        write_obj(child, filename, self.directory)
+
+
+    def save(self):
+        raise NotImplementedError
+
+
+
 
 def simple_generate(active, length):
-    BPM = MC_SuperGlobls.TEST_BPM
     rhyth = active.rhythm
     smp = active.sample
     reps = math.ceil(length / rhyth.length)

@@ -20,7 +20,10 @@ def f(note):
     """
     # note is number already, in any form
     try:
-        return float(note)
+        note = abs(float(note))
+        if note == 0:
+            raise TypeError
+        return note
     except:
         pass
     note = note.lower().strip()

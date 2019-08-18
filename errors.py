@@ -29,9 +29,12 @@ class UnexpectedIssue(Exception):
 
 class Cancel(Exception):
     """
-    the user cancelled out of whatever is going on
+    the user cancelled out of whatever is going on.
+    pass obj to save it to file
     """
-    pass
+    def __init__(self, obj=None):
+        if obj is not None:
+            obj.save()
 
 class RateError(Exception):
     """
@@ -39,3 +42,12 @@ class RateError(Exception):
     """
 
 
+class TestError(Exception):
+    """
+    """
+    def __init__(self, num):
+        self.num = num
+        self.print_num()
+    
+    def print_num(self):
+        print(self.num)
