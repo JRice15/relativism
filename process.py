@@ -70,7 +70,7 @@ def process_error_handling(e, process, obj):
                 rest = inpt('split', 'alphanum', quit_on_q=False)
                 return [process + rest[0]] + rest[1:]
             elif len(matches) == 1:
-                info_block("Autofilled '{0}'".format(matches[0]))
+                info_list("> Autofilled '{0}'".format(matches[0]))
                 return matches
             else:
                 process_error_handling(SyntaxError(message), process, obj)

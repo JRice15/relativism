@@ -18,7 +18,7 @@ access any projects recs
 
 
 
-class Sample:
+class Sample(Recording):
     """
     creates new Recording object from given, wraps in some Sample data
     Attributes:
@@ -31,69 +31,41 @@ class Sample:
     if rec is not given, rec_source is required
     """
 
-    def __init__(self, parent, rec=None, rec_source=None, on=False, start=0, name=None, savefile=None):
-        print("* Initializing Sample...")
-        self.type = 'Sample'
-        self.parent = parent
-        if rec is None:
-            if rec_source is None:
-                raise UnexpectedIssue
-            self.rec = Recording(source=rec_source, name=name, parent=self)
-            self.source = ["sampled from Recording from", rec_source.split("/")[-1]]
-        else:
-            self.rec = Recording(
-                    array=rec.arr,
-                    source=["sampled from Recording named", rec.name],
-                    name=name,
-                    savefile=savefile,
-                    parent=self
-                )
-        self.on = on
-        self.start = start
-        if self.rec.name is None:
-            self.rec.rename()
+    # Initialization #
+    def __init__(self, array=None, source=None, name=None, rate=44100, \
+            parent=None):
+        super().__init__(array=array, source=source, name=name, rate=rate,
+            parent=parent, type_='Sample')
 
 
     def __repr__(self):
-        string = "'{0}'. Sample object from".format(self.rec.name)
-        for ind in range(len(self.rec.source) // 2):
-            string += " {0}: {1};".format(self.rec.source[2 * ind], self.rec.source[2 * ind + 1])
+        string = "'{0}'. Sample object from".format(self.name)
+        for ind in range(len(self.source) // 2):
+            string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
         return string
 
     def get_name(self):
-        return self.rec.name
+        return self.name
 
     def process__(self):
         process(self)
 
     def process_rec(self):
-        process(self.rec)
+        process(self)
 
     def duplicate(self):
-        new_sample = Sample(self.parent, self.rec)
-        new_sample.rec.rename()
+        new_sample = Sample(array=self.arr, source=self.source, rate=self.rate, \
+            parent=self.parent)
         self.parent.add_sample(new_sample)
-
-    def rename(self, new_name=None):
-        """
-        """
-        if new_name is None:
-            p("Enter a new name for '{0}'".format(self.get_name()))
-            new_name = inpt("name")
-        print("  named '{0}'".format(new_name))
-        self.rec.rename(new_name)
 
     def add_to_sampler(self, sampler_obj):
         sampler_obj.add_sample(self)
-
-    def save_child__(self, child):
-        self.save()
 
     def save(self):
         try:
             self.parent.save_child__(self)
         except (AttributeError, NotImplementedError):
-            info_block("Parent {0} '{1}' has not implemented save feature".format(
+            err_mess("Parent {0} '{1}' has not implemented save feature".format(
                 self.parent.type, self.parent.get_name()))
 
 
@@ -109,7 +81,6 @@ class Rhythm:
         self.name = name
         if name is None:
             self.rename()
-
         self.variability = None
         self.period = None
         self.length = None

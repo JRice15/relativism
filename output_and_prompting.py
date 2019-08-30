@@ -50,7 +50,7 @@ def section_head(message, indent=0):
     info_block("* " + message, indent=indent)
 
 
-def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=True, 
+def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=False, 
         leading_newline=True, for_prompt=False, start=""):
     """
     default indent is 4.
@@ -79,18 +79,19 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Tru
     # splitting at spaces
     lines = [""]
     for char in message:
+        # hard break if super long with no spaces (url, path, etc)
         if len(lines[-1]) >= 65:
             if char != " ":
                 lines[-1] += "--"
                 lines.append("")
+        # regular limit
         if len(lines[-1]) >= 55:
             last_space = lines[-1].rfind(" ")
             if last_space != -1:
                 text = lines[-1][last_space + 1:]
                 lines[-1] = lines[-1][:last_space]
                 lines.append(text)
-                if char != " ":
-                    lines[-1] += char
+                lines[-1] += char
             else:
                 if char == " ":
                     lines.append("")
@@ -114,3 +115,13 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Tru
     if trailing_newline:
         print("")
 
+
+def main_output():
+    p('Choose sample rate to record at, in samples per second. Hit enter to use default 44100')
+
+
+
+
+
+if __name__ == "__main__":
+    main_output()

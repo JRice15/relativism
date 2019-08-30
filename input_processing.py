@@ -38,6 +38,13 @@ def inpt(mode=None, split_modes=None, catch=None, catch_callback=None,
         return inpt(mode, split_modes=split_modes)
     if val == "q" and quit_on_q:
         raise Cancel
+    if val == "":
+        if required:
+            p("> A value is required. Enter intended value")
+            return inpt(mode, split_modes=split_modes, catch=catch, 
+                catch_callback=catch_callback, allowed=allowed, required=required)
+        else:
+            return ''
     if mode == "split":
         val = val.split()
         for i in range(len(val)):
@@ -54,9 +61,6 @@ def inpt(mode=None, split_modes=None, catch=None, catch_callback=None,
             val[i] = inpt_process(val[i], t_mode)
     else:
         val = inpt_process(val, mode, allowed)
-    if required and val == "":
-        p("> A value is required. Enter intended value")
-        val = inpt(mode, split_modes=split_modes, catch=catch, catch_callback=catch_callback, allowed=allowed, required=required)
     return val
 
 
@@ -64,6 +68,16 @@ def inpt_process(val, mode, allowed=None):
     """
     processes individual modes for inpt
     also used as input validation
+    mode: str:
+        obj, file, alphanum, name: whitespaces to underscore, alphanumeric
+        y-n: yes or no question, returns bool
+        beat: valid beat input
+        note, freq: valid note/freq input
+        int: integer, optional allowed list
+        flt: float, optional allowed list
+        pcnt: percentage, opt allowed list
+        split: splits input, does split modes on each (inp longer than split modes uses last mode for rest)
+        letter: one letter, str of allowed
     """
     if mode == None:
         return val
@@ -102,7 +116,8 @@ def inpt_process(val, mode, allowed=None):
     # number inputs
     elif mode in ("pcnt", "int", "flt"):
         if mode == "pcnt":
-            val = re.sub(r"%", "", val)
+            if isinstance(val, str):
+                val = re.sub(r"%", "", val)
             try:
                 val = float(val)
             except (ValueError):

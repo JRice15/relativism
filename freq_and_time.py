@@ -6,7 +6,7 @@ http://pages.mtu.edu/~suits/notefreqs.html
 import re
 from utility import *
 from errors import *
-
+from output_and_prompting import *
 
 
 def f(note):
@@ -36,7 +36,26 @@ def f(note):
 
 
 def get_freq(note):
-    freq_arr = [
+    freq_arr = get_freq_table()
+    # if note is wrong sharp/flat (ie E#)
+    note = re.sub("e#", "f", note)
+    note = re.sub("fb", "e", note)
+    note = re.sub("b#", "c", note)
+    note = re.sub("cb", "b", note)
+    for i in freq_arr:
+        if i[0] == note:
+            return i[1]
+    raise UnexpectedIssue
+
+
+def show_freq_table():
+    info_title('Note\tFrequency (Hz)')
+    for i in get_freq_table():
+        info_line(str(i[0]).capitalize() + ": \t" + str(i[1]))
+
+
+def get_freq_table():
+    return [
         ["c0", 16.35],
         ["c#0", 17.32],
         ["db0", 17.32],
@@ -225,16 +244,6 @@ def get_freq(note):
         ["bb10", 7458.62 * 4],
         ["b10", 7902.13 * 4],
     ]
-    # if note is wrong sharp/flat (ie E#)
-    note = re.sub("e#", "f", note)
-    note = re.sub("fb", "e", note)
-    note = re.sub("b#", "c", note)
-    note = re.sub("cb", "b", note)
-    for i in freq_arr:
-        if i[0] == note:
-            return i[1]
-    raise UnexpectedIssue
-
 
 
 def t(BPM, note):

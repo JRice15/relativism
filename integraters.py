@@ -19,7 +19,7 @@ def mix(rec1, rec2, mix_level=None, offset=0, name=None):
     print("\nMixing '" + rec1.name + "' and '" + rec2.name + "'")
     if rec1.rate != rec2.rate:
         raise RateError("Two recordings must have the same sample rate to be mixed")
-    offset = int(t(MC_SuperGlobls.TEST_BPM, offset) * rec1.rate)
+    offset = int(t(Relativism.TEST_BPM, offset) * rec1.rate)
     new_arr = []
     for i in range(max(rec1.size_samps(), offset + rec2.size_samps())):
         if rec1.size_samps() <= i < offset:
