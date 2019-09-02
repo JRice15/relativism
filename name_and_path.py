@@ -5,7 +5,6 @@ import re
 import tkinter as tk
 from tkinter import filedialog
 import time
-from freq_and_time import *
 from input_processing import *
 from output_and_prompting import *
 

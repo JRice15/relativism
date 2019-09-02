@@ -9,7 +9,7 @@ def p(message, indent=2, o="", i="", start=""):
         ('q' to quit) auto
         i="for info message"
     """
-    message_body = message
+    message_body = str(message)
     notices = " ("
     if o != "":
         notices += o + ", "
@@ -24,11 +24,11 @@ def err_mess(message, indent=4, trailing_newline=True):
     """
     print error message with leading >, no newlines
     """
-    info_block("> " + message, indent=indent, newlines=False)
+    info_block("> " + str(message), indent=indent, newlines=False)
 
 
 def info_title(message, indent=4):
-    info_block(message, indent=indent, leading_newline=True, trailing_newline=False)
+    info_block(str(message), indent=indent, leading_newline=True, trailing_newline=False)
 
 
 def info_list(message, indent=4):
@@ -37,17 +37,31 @@ def info_list(message, indent=4):
     """
     if isinstance(message, list) or isinstance(message, tuple):
         for m in message:
-            info_block("- " + m, indent=indent, newlines=False)
+            info_block("- " + str(m), indent=indent, newlines=False)
     else:
-        info_block("- " + message, indent=indent, leading_newline=False, trailing_newline=True)
+        info_block("- " + str(message), indent=indent, newlines=False)
 
 
 def info_line(message, indent=4):
-    info_block(message, indent=indent, newlines=False)
+    """
+    no newlines
+    """
+    info_block(str(message), indent=indent, newlines=False)
 
 
 def section_head(message, indent=0):
-    info_block("* " + message, indent=indent)
+    """
+    * at front, leading newline
+    """
+    info_block("* " + str(message), indent=indent)
+
+
+def nl(num=1):
+    """
+    print num newlines
+    """
+    for _ in range(num):
+        print("")
 
 
 def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=False, 
@@ -78,7 +92,7 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
 
     # splitting at spaces
     lines = [""]
-    for char in message:
+    for char in str(message):
         # hard break if super long with no spaces (url, path, etc)
         if len(lines[-1]) >= 65:
             if char != " ":

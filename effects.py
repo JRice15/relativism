@@ -54,7 +54,7 @@ class Bitcrusher:
         swap adjacent bits
             amount: 0-100+: percentage of bits swapped per second
         """
-        print("  bitcrusher 1, {0}%...".format(amount))
+        print("  Bit-Swapping, {0}%...".format(amount))
         end = len(rec.arr) - 2
         for _ in range(int(amount / 100 * rec.size_samps())):
             ind = rd.randint(0, end)
@@ -70,10 +70,31 @@ class Bitcrusher:
         stretch and unstretch
             amount: 1-100+
         """
-        print("  bitcrusher 2, {0}%...".format(amount))
+        print("  Stretch-Unstretch Bitcrusher, {0}%...".format(amount))
         rec.stretch(1/amount)
         rec.stretch(amount)
 
+
+
+
+def scrambler(obj, amount):
+    """
+    cat: edit
+    desc: move chunk of between 1/2 and 1/8th of a second to a new random place
+    args:
+        amount: number of scrambles to perform, integer >=1; 1, 10;
+    """
+    amount = inpt_process(amount, "int", allowed=[1, None])
+
+    while amount >= 1:
+        print("  scrambling, {0} to go...".format(amount))
+        chunk = obj.rate // rd.randint(2, 8)
+        start = rd.randint(0, len(obj.arr) - chunk)
+        new = rd.randint(0, len(obj.arr) - chunk)
+        chunk_arr = obj.arr[start:start+chunk]
+        obj.arr = obj.arr[:start] + obj.arr[start+chunk:]
+        obj.arr = obj.arr[:new] + chunk_arr + obj.arr[new:]
+        amount -= 1
 
 
 
@@ -98,14 +119,21 @@ def eq(rec):
 
 
 
+def get_effects():
+    # TODO: do this
+    pass
+
+
 
 def effects_main():
     """
     """
-    a = Recording(array=[[0.0, 0.0] for i in range(44100 * 2)], rate=44100)
-    a.playback()
-    Distortion.saw(a, 200, 80)
-    a.playback()
+
+    obj = Distortion
+
+    a = Object_Data(obj)
+
+    a.display()
 
 
 

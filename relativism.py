@@ -5,7 +5,7 @@ root
 
 class Relativism():
 
-    DEBUG = False
+    DEBUG = True
     TEST_BPM = 120
 
     output = 'Built-in Output'

@@ -187,7 +187,7 @@ class Rhythm:
             if not (1 <= len(new_beat) <= 3):
                 print("  > Wrong number of arguments! From 1 to 3 are required, {0} were supplied".format(len(new_beat)))
                 continue
-            if t(60, new_beat[0]) >= t(60, str(self.length) + 'b'):
+            if t(new_beat[0]) >= t(str(self.length) + 'b'):
                 print("  > This beat begins after the end of the rhythm! Try again")
                 continue
             

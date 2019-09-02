@@ -1,7 +1,33 @@
 from relativism import *
+from contextlib import contextmanager
+import sys, os
+import time
 
 
+@contextmanager
+def suppress_output():
+    """
+    usage:
+    with suppress_output():
+        suppressed zone
+    """
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
 
+
+@contextmanager
+def time_this(process=''):
+    t1 = time.time()
+    try:
+        yield
+    finally:
+        t2 = time.time()
+        print("{0} Took {1:.4f} seconds".format(process, t2-t1))
 
 
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):
@@ -29,6 +55,8 @@ def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val']
             sorted_final.append(unsorted[highest_ind])
             unsorted_map[highest_ind] = -100000
     return sorted_final
+
+
 
 
 def util_main():
