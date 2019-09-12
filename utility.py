@@ -2,6 +2,7 @@ from relativism import *
 from contextlib import contextmanager
 import sys, os
 import time
+from output_and_prompting import *
 
 
 @contextmanager
@@ -28,6 +29,52 @@ def time_this(process=''):
     finally:
         t2 = time.time()
         print("{0} Took {1:.4f} seconds".format(process, t2-t1))
+
+
+
+class Colors:
+    """ ANSI color codes """
+    BLACK = "\033[0;30m"
+    RED = "\033[0;31m"
+    GREEN = "\033[0;32m"
+    BROWN = "\033[0;33m"
+    BLUE = "\033[0;34m"
+    PURPLE = "\033[0;35m"
+    CYAN = "\033[0;36m"
+    LIGHT_GRAY = "\033[0;37m"
+    DARK_GRAY = "\033[1;30m"
+    LIGHT_RED = "\033[1;31m"
+    LIGHT_GREEN = "\033[1;32m"
+    YELLOW = "\033[1;33m"
+    LIGHT_BLUE = "\033[1;34m"
+    LIGHT_PURPLE = "\033[1;35m"
+    LIGHT_CYAN = "\033[1;36m"
+    LIGHT_WHITE = "\033[1;37m"
+    BOLD = "\033[1m"
+    FAINT = "\033[2m"
+    ITALIC = "\033[3m"
+    UNDERLINE = "\033[4m"
+    BLINK = "\033[5m"
+    NEGATIVE = "\033[7m"
+    CROSSED = "\033[9m"
+    END = "\033[0m"
+
+
+@contextmanager
+def style(*styles):
+    try:
+        if len(styles) == 1:
+            styles = styles[0].split(',')
+        for s in styles:
+            s = s.upper().strip()
+            try:
+                print(getattr(Colors, s), end='')
+            except:
+                err_mess("No style {0} exists".format(s))
+        yield
+    finally:
+        print(Colors.END, end='')
+
 
 
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):

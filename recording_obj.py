@@ -19,6 +19,7 @@ from process import *
 from utility import *
 from input_processing import *
 from output_and_prompting import *
+from object_data import *
 
 
 """
@@ -47,7 +48,7 @@ add_to_sampler
 
 
 
-class Recording:
+class Recording(Rel_Object_Data):
     """
     Attributes:
         type (str): 'Recording'
@@ -63,7 +64,8 @@ class Recording:
 
     # Initialization #
     def __init__(self, array=None, source=None, name=None, rate=44100, \
-            parent=None, hidden=False, type_='Recording'):
+            parent=None, hidden=False, type_='Recording', pan_val=0):
+        super().__init__(include=["effects"])
         self.type = type_ # for inheritance
         self.name = name
         if name is None:
@@ -79,11 +81,11 @@ class Recording:
                 self.read_file__()
             else:
                 self.init_mode__()
-        self.pan_val = 0
+        self.pan_val = pan_val
         self.recents = [] # for undoing
+        self.include_effects = True
         if not hidden:
             self.save(silent=True)
-        self.obj_data = Object_Data(self)
 
 
     def init_mode__(self):
@@ -261,7 +263,7 @@ class Recording:
         """
         duration = t(duration)
         start = t(start)
-        section_head(" Playback")
+        section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
         start_ind = int(start * self.rate)
@@ -270,14 +272,7 @@ class Recording:
         else:
             end_ind = start_ind + int(duration * self.rate)
         arr = self.arr[start_ind : end_ind]
-        if self.pan_val > 0:
-            arr = [
-                [i * self.pan_val, j + (self.pan_val * i)] for i, j in arr
-            ]
-        elif self.pan_val < 0:
-            arr = [
-                [i - (self.pan_val * j), -j * self.pan_val] for i, j in arr
-            ]
+        arr = self.get_panned_rec__(arr)
 
         print("  playing...")
         try:
@@ -386,7 +381,7 @@ class Recording:
         args:
             factor: num >0; 0.5, 1.5;
         """
-        factor = inpt_process(factor, 'float', allowed=[0, None])
+        factor = inpt_process(factor, 'float', allowed=[0, 10])
         print("  amplifying by {0}x...".format(factor))
         for i in range(len(self.arr)):
             self.arr[i][0] *= factor
@@ -445,6 +440,24 @@ class Recording:
         amount = inpt_process(amount, 'float', allowed=[-1, 1])
         print("  Setting pan to {0}...".format(amount))
         self.pan_val = amount
+
+
+    def get_panned_rec__(self, arr=None):
+        """
+        get panned version of self.arr, or arr if passed
+        """
+        if arr is None:
+            arr = self.arr
+        if self.pan_val > 0:
+            return [
+                [i * -(1 - self.pan_val), j + (self.pan_val * i)] for i, j in arr
+            ]
+        elif self.pan_val < 0:
+            return [
+                [i - (self.pan_val * j), j * (1 + self.pan_val)] for i, j in arr
+            ]
+        else:
+            return arr
 
 
     def trim(self, left, right=None):
@@ -513,10 +526,6 @@ class Recording:
 
 
     # Saving #
-
-    def process__(self):
-        process(self)
-
 
     def pre_process__(self, process):
         """
@@ -593,6 +602,23 @@ class Recording:
             print("  > Failed to write to file '{0}': {1}".format(outfile, e))
 
 
+    def duplicate(self):
+        """
+        cat: save
+        desc: create identical recording
+        """
+        self.parent.add_child(
+            Recording(
+                array=self.arr, 
+                source=self.source, 
+                rate=self.rate, 
+                parent=self.parent, 
+                type_=self.type, 
+                pan_val=self.pan_val
+            )
+        )
+
+
     # Other #
     def random_method(self):
         """
@@ -606,6 +632,7 @@ class Recording:
             func(*args)
         except TypeError as e:
             print("  > Wrong number of arguments: {0}".format(e))
+
 
 
 def initialize():

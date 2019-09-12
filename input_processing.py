@@ -142,7 +142,7 @@ def inpt_process(val, mode, allowed=None):
                 val = float(val)
             except ValueError:
                 info_block(
-                    "> Value '{0}' is not a valid number. Enter intended value (or 'q' to quit): ".format(val),
+                    "> Value '{0}' is not a valid number (decimal allowed). Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
                 val = inpt("int")

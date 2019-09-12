@@ -31,22 +31,22 @@ def info_title(message, indent=4):
     info_block(str(message), indent=indent, leading_newline=True, trailing_newline=False)
 
 
-def info_list(message, indent=4):
+def info_list(message, indent=4, hang=2):
     """
     print messages with '-' list. message as str or list
     """
     if isinstance(message, list) or isinstance(message, tuple):
         for m in message:
-            info_block("- " + str(m), indent=indent, newlines=False)
+            info_block("- " + str(m), indent=indent, newlines=False, hang=hang)
     else:
-        info_block("- " + str(message), indent=indent, newlines=False)
+        info_block("- " + str(message), indent=indent, newlines=False, hang=hang)
 
 
-def info_line(message, indent=4):
+def info_line(message, indent=4, hang=2):
     """
     no newlines
     """
-    info_block(str(message), indent=indent, newlines=False)
+    info_block(str(message), indent=indent, newlines=False, hang=hang)
 
 
 def section_head(message, indent=0):

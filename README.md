@@ -5,8 +5,8 @@ Music Creation
 ## Objects
 Must have attribute:
     * type
+    * name
 methods:
-    * get_name()
     * options()
 
 
