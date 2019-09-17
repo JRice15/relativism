@@ -37,30 +37,26 @@ class Sample(Recording):
         super().__init__(array=array, source=source, name=name, rate=rate,
             parent=parent, type_='Sample')
 
-
     def __repr__(self):
         string = "'{0}'. Sample object from".format(self.name)
         for ind in range(len(self.source) // 2):
             string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
         return string
 
+    @public_process
     def get_name(self):
         return self.name
 
-    def process__(self):
-        process(self)
-
-    def process_rec(self):
-        process(self)
-
+    @public_process
     def duplicate(self):
         new_sample = Sample(array=self.arr, source=self.source, rate=self.rate, \
             parent=self.parent)
-        self.parent.add_sample(new_sample)
+        new_sample.add_to_sampler(self.parent)
 
     def add_to_sampler(self, sampler_obj):
         sampler_obj.add_sample(self)
 
+    @public_process
     def save(self):
         try:
             self.parent.save_child__(self)
@@ -68,6 +64,55 @@ class Sample(Recording):
             err_mess("Parent {0} '{1}' has not implemented save feature".format(
                 self.parent.type, self.parent.get_name()))
 
+
+class SampleGroup(Rel_Object_Data):
+
+    def __init__(self, name=None):
+        super().__init__(self)
+        self.type = "Sample Group"
+        self.rename()
+        self.samples = {}
+
+    @public_process
+    def rename(self, name=None):
+        if name is None:
+            p("Enter a name for this {0}".format(self.type))
+            self.name = inpt('name')
+        else:
+            self.name = inpt_process(name, 'name')
+
+    @public_process
+    def list_samples(self):
+        info_title("Samples in Sample Group '{0}".format(self.name))
+        for s in self.samples:
+            info_line(str(s))
+
+    @public_process
+    def process_child_sample(self, name=None):
+        """
+        desc: process a sample contained in this group
+        """
+        if name is None:
+            self.list_samples()
+            p("Choose the name of the sample to process")
+            name = inpt('name')
+        else:
+            name = inpt_process(name, 'name')
+        try:
+            self.samples[name]
+        except KeyError:
+            err_mess("> Sample '{0}' does not exist!".format(name))
+            self.process_child_sample()
+        process(self.samples[name])
+
+    def add_sample(self, sample_obj):
+        try:
+            self.samples[sample_obj.name]
+            err_mess("Sample named '{0}' in Sample Group '{1}' overwritten".format(
+                sample_obj.name, self.name))
+        except KeyError:
+            pass
+        self.samples[sample_obj.name] = sample_obj
 
 
 class Rhythm:
@@ -95,15 +140,18 @@ class Rhythm:
     def __repr__(self):
         return "'{0}', Rhythm object. Variability {1}, Length {2} beats. {3} children beats are loaded".format(self.get_name(), self.variability, self.length, len(self.beats))
 
-    def beat_repr__(self, beat):
+    def beat_repr(self, beat):
         return "place: {0}, length: {1}, start: {2}".format(beat[0], beat[1], beat[2])
 
+    @public_process
     def get_name(self):
         return self.name
 
+    @public_process
     def info(self):
         raise NotImplementedError
 
+    @public_process
     def rhythms_help(self):
         info_block(
             "Rhythms are made up of multiple beats. Each beat follows the format of " + \
@@ -135,6 +183,7 @@ class Rhythm:
         if inpt('y-n'):
             beat_options()
 
+    @public_process
     def rename(self, name=None):
         if name is None:
             print("  Enter a name for this Rhythm: ", end="")
@@ -144,6 +193,7 @@ class Rhythm:
         self.name = name
         print("  named '" + name + "'")
 
+    @public_process
     def set_length(self, length=None):
         if length is None:
             p("Enter a number for the length in beats of this Rhythm")
@@ -151,6 +201,7 @@ class Rhythm:
         else:
             self.length = inpt_process(length, 'int')
 
+    @public_process
     def set_variability(self, var=None):
         if var is None:
             p("Enter the variability (in percentage, 0-100%) of this Rhythm")
@@ -158,6 +209,7 @@ class Rhythm:
         else:
             self.variability = inpt_process(var, 'pcnt')
 
+    @public_process
     def set_period(self, period=None):
         if period is None:
             p("Enter the period, or smallest beat/note that this Rhythm usually lands on, as " +\
@@ -166,6 +218,7 @@ class Rhythm:
         else:
             self.period = inpt_process(period, "beat")
 
+    @public_process
     def add_beats(self):
         """
         create beats through prompts or pass 'beat' param to set
@@ -197,16 +250,19 @@ class Rhythm:
                 new_beat.append(0)
             if new_beat[1] == 0:
                 new_beat[1] = "all"
-            print("  Added beat - " + self.beat_repr__(new_beat))
+            print("  Added beat - " + self.beat_repr(new_beat))
 
+    @public_process
     def delete_beats(self):
         raise NotImplementedError
 
+    @public_process
     def list_beats(self):
         sorted_beats = selection_sort(self.beats, ind=0, func_on_val=t, func_args=[60, 'val'], low_to_high=True)
         for i in sorted_beats:
-            info_block("- " + self.beat_repr__(i), newlines=False)
+            info_block("- " + self.beat_repr(i), newlines=False)
 
+    @public_process
     def save(self):
         try:
             self.parent.save_child__(self)
@@ -235,6 +291,7 @@ class Active:
         out_str += ": Rhythm '{0}', Sample '{1}'".format(self.rhythm.get_name(), self.sample.get_name())
         return out_str
 
+    @public_process
     def rename(self, name=None):
         if name is None:
             print("  Give this active pair a name: ", end="")
@@ -244,6 +301,7 @@ class Active:
             name = inpt_process(name, "obj")
         self.name = name
 
+    @public_process
     def get_name(self):
         return self.name
 
@@ -270,28 +328,27 @@ class Sampler:
         self.active = []
         self.BPM = BPM
 
-
     # Representation #
     def __repr__(self):
         raise NotImplementedError
 
-
+    @public_process
     def info(self):
         raise NotImplementedError
 
-
+    @public_process
     def get_name(self):
         return self.name
 
-
+    @public_process
     def set_bpm(self, BPM=None):
         if BPM is not None:
             self.BPM = inpt_process(BPM, "flt", allowed=[1, 9999])
         else:
             self.BPM = inpt("flt", allowed=[1, 9999])
 
-
     # Handling Samples #
+    @public_process
     def add_sample(self, new_samp=None):
         """
         add a sample from file, project, or another sampler
@@ -325,16 +382,20 @@ class Sampler:
             process(new_samp)
 
 
+    def add_sample_group(self):
+        self.smps.append(SampleGroup())
+
+    @public_process
     def edit_sample(self):
         while True:
             print("\n  Which sample would you like to edit? ('q' to cancel, 'list' to list samples): ", end="")
             try:
-                sample = self.choose__("sample")
+                sample = self.choose("sample")
                 sample.process()
             except Cancel:
                 continue
 
-
+    @public_process
     def list_samples(self):
         print("\n  Samples loaded into '{0}':".format(self.name))
         empty = True
@@ -345,8 +406,8 @@ class Sampler:
             info_block("No samples loaded")
             return False
 
-
     # Handling Rhythms #
+    @public_process
     def add_rhythm(self, new_rhythm=None):
         if not isinstance(new_rhythm, Rhythm):
             p("Create new rhythm (C) or Load from another sampler (L)?")
@@ -367,12 +428,12 @@ class Sampler:
                 except Cancel:
                     pass
     
-
+    @public_process
     def edit_rhythm(self):
-        rhythm = self.choose__("rhythm")
+        rhythm = self.choose("rhythm")
         process(rhythm)
 
-
+    @public_process
     def list_rhythms(self):
         print("\n  Rhythms loaded into '{0}':".format(self.name))
         empty = True
@@ -383,19 +444,19 @@ class Sampler:
             info_block("No rhythms loaded")
             return False
 
-
     # Handling Active #
+    @public_process
     def activate(self, act_rhythm=None, act_sample=None):
         if not isinstance(act_rhythm, Rhythm):
             p("Choose a rhythm for this active pair")
-            act_rhythm = self.choose__('rhythm')
+            act_rhythm = self.choose('rhythm')
         if not isinstance(act_sample, Sample):
             p("Choose a sample for this active pair")
-            act_sample = self.choose__('sample')
+            act_sample = self.choose('sample')
         new_active = Active(self, act_rhythm, act_sample)
         self.active.append(new_active)
 
-
+    @public_process
     def list_active(self):
         info_title("Active pairs in '{0}':".format(self.name))
         empty = True
@@ -406,26 +467,26 @@ class Sampler:
             info_list("No active pairs created")
             return False
 
-
+    @public_process
     def mute(self):
         """
         mute an active pair
         """
         info_block("Choose an active pair to mute")
-        act = self.choose__('active')
+        act = self.choose('active')
         if act is not None:
             act.muted = True
 
-
+    @public_process
     def unmute(self):
         """
         unmute an active pair
         """
-        act = self.choose__('active')
+        act = self.choose('active')
         act.muted = False
 
-
     # Generating #
+    @public_process
     def generate(self):
         p("Choose an integer number for length in beats to generate")
         beats = inpt("int", allowed=[0, None])
@@ -436,9 +497,8 @@ class Sampler:
         final = mix_multiple(generated_active)
         final.playback()
 
-
     # Meta-functions & Helpers #
-    def choose__(self, attr, name=None):
+    def choose(self, attr, name=None):
         """
         get an object from attribute ('sample', 'rhythm', or 'active') by name
         """
@@ -452,7 +512,7 @@ class Sampler:
                 if i.get_name() == name:
                     return i
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
-            return self.choose__(attr)
+            return self.choose(attr)
         elif attr == "sample":
             if name is None:
                 if self.list_samples() is False:
@@ -463,7 +523,7 @@ class Sampler:
                 if i.get_name() == name:
                     return i
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
-            return self.choose__(attr)
+            return self.choose(attr)
         elif attr == "rhythm":
             if name is None:
                 if self.list_rhythms() is False:
@@ -474,26 +534,16 @@ class Sampler:
                 if i.get_name() == name:
                     return i
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
-            return self.choose__(attr)
-
+            return self.choose(attr)
 
     def save_rhythm_to_rec(self):
         raise NotImplementedError
 
-
-    def processes(self):
-        raise NotImplementedError
-
-
-    def process__(self):
-        process(self)
-
-
-    def save_child__(self, child):
+    def save_child(self, child):
         filename = child.type.lower() + "_" + child.get_name() + ".rel-obj"
         write_obj(child, filename, self.directory)
 
-
+    @public_process
     def save(self):
         raise NotImplementedError
 

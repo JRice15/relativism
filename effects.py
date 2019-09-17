@@ -313,12 +313,16 @@ def get_effects():
 def effects_main():
     """
     """
+    a = Recording(source='t.wav', name='b')
+    b = Recording(source='t.wav', name='b')
 
-    obj = Distortion
+    a.trim(0, 5)
 
-    a = Rel_Object_Data(obj)
+    r = Reverb1(a, size=100, dampening=20, wet=100, dry=0)
 
-    a.display()
+    # b.playback(30)
+    a.playback(0)
+
 
 
 

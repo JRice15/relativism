@@ -1,5 +1,6 @@
 from name_and_path import *
 import random as rd
+from object_data  import *
 
 
 def process(obj):
@@ -34,7 +35,7 @@ def process(obj):
 
                     # pre process
                     try: 
-                        obj.pre_process__(func)
+                        obj.pre_process(func)
                     except (NotImplementedError, AttributeError): 
                         pass
 
@@ -44,7 +45,7 @@ def process(obj):
 
                     # post process
                     try: 
-                        obj.post_process__(func)
+                        obj.post_process(func)
                     except (NotImplementedError, AttributeError): 
                         pass
                     break
@@ -101,12 +102,10 @@ def get_similar_methods(obj, partial):
     obj_class = type(obj)
     matches = []
     methods = [func for func in dir(obj_class) if callable(getattr(obj_class, \
-        func)) and "__" not in func]
+        func)) and is_public_process(getattr(obj_class, func))]
     for m in methods:
         if m[:len(partial)] == partial:
             matches.append(m)
     return matches
-    
-
 
 

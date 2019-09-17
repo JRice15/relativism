@@ -7,6 +7,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
+import matplotlib.pyplot as plt
 
 import sounddevice as sd
 import soundfile as sf
@@ -20,6 +21,10 @@ from utility import *
 from input_processing import *
 from output_and_prompting import *
 from object_data import *
+
+
+
+from autodrummer2 import Analysis
 
 
 """
@@ -46,8 +51,6 @@ add_to_sampler
 
 
 
-
-
 class Recording(Rel_Object_Data):
     """
     Attributes:
@@ -64,7 +67,7 @@ class Recording(Rel_Object_Data):
 
     # Initialization #
     def __init__(self, array=None, source=None, name=None, rate=44100, \
-            parent=None, hidden=False, type_='Recording', pan_val=0):
+            parent=None, hidden=False, type_='Recording', pan_val=0, mode=None):
         super().__init__(include=["effects"])
         self.type = type_ # for inheritance
         self.name = name
@@ -76,19 +79,45 @@ class Recording(Rel_Object_Data):
         self.source = source
         self.arr = array
         self.parent = parent
+        self.pan_val = pan_val
+        self.command_line_init()
+        if mode is not None:
+            if mode in ('read', 'file', 'read_file'):
+                self.read_file()
+            elif mode in ('record', 'record_live'):
+                self.record_live()
+            else:
+                raise UnexpectedIssue("unknown mode {0}".format(mode))
         if array is None:
             if source is not None:
-                self.read_file__()
+                self.read_file()
             else:
-                self.init_mode__()
-        self.pan_val = pan_val
+                self.init_mode()
         self.recents = [] # for undoing
         self.include_effects = True
         if not hidden:
             self.save(silent=True)
 
 
-    def init_mode__(self):
+    def command_line_init(self):
+        """
+        set source file from command line
+        """
+
+        indexes_to_del = []
+        for i in range(1, len(sys.argv)):
+            val = sys.argv[i].lower().strip()
+            if re.fullmatch(r"^file=.+", val) or re.fullmatch(r"^f=.+", val):
+                self.source = re.sub(r".+=", "", val)
+                indexes_to_del.append(i)
+            else:
+                print("  > Unrecognized command line flag: '" + val +"'. Ignoring...")
+
+        for i in sorted(indexes_to_del, reverse=True):
+            del sys.argv[i]
+
+
+    def init_mode(self):
         """
         fill in initialization via input
         get recording by mode
@@ -103,16 +132,16 @@ class Recording(Rel_Object_Data):
 
         # Record Mode
         if mode == "r":
-            self.record_live__()
+            self.record_live()
         # File Mode
         elif mode == "f":
-            self.read_file__()
+            self.read_file()
         # Help
         elif mode == "h":
             raise NotImplementedError
         
 
-    def record_live__(self):
+    def record_live(self):
         """
         record -- but get this -- live!
         """
@@ -144,7 +173,7 @@ class Recording(Rel_Object_Data):
         ]
 
 
-    def read_file__(self):
+    def read_file(self):
         """
         reads files for recording object init
         takes multiple formats (via PyDub and Soundfile)
@@ -160,7 +189,8 @@ class Recording(Rel_Object_Data):
                 root.withdraw()
                 root.update()
                 source = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
-                filedialog.OFF = True
+                root.update()
+                root.destroy()
             if source == "":
                 raise Cancel
         # Handling file types
@@ -177,7 +207,7 @@ class Recording(Rel_Object_Data):
                 print("  > unable to find file '{0}'".format(source))
                 print("  > make sure to include .wav/.mp3/etc extension")
                 self.source = None
-                return self.read_file__()
+                return self.read_file()
         self.source = ["file", source]
         # Reading and Processing File
         try:
@@ -185,7 +215,7 @@ class Recording(Rel_Object_Data):
         except RuntimeError:
             print("  > unable to find or read '{0}'. Is that the correct extension?".format(source))
             self.source = None
-            return self.read_file__()
+            return self.read_file()
         try:
             os.remove(".temp_soundfile.wav")
         except FileNotFoundError:
@@ -199,19 +229,6 @@ class Recording(Rel_Object_Data):
             source.split('/')[-1], t2-t1))
 
 
-    def write__(self, outfile, directory=""):
-        """
-        silent write to wav
-        """
-        outfile = re.sub(r"\..*", ".wav", outfile)
-        if ".wav" not in outfile:
-            outfile += ".wav"
-        if directory[-1] != "/":
-            directory += '/'
-        fullpath = directory + outfile
-        sf.write(fullpath, self.arr, self.rate)
-
-
     # Info #
     def __repr__(self):
         string = "'{0}'. {1} object from".format(self.name, self.type)
@@ -220,6 +237,7 @@ class Recording(Rel_Object_Data):
         return string
 
 
+    @public_process
     def info(self):
         """
         desc: display this objects data
@@ -235,6 +253,7 @@ class Recording(Rel_Object_Data):
         print("  pan: {0}".format(self.pan_val))
 
 
+    @public_process
     def size_samps(self):
         """
         cat: info
@@ -242,8 +261,9 @@ class Recording(Rel_Object_Data):
         args:
         """
         return len(self.arr)
-    
 
+
+    @public_process
     def size_secs(self):
         """
         cat: info
@@ -253,6 +273,7 @@ class Recording(Rel_Object_Data):
         return len(self.arr) / self.rate
 
 
+    @public_process
     def playback(self, duration=5, start=0, first_time=True):
         """
         cat: info
@@ -272,7 +293,7 @@ class Recording(Rel_Object_Data):
         else:
             end_ind = start_ind + int(duration * self.rate)
         arr = self.arr[start_ind : end_ind]
-        arr = self.get_panned_rec__(arr)
+        arr = self.get_panned_rec(arr)
 
         print("  playing...")
         try:
@@ -289,8 +310,26 @@ class Recording(Rel_Object_Data):
         print("  finished playback")
 
 
-    # Metadata #
+    @public_process
+    def view_waveform(self, start, end):
+        info_block("Generating waveform")
+        indexes = range(10)
+        left = [i[0] for i in self.arr]
+        right = [i[1] for i in self.arr]
 
+        frames = Analysis(self).get_frames()
+
+        plt.subplot(211)
+        plt.
+        plt.bar(indexes, range(10))
+
+        plt.subplot(212)
+        plt.bar(indexes, range(2, 12))
+
+        plt.show()
+
+    # Metadata #
+    @public_process
     def rename(self, name=None):
         """
         cat: meta
@@ -312,6 +351,7 @@ class Recording(Rel_Object_Data):
 
 
     # Simple edit processes #
+    @public_process
     def stretch(self, factor):
         """
         cat: edit
@@ -331,6 +371,7 @@ class Recording(Rel_Object_Data):
         self.arr = new_rec
 
 
+    @public_process
     def sliding_stretch(self, i_factor, f_factor, start=0, end=None):
         """
         cat: edit
@@ -365,6 +406,7 @@ class Recording(Rel_Object_Data):
         self.arr = new_rec
 
 
+    @public_process
     def reverse(self):
         """
         cat: edit
@@ -372,8 +414,9 @@ class Recording(Rel_Object_Data):
         """
         print("  reversing...")
         self.arr = self.arr[::-1]
-        
 
+
+    @public_process
     def amplify(self, factor):
         """
         cat: edit
@@ -388,6 +431,7 @@ class Recording(Rel_Object_Data):
             self.arr[i][1] *= factor
 
 
+    @public_process
     def repeat(self, times):
         """
         cat: edit
@@ -399,6 +443,7 @@ class Recording(Rel_Object_Data):
         self.arr = self.arr * times
 
 
+    @public_process
     def extend(self, length, placement="a"):
         """
         cat: edit
@@ -421,6 +466,7 @@ class Recording(Rel_Object_Data):
             self.arr += silence
 
 
+    @public_process
     def swap_channels(self):
         """
         cat: edit
@@ -428,8 +474,9 @@ class Recording(Rel_Object_Data):
         """
         print("  swapping stereo channels...")
         self.arr = [[j, i] for i, j in self.arr]
-    
 
+
+    @public_process
     def pan(self, amount):
         """
         cat: edit
@@ -442,7 +489,7 @@ class Recording(Rel_Object_Data):
         self.pan_val = amount
 
 
-    def get_panned_rec__(self, arr=None):
+    def get_panned_rec(self, arr=None):
         """
         get panned version of self.arr, or arr if passed
         """
@@ -460,6 +507,7 @@ class Recording(Rel_Object_Data):
             return arr
 
 
+    @public_process
     def trim(self, left, right=None):
         """
         cat: edit
@@ -482,6 +530,7 @@ class Recording(Rel_Object_Data):
             self.arr = self.arr[int(left * self.rate):int(right * self.rate)]  
 
 
+    @public_process
     def fade_in(self, time, start=0):
         """
         cat: edit
@@ -502,6 +551,7 @@ class Recording(Rel_Object_Data):
                 pass
 
 
+    @public_process
     def fade_out(self, time, end=None):
         """
         cat: edit
@@ -526,28 +576,30 @@ class Recording(Rel_Object_Data):
 
 
     # Saving #
-
-    def pre_process__(self, process):
+    @public_process
+    def pre_process(self, process):
         """
         actions to run before process: save current rec to 
         """
         if process != 'undo':
-            self.update_recents__()
+            self.update_recents()
 
 
-    def post_process__(self, process):
+    @public_process
+    def post_process(self, process):
         """
         """
         self.save(process=process, silent=True)
 
 
-    def update_recents__(self):
+    def update_recents(self):
         if len(self.recents) == 0 or (self.recents[0] == self.arr):
             self.recents.insert(0, self.arr)
             if len(self.recents) > 5:
                 self.recents.pop()
 
 
+    @public_process
     def undo(self):
         """
         cat: save
@@ -557,6 +609,7 @@ class Recording(Rel_Object_Data):
         self.arr = self.recents.pop(0)
 
 
+    @public_process
     def save(self, silent=False, process=None):
         """
         cat: save
@@ -581,6 +634,7 @@ class Recording(Rel_Object_Data):
                         self.parent.type, self.parent.get_name()))
 
 
+    @public_process
     def write_to_wav(self, outfile=None):
         """
         cat: meta
@@ -595,13 +649,27 @@ class Recording(Rel_Object_Data):
         try:
             info_line("writing...")
             t1 = time.time()
-            self.write__(outfile)
+            self.write(outfile)
             t2 = time.time()
             info_line("written successfully in {0:.4f} seconds".format(t2 - t1))
         except TypeError as e:
             print("  > Failed to write to file '{0}': {1}".format(outfile, e))
 
 
+    def write(self, outfile, directory=""):
+        """
+        silent write to wav
+        """
+        outfile = re.sub(r"\..*", ".wav", outfile)
+        if ".wav" not in outfile:
+            outfile += ".wav"
+        if directory[-1] != "/":
+            directory += '/'
+        fullpath = directory + outfile
+        sf.write(fullpath, self.arr, self.rate)
+
+
+    @public_process
     def duplicate(self):
         """
         cat: save
@@ -620,6 +688,7 @@ class Recording(Rel_Object_Data):
 
 
     # Other #
+    @public_process
     def random_method(self):
         """
         desc: implement random sound-editing on recording, with random args
@@ -632,25 +701,6 @@ class Recording(Rel_Object_Data):
             func(*args)
         except TypeError as e:
             print("  > Wrong number of arguments: {0}".format(e))
-
-
-
-def initialize():
-    """
-    set infile, outfile
-    """
-    infile, outfile = None, None
-
-    for i in sys.argv[1:]:
-        if re.fullmatch(r"^infile=.+", i) or re.fullmatch(r"^f=.+", i):
-            infile = re.sub(r".+=", "", i)
-        elif re.fullmatch(r"^outfile=.+", i) or re.fullmatch(r"^o=.+", i):
-            outfile = re.sub(r".+=", "", i)
-        else:
-            print("  > Unrecognized command line flag: '" + i +"'. Ignoring...")
-
-    return infile, outfile
-
 
 
 def sd_select_device(dev_type='in'):
@@ -682,10 +732,8 @@ def sd_select_device(dev_type='in'):
 
 
 def main_rec_obj():
-
-    infile, outfile = initialize()
     
-    a = Recording(source=infile)
+    a = Recording()
 
     process(a)
 

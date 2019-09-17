@@ -1,5 +1,5 @@
 import pickle
-
+import json
 
 
 def write_obj(obj, filename_or_fullpath, directory=None):
@@ -31,3 +31,18 @@ def read_obj(filename_or_fullpath, directory=None):
     read_file = open(filepath, 'rb')
     obj = pickle.load(read_file)
     return obj
+
+
+
+# json test
+# def decode_here(obj):
+#     return obj.arr
+
+# a = Recording(source='t.wav', name='a')
+
+# with open('test-dump.txt', 'w') as f:
+#     json.dump(a, f, default=decode_here)
+# with open('test-dump.txt', 'r') as f:
+#     jj = json.load(f)
+
+# print(jj)

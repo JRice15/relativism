@@ -1,6 +1,20 @@
 import re
 from output_and_prompting import *
-from process import *
+
+
+def public_process(func):
+    """
+    decorator: allow user access via 'process'
+    """
+    func.__rel_public__ = True
+    return func
+
+
+def is_public_process(func):
+    try:
+        return func.__rel_public__
+    except AttributeError:
+        return False
 
 
 class Rel_Object_Data:
@@ -16,8 +30,15 @@ class Rel_Object_Data:
             obj_class = obj
         else:
             obj_class = obj.__class__
-        public_method_strs = [func for func in dir(obj_class) if "__" not in func and \
-            callable(getattr(obj, func))]
+        method_strs = [func for func in dir(obj_class) if callable(getattr(obj, func))]
+        public_method_strs = []
+        for m in method_strs:
+            method = getattr(obj, m)
+            try:
+                if getattr(method, '__rel_public__') == True:
+                    public_method_strs.append(m)
+            except AttributeError:
+                pass
         for m in public_method_strs:
             m_data = Method_Data(self, obj, m)
             try:
@@ -70,6 +91,7 @@ class Method_Data:
 
         self.analayze_doc()
     
+
     def analayze_doc(self):
         doc = getattr(self.obj, self.method_name).__doc__
         if doc is not None:
@@ -95,11 +117,12 @@ class Method_Data:
                         arg_dt = Arg_Data(self, line)
                         self.args.append(arg_dt)
                 except:
-                    err_mess("Error in " + self.method_name + ": " + str(line))
+                    err_mess("Error getting object data from method " + self.method_name + ": " + str(line))
         
         if self.category is None:
             self.category = "Other"
-                    
+
+
     def set_category(self, category):
         if category in ("edit", "edits"):
             category = "Edits"
@@ -140,6 +163,10 @@ class Arg_Data:
     def __init__(self, parent, doc_line):
         self.parent = parent
         self.optional = False
+        self.parse_arg_doc(doc_line)
+
+    
+    def parse_arg_doc(self, doc_line):
         if doc_line[0] == "[":
             doc_line = doc_line.strip("[").strip("]")
             self.optional = True
@@ -160,7 +187,6 @@ class Arg_Data:
         if self.optional:
             string = "[" + string + "]"
         return string
-
 
     def choose_random_default(self):
         if self.defaults_high is None:

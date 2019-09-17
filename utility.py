@@ -77,6 +77,8 @@ def style(*styles):
 
 
 
+
+
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):
     """
     func args as array of args, where 'val' is replaced with the value to sort on
