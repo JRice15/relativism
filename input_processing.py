@@ -114,8 +114,8 @@ def inpt_process(val, mode, allowed=None):
             )
             val = inpt("beat", catch="i", catch_callback=beat_options)
     # number inputs
-    elif mode in ("pcnt", "int", "flt"):
-        if mode == "pcnt":
+    elif mode in ("pcnt", "percent", "int", "flt", "float"):
+        if mode in ("pcnt", "percent"):
             if isinstance(val, str):
                 val = re.sub(r"%", "", val)
             try:
@@ -137,7 +137,7 @@ def inpt_process(val, mode, allowed=None):
                     for_prompt=True
                 )
                 val = inpt("int")
-        elif mode == "flt":
+        elif mode in ("flt", "float"):
             try:
                 val = float(val)
             except ValueError:

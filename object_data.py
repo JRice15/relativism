@@ -1,5 +1,6 @@
 import re
 from output_and_prompting import *
+import random as rd
 
 
 def public_process(func):
@@ -19,7 +20,8 @@ def is_public_process(func):
 
 class Rel_Object_Data:
     """
-    implements methods for showing public process methods
+    implements methods for showing public process methods.
+    use getitem to get method by str
     """
 
     def __init__(self, obj=None, include=None):
@@ -56,11 +58,13 @@ class Rel_Object_Data:
         raise KeyError
 
 
+    @public_process
     def show_processes(self):
         """
         cat: info
         desc: list all processes that can be run on this object
         """
+        print("")
         info_block("# {Category} #", indent=2)
         info_line("- {Process}")
         info_line("{arguments in order, optional if in [square brackets]}", indent=8)
@@ -68,9 +72,10 @@ class Rel_Object_Data:
             info_title("# " + str(i[0]).upper() + " #", indent=2)
             for j in i[1].items():
                 j[1].display()
+        print("")
 
 
-    def process__(self):
+    def process(self):
         process(self)
 
 
@@ -84,6 +89,7 @@ class Method_Data:
         self.parent = parent
         self.obj = obj
         self.method_name = method
+        self.method_func = getattr(obj, method)
 
         self.category = None
         self.args = []
@@ -156,6 +162,15 @@ class Method_Data:
                 args.append(arg)
         return args
 
+
+    def oneline_arg_list(self):
+        argstr = []
+        for i in self.args:
+            if i.optional:
+                argstr.append("[" + i.name + "]")
+            else:
+                argstr.append(i.name)
+        return ", ".join(argstr)
 
 
 class Arg_Data:

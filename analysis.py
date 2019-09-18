@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 from input_processing import *
 from output_and_prompting import *
+import numpy
+
 
 
 class Analysis():
@@ -34,7 +36,7 @@ class Analysis():
             self.rec.playback()
 
 
-    def get_frames(self, length_frac=None, step_frac=None):
+    def get_frames(self, length_frac=1/20, step_frac=1/100):
         """
         take and average data from recording into frames
         """

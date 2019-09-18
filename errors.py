@@ -36,18 +36,10 @@ class Cancel(Exception):
         if obj is not None:
             obj.save()
 
+
 class RateError(Exception):
     """
     Error with sampe rates
     """
 
 
-class TestError(Exception):
-    """
-    """
-    def __init__(self, num):
-        self.num = num
-        self.print_num()
-    
-    def print_num(self):
-        print(self.num)

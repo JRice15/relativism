@@ -1,5 +1,5 @@
 from relativism import *
-
+from utility import style
 
 def p(message, indent=2, o="", i="", start=""):
     """
@@ -20,11 +20,21 @@ def p(message, indent=2, o="", i="", start=""):
     info_block(message_body + notices, indent=indent, for_prompt=True, start=start)
 
 
-def err_mess(message, indent=4, trailing_newline=True):
+def err_mess(message, indent=4, trailing_newline=False):
     """
     print error message with leading >, no newlines
     """
-    info_block("> " + str(message), indent=indent, newlines=False)
+    print("")
+    info_block("> " + str(message), indent=indent, trailing_newline=trailing_newline)
+
+
+def critical_err_mess(message):
+    """
+    """
+    with style('red'):
+        print("\nCritical Error, something appears to be broken:")
+        print("   ", message)
+        print("Please contact the developer\n")
 
 
 def info_title(message, indent=4):

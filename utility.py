@@ -2,8 +2,9 @@ from relativism import *
 from contextlib import contextmanager
 import sys, os
 import time
+import timeit
 from output_and_prompting import *
-
+import functools
 
 @contextmanager
 def suppress_output():
@@ -29,6 +30,11 @@ def time_this(process=''):
     finally:
         t2 = time.time()
         print("{0} Took {1:.4f} seconds".format(process, t2-t1))
+
+
+def timeit_(func, args, reps=1000, times=7):
+    time = min(timeit.Timer(functools.partial(func, *args)).repeat(times, reps))
+    print("{0} took {1}".format(func.__name__, time))
 
 
 

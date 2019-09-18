@@ -24,7 +24,7 @@ from object_data import *
 
 
 
-from autodrummer2 import Analysis
+from analysis import *
 
 
 """
@@ -211,7 +211,7 @@ class Recording(Rel_Object_Data):
         self.source = ["file", source]
         # Reading and Processing File
         try:
-            recording, rate = sf.read(file)
+            self.arr, self.rate = sf.read(file)
         except RuntimeError:
             print("  > unable to find or read '{0}'. Is that the correct extension?".format(source))
             self.source = None
@@ -220,10 +220,9 @@ class Recording(Rel_Object_Data):
             os.remove(".temp_soundfile.wav")
         except FileNotFoundError:
             pass
-        self.arr = recording.tolist()
-        if not isinstance(self.arr[0], list):
-            self.arr = [[i, i] for i in self.arr]
-        self.rate = rate
+        if len(self.arr.shape) < 2:
+            transpose = self.arr.reshape(-1, 1)
+            self.arr = np.hstack((transpose, transpose))
         t2 = time.time()
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
             source.split('/')[-1], t2-t1))
@@ -243,34 +242,32 @@ class Recording(Rel_Object_Data):
         desc: display this objects data
         cat: info
         """
-        section_head("Info for {0} '{1}'".format(self.type, self.name))
-        print("  sourced from {0}: {1}".format(self.source[0], self.source[1]))
+        section_head("{0} '{1}'".format(self.type, self.name))
+        info_line("sourced from {0}: {1}".format(self.source[0], self.source[1]))
         for ind in range(1, len(self.source) // 2):
             print("    {0}: {1}".format(self.source[2 * ind], self.source[2 * ind + 1]))
-        print("  parent: {0}".format(self.parent))
-        print("  rate: {0} samples per second".format(self.rate))
-        print("  size: {0:.4f} seconds, {1:,} samples".format(self.size_secs(), self.size_samps()))
-        print("  pan: {0}".format(self.pan_val))
+        info_line("parent: {0}".format(self.parent))
+        info_line("rate: {0} samples per second".format(self.rate))
+        info_line("size: {0:.4f} seconds, {1:,} samples".format(self.size_secs(), self.size_samps()))
+        info_line("pan: {0}".format(self.pan_val))
 
 
-    @public_process
     def size_samps(self):
         """
         cat: info
         desc: get the length in samples
         args:
         """
-        return len(self.arr)
+        return self.arr.shape[0]
 
 
-    @public_process
     def size_secs(self):
         """
         cat: info
         desc: get the length in seconds
         args:
         """
-        return len(self.arr) / self.rate
+        return self.size_samps() / self.rate
 
 
     @public_process
@@ -314,13 +311,10 @@ class Recording(Rel_Object_Data):
     def view_waveform(self, start, end):
         info_block("Generating waveform")
         indexes = range(10)
-        left = [i[0] for i in self.arr]
-        right = [i[1] for i in self.arr]
 
         frames = Analysis(self).get_frames()
 
         plt.subplot(211)
-        plt.
         plt.bar(indexes, range(10))
 
         plt.subplot(212)
@@ -357,7 +351,7 @@ class Recording(Rel_Object_Data):
         cat: edit
         desc: stretch by a factor
         args:
-            factor: number >0; 0.2, 5
+            factor: number >0; 0.2, 3
         """
         factor = inpt_process(factor, 'float', allowed=[0, None])
         print("  stretching by a factor of {0}...".format(factor))
@@ -367,8 +361,8 @@ class Recording(Rel_Object_Data):
             factor_count += factor
             for _ in range(int(factor_count)):
                 new_rec.append(i)
-            factor_count = factor_count - int(factor_count)
-        self.arr = new_rec
+            factor_count -= int(factor_count)
+        self.arr = np.asarray(new_rec)
 
 
     @public_process
@@ -377,33 +371,34 @@ class Recording(Rel_Object_Data):
         cat: edit
         desc: stretch by sliding amount
         args:
-            i_factor: initial factor, num >0; 0.2, 5;
-            f_factor: final, num >0; 0.2, 5;
+            i_factor: initial factor, num >0; 0.2, 3;
+            f_factor: final, num >0; 0.2, 3;
             [start: beat/second to begin. defaults beginning]
             [end: beat/second to end. defaults to end of rec]
         """
         i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
         f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
-        start = t(start)
+        start = int(t(start) * self.rate)
         if end is None:
-            end = len(self.arr)
+            end = self.size_samps()
         else:
-            end = t(end)
-            end = int(end * self.rate)
+            end = int(t(end) * self.rate)
         print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
-        start = int(start * self.rate)
-        new_rec = self.arr[:start]
+        beginning = self.arr[:start]
+
+        middle = []
         factor_count = 0
         factor = i_factor
         delta_factor = (f_factor - i_factor) / (end - start)
         for i in self.arr[start:end]:
             factor_count += factor
             for _ in range(int(factor_count)):
-                new_rec.append(i)
+                middle.append(i)
             factor_count = factor_count - int(factor_count)
             factor += delta_factor
-        new_rec += self.arr[end:]
-        self.arr = new_rec
+        
+        end = self.arr[end:]
+        self.arr = np.vstack((beginning, middle, end))
 
 
     @public_process
@@ -440,14 +435,14 @@ class Recording(Rel_Object_Data):
         """
         times = inpt_process(times, 'int', allowed=[1, None])
         print("  repeating {0} times...".format(times))
-        self.arr = self.arr * times
+        self.arr = np.vstack([self.arr] * times)
 
 
     @public_process
     def extend(self, length, placement="a"):
         """
         cat: edit
-        desc: extend with silence by a number of seconds
+        desc: extend with silence by a number of seconds/beats
         args:
             length: beats/seconds to extend; 0, 1;
             [placement: "a"=after, "b"=before. default after]
@@ -459,11 +454,11 @@ class Recording(Rel_Object_Data):
         else:
             before = ""
         print("  extending by {0} seconds{1}...".format(length, before))
-        silence = [[0, 0] for _ in range(int(self.rate * length))]
+        silence = np.zeros( shape=(int(self.rate * length), 2) )
         if placement == "b":
-            self.arr = silence + self.arr
+            self.arr = np.vstack((silence, self.arr))
         else:
-            self.arr += silence
+            self.arr = np.vstack((self.arr, silence))
 
 
     @public_process
@@ -473,7 +468,7 @@ class Recording(Rel_Object_Data):
         desc: swap stereo channels
         """
         print("  swapping stereo channels...")
-        self.arr = [[j, i] for i, j in self.arr]
+        self.arr[:,[0, 1]] = self.arr[:,[1, 0]]
 
 
     @public_process
@@ -516,18 +511,20 @@ class Recording(Rel_Object_Data):
             left: beat/second; 0, 5;
             [right: beat/second. defaults to end; 10, 15;]
         """
+        left = t(left)
         if right is None:
             print("  trimming first {0} seconds".format(left))
             right = self.size_samps()
         else:
+            right = t(right)
             print("  trimming everything outside {0} to {1} seconds".format(left, right))
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
             if not inpt("y-n"):
                 return
-            self.arr = []
+            self.arr = np.empty(shape=(0,2))
         else:
-            self.arr = self.arr[int(left * self.rate):int(right * self.rate)]  
+            self.arr = self.arr[int(left * self.rate) : int(right * self.rate)]  
 
 
     @public_process
@@ -576,7 +573,6 @@ class Recording(Rel_Object_Data):
 
 
     # Saving #
-    @public_process
     def pre_process(self, process):
         """
         actions to run before process: save current rec to 
@@ -585,7 +581,6 @@ class Recording(Rel_Object_Data):
             self.update_recents()
 
 
-    @public_process
     def post_process(self, process):
         """
         """
@@ -593,7 +588,7 @@ class Recording(Rel_Object_Data):
 
 
     def update_recents(self):
-        if len(self.recents) == 0 or (self.recents[0] == self.arr):
+        if len(self.recents) == 0 or (np.array_equal(self.recents[0], self.arr)):
             self.recents.insert(0, self.arr)
             if len(self.recents) > 5:
                 self.recents.pop()
@@ -663,7 +658,7 @@ class Recording(Rel_Object_Data):
         outfile = re.sub(r"\..*", ".wav", outfile)
         if ".wav" not in outfile:
             outfile += ".wav"
-        if directory[-1] != "/":
+        if directory != "" and directory[-1] != "/":
             directory += '/'
         fullpath = directory + outfile
         sf.write(fullpath, self.arr, self.rate)
@@ -675,16 +670,19 @@ class Recording(Rel_Object_Data):
         cat: save
         desc: create identical recording
         """
-        self.parent.add_child(
-            Recording(
-                array=self.arr, 
-                source=self.source, 
-                rate=self.rate, 
-                parent=self.parent, 
-                type_=self.type, 
-                pan_val=self.pan_val
+        if self.parent is not None:
+            self.parent.add_child(
+                Recording(
+                    array=self.arr, 
+                    source=self.source, 
+                    rate=self.rate, 
+                    parent=self.parent, 
+                    type_=self.type, 
+                    pan_val=self.pan_val
+                )
             )
-        )
+        else:
+            err_mess("has no parent to duplicate to!")
 
 
     # Other #
@@ -693,14 +691,14 @@ class Recording(Rel_Object_Data):
         """
         desc: implement random sound-editing on recording, with random args
         """
-        methods = [i[0] for i in self.obj_data.methods_by_category['Edits'].items()]
-        method_data = Method_Data(None, self, rd.choice(methods))
+        methods = [i[1] for i in self.method_data_by_category['Edits'].items()]
+        method_data = rd.choice(methods)
         args = method_data.get_random_defaults()
         try:
-            func = eval("self." + method_data.method_name)
-            func(*args)
-        except TypeError as e:
-            print("  > Wrong number of arguments: {0}".format(e))
+            method_data.method_func(*args)
+        except e:
+            err_mess("Random Process error:")
+            show_error(e)
 
 
 def sd_select_device(dev_type='in'):
