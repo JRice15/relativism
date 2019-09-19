@@ -4,8 +4,8 @@ import time
 from output_and_prompting import *
 from utility import *
 
-
 """ clean input """
+
 
 def inpt(mode=None, split_modes=None, catch=None, catch_callback=None, 
         allowed=None, required=True, quit_on_q=True):
@@ -21,6 +21,7 @@ def inpt(mode=None, split_modes=None, catch=None, catch_callback=None,
             pcnt: percentage, opt allowed list
             split: splits input, does split modes on each (inp longer than split modes uses last mode for rest)
             letter: one letter, str of allowed
+            arg: for process arg entry
         split_modes: str, or list of str
         catch: str to catch
         catch callback: function to call on catch
@@ -78,9 +79,12 @@ def inpt_process(val, mode, allowed=None):
         pcnt: percentage, opt allowed list
         split: splits input, does split modes on each (inp longer than split modes uses last mode for rest)
         letter: one letter, str of allowed
+        arg: for process arg entry
     """
     if mode == None:
         return val
+    elif mode == "arg":
+        val = re.sub(r"[^-_.a-z0-9]", "", val)
     elif mode in ("y-n", "y/n", "yn"):
         if len(val) == 0 or val[0] not in "yn":
             print("  > Enter 'y' or 'n': ", end="")
@@ -153,9 +157,9 @@ def inpt_process(val, mode, allowed=None):
         except AssertionError:
             allowed_str = []
             if allowed[0] is not None:
-                allowed_str.append("value must be greater than {0}".format(allowed[0]))
+                allowed_str.append("value must be greater than or equal to {0}".format(allowed[0]))
             if allowed[1] is not None:
-                allowed_str.append("value must be less than {0}".format(allowed[1]))
+                allowed_str.append("value must be less than or equal to {0}".format(allowed[1]))
             allowed_str = " and ".join(allowed_str)
             p("> Invalid: " + allowed_str)
             val = inpt(mode)
@@ -166,8 +170,7 @@ def inpt_process(val, mode, allowed=None):
     return val
 
 
-
-""" freqency and time """
+""" freqency and time conversion """
 
 
 def f(note):
@@ -417,14 +420,46 @@ def get_freq_table():
 
 
 
-
-def t(note, BPM=None):
+def secs(note, BPM=None):
     """
     get time from beat-appreviation,
     or pass float for pure seconds
     """
     note = inpt_process(note, "beat")
     return valid_beat(note, BPM)
+
+
+def samps(val, rate):
+    """
+    get val in samples. pass seconds/beats
+    """
+    return int(secs(val) * rate)
+
+
+def whole_beats(sec, BPM=None):
+    """
+    get num of beats (quarter-notes) from seconds.
+    return (beats, remainder in sec)
+    """
+    # TODO: bpm stuff
+    if BPM is None:
+        BPM = Relativism.TEST_BPM
+    bps = BPM / 60
+    beats = int(sec * bps)
+    remainder = sec % bps
+    return (beats, remainder)
+
+
+def beats(sec, BPM=None):
+    """
+    get beats in fractions
+    """
+    # TODO: bpm stuff
+    if BPM is None:
+        BPM = Relativism.TEST_BPM
+    bps = BPM / 60
+    return sec * bps
+
 
 
 def valid_beat(note, BPM=None):
@@ -445,44 +480,44 @@ def valid_beat(note, BPM=None):
     note = str(note).lower().strip()
     # split number and beat name
     note = re.sub(r'%', '', note)
-    if re.match(r"^[0-9]*[a-z]{1,3}$", note) is None:
+    if re.match(r"^[0-9]*(\.[0-9]+){0,1}[a-z]{1,3}$", note) is None:
         raise TypeError
-    temp_split = re.sub(r"^([0-9]*)", r"\1%", note)
+    temp_split = re.sub(r"^([0-9]*(\.[0-9]+){0,1})", r"\1%", note)
     num, note = temp_split.split("%")
     # handle number
     if num == "":
         num = 1
     else:
-        num = int(num)
+        num = float(num)
     sec_per_beat = 60 / BPM
     frac = get_beat_frac(note)
     return num * frac * sec_per_beat
 
 
 def get_beat_frac(note):
-    note_fracs = [
+    fracs = get_beat_frac_tables()
+    for i in fracs:
+        if note == i[0]:
+            return i[1]
+    raise TypeError
+
+
+def get_beat_frac_tables():
+    return [
         ["sfn", 1/16, "sixty-fourth note"],
         ["tsn", 1/8, "thirty-second note"],
         ["sn", 1/4, "sixteenth note"],
         ["en", 1/2, "eighth note"],
         ["qn", 1, "quarter note"],
         ["hn", 2, "half note"],
-        ["wn", 4, "whole note (always 4 quarter notes)"]
-    ]
-    beat_fracs = [
+        ["wn", 4, "whole note (always 4 quarter notes)"],
+
         ["sb", 1/16, "sixteenth of a beat"],
         ["eb", 1/8, "eighth of a beat"],
         ["qb", 1/4, "quarter of a beat"],
         ["hb", 1/2, "half of a beat"],
         ["b", 1, "one beat"],
     ]
-    for i in note_fracs:
-        if note == i[0]:
-            return i[1]
-    for i in beat_fracs:
-        if note == i[0]:
-            return i[1]
-    raise TypeError
 
 
 

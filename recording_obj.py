@@ -22,8 +22,6 @@ from input_processing import *
 from output_and_prompting import *
 from object_data import *
 
-
-
 from analysis import *
 
 
@@ -77,7 +75,7 @@ class Recording(Rel_Object_Data):
             section_head("Initializing {0} '{1}'...".format(self.type, self.name))
         self.rate = rate
         self.source = source
-        self.arr = array
+        self.arr = np.array(array)
         self.parent = parent
         self.pan_val = pan_val
         self.command_line_init()
@@ -154,10 +152,8 @@ class Recording(Rel_Object_Data):
         if rate == '':
             rate = 44100
         self.rate = rate
-        print("  Enter 'R' to begin recording, or anything else to cancel: ", end="")
-        cont = inpt('name')
-        if cont != "r":
-            raise Cancel
+        print("  Press Enter to begin recording, or 'q' to quit: ", end="")
+        inpt(required=False)
         time.sleep(0.05)
         section_head("Recording at input {0} ({1}) for {2} seconds".format(device_ind, \
             device_name, record_time))
@@ -166,8 +162,9 @@ class Recording(Rel_Object_Data):
         sd.wait()
         info_block("Finished recording")
         self.arr = recording
-        if not isinstance(self.arr[0], list):
-            self.arr = [[i, i] for i in self.arr]
+        if len(self.arr.shape) < 2:
+            transpose = self.arr.reshape(-1, 1)
+            self.arr = np.hstack((transpose, transpose))
         self.source = [
             'live recording', "input '{0}'".format(device_name)
         ]
@@ -279,8 +276,8 @@ class Recording(Rel_Object_Data):
             [duration: beats/seconds. default 5]
             [start: beat/seconds to start at. defualts to beginning]
         """
-        duration = t(duration)
-        start = t(start)
+        duration = secs(duration)
+        start = secs(start)
         section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
@@ -308,19 +305,36 @@ class Recording(Rel_Object_Data):
 
 
     @public_process
-    def view_waveform(self, start, end):
-        info_block("Generating waveform")
-        indexes = range(10)
+    def view_waveform(self, start=0, end=None, precision=50):
+        """
+        cat: info
+        desc: show the waveform of this audio
+        args:
+            [start: seconds/beats to begin view window. default beginning]
+            [end: seconds/beats to end view window. -1 selects end. default end]
+            [precision: percent of how detailed the plot should be. default 50]
+        """
+        precision = inpt_process(precision, 'pcnt', allowed=[5, 10000])
+        start = samps(start, self.rate)
+        if end is None or end == "-1" or samps(end, self.rate) > self.size_samps():
+            end = self.size_samps()
+        else:
+            end = samps(end, self.rate)
+        if end <= start:
+            err_mess("End cannot be before or equal to start")
+            raise Cancel
 
-        frames = Analysis(self).get_frames()
+        info_block("Generating waveform at {0}%...".format(precision))
 
-        plt.subplot(211)
-        plt.bar(indexes, range(10))
+        anlsys = Analysis(self, start=start, end=end)
+        frame_len = (end - start) / (precision * 2)
+        anlsys.set_frame_lengths(frame_len)
 
-        plt.subplot(212)
-        plt.bar(indexes, range(2, 12))
+        left = anlsys.get_frames_left()
+        right = anlsys.get_frames_right()
 
-        plt.show()
+        anlsys.plot(left, right, fill=True)
+
 
     # Metadata #
     @public_process
@@ -378,11 +392,11 @@ class Recording(Rel_Object_Data):
         """
         i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
         f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
-        start = int(t(start) * self.rate)
+        start = int(secs(start) * self.rate)
         if end is None:
             end = self.size_samps()
         else:
-            end = int(t(end) * self.rate)
+            end = int(secs(end) * self.rate)
         print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
         beginning = self.arr[:start]
 
@@ -447,7 +461,7 @@ class Recording(Rel_Object_Data):
             length: beats/seconds to extend; 0, 1;
             [placement: "a"=after, "b"=before. default after]
         """
-        length = t(length)
+        length = secs(length)
         placement = inpt_process(placement, "letter", allowed="ab")
         if placement == "b":
             before = " before"
@@ -511,12 +525,12 @@ class Recording(Rel_Object_Data):
             left: beat/second; 0, 5;
             [right: beat/second. defaults to end; 10, 15;]
         """
-        left = t(left)
+        left = secs(left)
         if right is None:
             print("  trimming first {0} seconds".format(left))
             right = self.size_samps()
         else:
-            right = t(right)
+            right = secs(right)
             print("  trimming everything outside {0} to {1} seconds".format(left, right))
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
@@ -528,16 +542,16 @@ class Recording(Rel_Object_Data):
 
 
     @public_process
-    def fade_in(self, time, start=0):
+    def fade_in(self, dur, start=0):
         """
         cat: edit
         desc: fade in audio
         args:
-            time: duration in beats/seconds of fade-in; 0, 10;
+            duration: duration in beats/seconds of fade-in; 0, 10;
             [start: beat/second to begin. defaults 0]
         """
-        seconds = t(time)
-        start = t(start)
+        seconds = secs(dur)
+        start = secs(start)
         print("  Fading in {0} seconds starting at {1} seconds...".format(seconds, start))
         length = int(self.rate * seconds)
         for i in range(length):
@@ -549,19 +563,19 @@ class Recording(Rel_Object_Data):
 
 
     @public_process
-    def fade_out(self, time, end=None):
+    def fade_out(self, dur, end=None):
         """
         cat: edit
         desc: fade out audio
         args:
-            time: duration in beats/seconds of fade-out; 0, 10;
+            duration: duration in beats/seconds of fade-out; 0, 10;
             [end: beat/second to end. defaults end of audio]
         """
         if end is None:
             end = self.size_secs()
         else:
-            end = t(end)
-        seconds = t(time)
+            end = secs(end)
+        seconds = secs(dur)
         print("  Fading out {0} seconds ending at {1} seconds...".format(seconds, end))
         length = int(self.rate * seconds)
         for i in range(int(end) - length, int(end)):

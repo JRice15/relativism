@@ -240,7 +240,7 @@ class Rhythm:
             if not (1 <= len(new_beat) <= 3):
                 print("  > Wrong number of arguments! From 1 to 3 are required, {0} were supplied".format(len(new_beat)))
                 continue
-            if t(new_beat[0]) >= t(str(self.length) + 'b'):
+            if secs(new_beat[0]) >= secs(str(self.length) + 'b'):
                 print("  > This beat begins after the end of the rhythm! Try again")
                 continue
             
@@ -258,7 +258,7 @@ class Rhythm:
 
     @public_process
     def list_beats(self):
-        sorted_beats = selection_sort(self.beats, ind=0, func_on_val=t, func_args=[60, 'val'], low_to_high=True)
+        sorted_beats = selection_sort(self.beats, ind=0, func_on_val=secs, func_args=[60, 'val'], low_to_high=True)
         for i in sorted_beats:
             info_block("- " + self.beat_repr(i), newlines=False)
 

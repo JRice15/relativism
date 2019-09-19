@@ -19,7 +19,7 @@ def mix(rec1, rec2, mix_level=None, offset=0, name=None):
     section_head("Mixing '" + rec1.name + "' and '" + rec2.name + "' ...")
     if rec1.rate != rec2.rate:
         raise RateError("Two recordings must have the same sample rate to be mixed")
-    offset = int(t(offset) * rec1.rate)
+    offset = int(secs(offset) * rec1.rate)
     arr1 = rec1.get_panned_rec__()
     arr2 = rec2.get_panned_rec__()
     new_arr = []

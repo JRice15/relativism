@@ -11,7 +11,7 @@ def process(obj):
     section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.type))
     while True:
         p("What process to run on {0} '{1}'?".format(obj.type, obj.name))
-        command = inpt('split', 'alphanum')
+        command = inpt('split', 'arg')
         if command == []:
             err_mess("No command entered")
             command = "None"
@@ -113,7 +113,7 @@ def process_error_handling(e, command, obj):
                 return [process + rest[0]] + rest[1:]
             elif len(matches) == 1:
                 print("  -> Autofilled '{0}'".format(matches[0]))
-                return matches
+                return matches + command[1:]
             else:
                 process_error_handling(SyntaxError(message), process, obj)
         else:
