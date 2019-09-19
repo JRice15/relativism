@@ -10,7 +10,7 @@ def process(obj):
     """
     section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.type))
     while True:
-        p("What process to run on {0} '{1}'?".format(obj.type, obj.name))
+        p("What process to run on {0} '{1}'?".format(obj.type, obj.name), o="'o' to view process options")
         command = inpt('split', 'arg')
         if command == []:
             err_mess("No command entered")
