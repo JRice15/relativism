@@ -1,7 +1,7 @@
 from name_and_path import *
 import random as rd
 from object_data  import *
-
+from get_help import *
 
 def process(obj):
     """
@@ -10,8 +10,8 @@ def process(obj):
     """
     section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.type))
     while True:
-        p("What process to run on {0} '{1}'?".format(obj.type, obj.name), o="'o' to view process options")
-        command = inpt('split', 'arg')
+        p("What process to run on {0} '{1}'?".format(obj.type, obj.name), h=True, o="'o' to view process options")
+        command = inpt('split', 'arg', help_callback=processes_help)
         if command == []:
             err_mess("No command entered")
             command = "None"
@@ -22,7 +22,7 @@ def process(obj):
         elif command[0] in ("q", "e"):
             info_block("Exiting processing of {0} '{1}'...".format(obj.type, obj.name))
             raise Cancel(obj)
-        elif command[0] in ("o"):
+        elif command[0] in ("o", "options"):
             obj.show_processes()
         else:
             while True:
@@ -149,3 +149,15 @@ def get_similar_methods(obj, partial):
     return matches
 
 
+def processes_help():
+    info_block("To execute a process, enter its name followed by the " + \
+        "desired values for its arguments. For example, if you wanted " + \
+        "to have a fade-in effect occur starting at 4 seconds and lasting " + \
+        "for 2, you would enter:")
+    info_block("fade_in 4 2", indent=8)
+    info_block("Optional arguments are denoted by square brackets [], " +\
+        "so fade-in's second argument could be omitted, in which case a " +\
+        "the default is used, like:")
+    info_block("fade_in 4", indent=8)
+    info_block("Which would use the default value 0, starting the fade-in " +\
+        "at the beginning of the recording")

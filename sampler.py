@@ -213,8 +213,8 @@ class Rhythm:
     def set_period(self, period=None):
         if period is None:
             p("Enter the period, or smallest beat/note that this Rhythm usually lands on, as " +\
-                "a beat", i="for info on creating properly formed beats")
-            self.period = inpt('beat', catch="i", catch_callback=beat_options)
+                "a beat", h=True)
+            self.period = inpt('beat', help_callback=beat_options)
         else:
             self.period = inpt_process(period, "beat")
 
@@ -233,7 +233,7 @@ class Rhythm:
             )
             print("  : ", end="")
             try:
-                new_beat = inpt("split", "beat", catch="i", catch_callback=self.rhythms_help)
+                new_beat = inpt("split", "beat", help_callback=self.rhythms_help)
             except Cancel:
                 print("\n  Done creating Rhythm '{0}'".format(self.name))
                 return

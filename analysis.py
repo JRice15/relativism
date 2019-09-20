@@ -113,7 +113,7 @@ class Analysis():
         plt.ylabel("Left amplitude")
         if len(left.shape) == 1:
             valuesL = left
-            indexesL = range(len(left))
+            indexesL = range(self.start, self.start + len(left))
         else:
             indexesL, valuesL = zip(*left)
         indexesL = [beats(i/self.rate) for i in indexesL]
@@ -125,7 +125,7 @@ class Analysis():
         plt.ylabel("Right amplitude")
         if len(right.shape) == 1:
             valuesR = right
-            indexesR = range(len(right))
+            indexesR = range(self.start, self.start + len(right))
         else:
             indexesR, valuesR = zip(*right)
         indexesR = [i/self.rate for i in indexesR]

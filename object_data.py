@@ -72,7 +72,7 @@ class Rel_Object_Data:
             info_title("# " + str(i[0]).upper() + " #", indent=2)
             for j in i[1].items():
                 j[1].display()
-        print("")
+
 
 
     def process(self):

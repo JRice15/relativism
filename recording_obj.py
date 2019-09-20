@@ -330,8 +330,10 @@ class Recording(Rel_Object_Data):
         frame_len = (end - start) / (precision * 2)
         anlsys.set_frame_lengths(frame_len)
 
-        left = anlsys.get_frames_left()
-        right = anlsys.get_frames_right()
+        # left = anlsys.get_frames_left()
+        # right = anlsys.get_frames_right()
+        left = anlsys.arr[:, 0]
+        right = anlsys.arr[:, 1]
 
         anlsys.plot(left, right, fill=True)
 

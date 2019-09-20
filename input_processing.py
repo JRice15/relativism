@@ -7,7 +7,7 @@ from utility import *
 """ clean input """
 
 
-def inpt(mode=None, split_modes=None, catch=None, catch_callback=None, 
+def inpt(mode=None, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
         allowed=None, required=True, quit_on_q=True):
     """
     get and clean input via some specifications
@@ -46,6 +46,11 @@ def inpt(mode=None, split_modes=None, catch=None, catch_callback=None,
                 catch_callback=catch_callback, allowed=allowed, required=required)
         else:
             return ''
+    if val in ("h", "help"):
+        try:
+            help_callback()
+        except:
+            err_mess("No help is configured for this action")
     if mode == "split":
         val = val.split()
         for i in range(len(val)):
@@ -103,20 +108,20 @@ def inpt_process(val, mode, allowed=None):
             valid_freq(val)
         except TypeError:
             info_block(
-                "> Value '{0}' is not a validly formed note. Enter intended value ('i' for info on how to make validly formed notes, 'q' to cancel): ".format(val),
+                "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
                 indent=2,
                 for_prompt=True
             )
-            val = inpt("note", catch="i", catch_callback=note_options)
+            val = inpt("note", help_callback=note_options)
     elif mode == "beat":
         try:
             valid_beat(val)
         except:
             info_block(
-                "> Value '{0}' is not a validly formed beat. Enter intended value ('i' for info on how to make validly formed beats, 'q' to cancel): ".format(val),
+                "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt("beat", catch="i", catch_callback=beat_options)
+            val = inpt("beat", help_callback=beat_options)
     # number inputs
     elif mode in ("pcnt", "percent", "int", "flt", "float"):
         if mode in ("pcnt", "percent"):

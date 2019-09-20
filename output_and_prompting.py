@@ -1,21 +1,21 @@
 from relativism import *
 from utility import style
 
-def p(message, indent=2, o="", i="", start=""):
+def p(message, indent=2, o="", h=False, start=""):
     """
     user-prompt:
-        indent: spaces,
-        o="options for before quit message
-        ('q' to quit) auto
-        i="for info message"
+        o: "letter and full message for some options message" (add callback to inpt)
+        'q' to quit (auto)
+        h: bool for display help
+        start: beginning of text for prompt (ie partial word to complete)
     """
     message_body = str(message)
     notices = " ("
     if o != "":
         notices += o + ", "
     notices += "'q' to quit"
-    if i != "":
-        notices += ", 'i' " + i
+    if h:
+        notices += ", 'h' for help/info"
     notices += "):"
     info_block(message_body + notices, indent=indent, for_prompt=True, start=start)
 
