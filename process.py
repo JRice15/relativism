@@ -1,7 +1,7 @@
 from name_and_path import *
 import random as rd
 from object_data  import *
-from get_help import *
+
 
 def process(obj):
     """
@@ -24,6 +24,8 @@ def process(obj):
             raise Cancel(obj)
         elif command[0] in ("o", "options"):
             obj.show_processes()
+        elif command[0] == "h":
+            pass # callback handled during inpt
         else:
             while True:
                 process_exists = False
@@ -156,8 +158,9 @@ def processes_help():
         "for 2, you would enter:")
     info_block("fade_in 4 2", indent=8)
     info_block("Optional arguments are denoted by square brackets [], " +\
-        "so fade-in's second argument could be omitted, in which case a " +\
+        "so fade-in's second argument could be omitted, in which case " +\
         "the default is used, like:")
     info_block("fade_in 4", indent=8)
     info_block("Which would use the default value 0, starting the fade-in " +\
         "at the beginning of the recording")
+    info_block("Enter 'o' (letter) to view processes")

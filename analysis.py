@@ -64,13 +64,33 @@ class Analysis():
             self.obj.playback()
 
 
-    def plot(self, left, right, fill=False):
+    def plot(self, left, right=None, fill=None, title=None, plot_type="line"):
         """
-        left and right as shape (x, 2) arrays of (index, value) to plot
+        left and right must be numpy arr with shape (x, 2) arrays of (index, value) to plot.
+        if right is not given, assumed to be mono left
         """
         info_block("Generating plot...")
         fig = pylab.gcf()
-        fig.canvas.set_window_title("Waveform of {0} '{1}'".format(self.obj.type, self.obj.name))
+        fig.canvas.set_window_title("{0} '{1}'".format(self.obj.type, self.obj.name))
+
+        if right is None:
+            right = left
+        if fill is None:
+            if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
+                fill = True
+            else:
+                fill = False
+
+        if title is not None:
+            fig.suptitle(title)
+
+        if plot_type == "scatter":
+            plot_func = plt.scatter
+            fill = False
+        elif plot_type == "bar":
+            plot_func = plt.bar
+        else:
+            plot_func = plt.plot
 
         # left: top, beats labels
         axL = plt.subplot(211)
@@ -98,13 +118,11 @@ class Analysis():
             tick_size_beats /= 2
         tick_locs = []
         tick_labels = []
-        decimals = 2
-        for _ in range(int(math.log((0.05 / tick_size_beats)))):
-            decimals += 1
         for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
             tick_locs.append(i)
-            axL.axvline(i, linestyle="--", linewidth=0.3, color='#545454', clip_on=False)
-            tick_labels.append("{0:.{1}f}".format(i, decimals))
+            axL.axvline(i, linestyle="--", linewidth=0.3, color='#545454', 
+                clip_on=False, zorder=11)
+            tick_labels.append("{0:.{1}f}".format(i, decimal_precision_requires(i)))
         plt.xticks(tick_locs, tick_labels)
         for tick in axL.xaxis.get_major_ticks()[1::2]:
             tick.set_pad(15)
@@ -117,7 +135,7 @@ class Analysis():
         else:
             indexesL, valuesL = zip(*left)
         indexesL = [beats(i/self.rate) for i in indexesL]
-        plt.plot(indexesL, valuesL)
+        plot_func(indexesL, valuesL)
 
         # right: bottom, seconds labels
         axR = plt.subplot(212)
@@ -131,8 +149,9 @@ class Analysis():
         indexesR = [i/self.rate for i in indexesR]
         for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
             ind = secs(str(i) + "b")
-            axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', clip_on=False)
-        plt.plot(indexesR, valuesR)
+            axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', 
+                clip_on=False, zorder=11)
+        plot_func(indexesR, valuesR)
 
         info_block("Viewing waveform...")
         # plt.rcParams['agg.path.chunksize'] = 99999999999999999
@@ -178,17 +197,19 @@ class Analysis():
 
 
 
-    def play_samps(self, samp_start, samp_dur):
+    def play_frame(self, samp_start, samp_dur=None):
+        if samp_dur is None:
+            samp_dur = self.frame_length
         sec_start = samp_start / self.rate
         dur = samp_dur / self.rate
         self.obj.playback(dur, sec_start)
 
 
-
     def find_peaks(self, frames):
         """
+        returns peaks as (sample index, )
         """
-        info_block("Finding peaks")
+        info_block("Finding peaks...")
 
         # find highest positive slopes between frames
         slopes = []
@@ -197,9 +218,9 @@ class Analysis():
             highest_slope = 0
             compare_ind = frm_ind + 1
             # get highest slope from this frame, with no dips in between
-            while (
+            while ( # while frame is highest than last and not past end
                     compare_ind < len(frames) ) and (
-                    frames[compare_ind] > frames[compare_ind - 1]
+                    frames[compare_ind][1] > frames[compare_ind - 1][1]
                 ):
                 # 1000 is arbitrary, just to make the numbers nicer
                 new_slope = 1000 * (frames[compare_ind][1] - frames[frm_ind][1]) / (compare_ind - frm_ind)
@@ -209,13 +230,56 @@ class Analysis():
                 slopes.append((frames[frm_ind][0], highest_slope))
             frm_ind += 1
 
-        indexes = [i[0] for i in slopes]
-        values = [i[1] for i in slopes]
-        plt.plot(indexes, values)
-        plt.show()
+        return np.asarray(slopes)
+
+    def filter_peaks(self, peaks):
+        """
+        """
+        info_block("Filtering peaks...")
+
+        avg_slope = np.mean(peaks[:,1])
+        peaks = peaks[peaks[:,1] > avg_slope]
+        sorted_peaks = peaks[peaks[:, 1].argsort()][::-1]
+
+        p_ind = 0
+        while p_ind < sorted_peaks.shape[0]:
+            comp_ind = p_ind + 1
+            while comp_ind < sorted_peaks.shape[0]:
+                comp_val = sorted_peaks[comp_ind][0]
+                # remove smaller items. 4 seems to get them all
+                if (comp_val - (4 * self.frame_length) <
+                    sorted_peaks[p_ind][0] <
+                    comp_val + (4 * self.frame_length)
+                ):
+                    sorted_peaks = np.delete(sorted_peaks, comp_ind, 0)
+                else:
+                    comp_ind += 1
+            p_ind += 1
+
+        return sorted_peaks # filtered peaks
 
 
 
+
+
+def decimal_precision_requires(float_val):
+    """
+    determine number of decimal places required to display
+    data fully
+    """
+    float_val = str(float_val)
+    # handle floating point rounding error
+    float_val = re.sub(r"0000000.$", "", float_val)
+    float_val = re.sub(r"9999999.$", "", float_val)
+    no_trailing = str(float(float_val))
+    decimal_ind = no_trailing.find(".")
+    if decimal_ind is not -1:
+        if no_trailing[0] != "0":
+            minim = 2
+        else:
+            minim = 6
+        return min(len(no_trailing) - decimal_ind - 1, minim)
+    return 0
 
 
 
