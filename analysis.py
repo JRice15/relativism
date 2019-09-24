@@ -5,7 +5,7 @@ import numpy as np
 from os.path import dirname
 import math
 import pylab
-
+from utility import *
 
 
 class Analysis():
@@ -64,101 +64,19 @@ class Analysis():
             self.obj.playback()
 
 
-    def plot(self, left, right=None, fill=None, title=None, plot_type="line"):
-        """
-        left and right must be numpy arr with shape (x, 2) arrays of (index, value) to plot.
-        if right is not given, assumed to be mono left
-        """
-        info_block("Generating plot...")
-        fig = pylab.gcf()
-        fig.canvas.set_window_title("{0} '{1}'".format(self.obj.type, self.obj.name))
-
-        if right is None:
-            right = left
-        if fill is None:
-            if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
-                fill = True
-            else:
-                fill = False
-
-        if title is not None:
-            fig.suptitle(title)
-
-        if plot_type == "scatter":
-            plot_func = plt.scatter
-            fill = False
-        elif plot_type == "bar":
-            plot_func = plt.bar
-        else:
-            plot_func = plt.plot
-
-        # left: top, beats labels
-        axL = plt.subplot(211)
-        pos = axL.get_position()
-        pos.y0 -= 0.06
-        pos.y1 -= 0.06
-        axL.set_position(pos)
-        axL.xaxis.tick_top()
-        axL.xaxis.set_label_position('top')
-
-        start_beats, _ = whole_beats(self.start / self.rate)
-        end_beats, _ = whole_beats(self.end / self.rate)
-        tick_size_beats = 1
-        tick_number = end_beats - start_beats
-        if tick_number < 2:
-            start_beats = beats(self.start / self.rate)
-            end_beats = beats(self.end / self.rate)
-            tick_size_beats = end_beats - start_beats
-            tick_number = 1
-        while tick_number > 10:
-            tick_number /= 2
-            tick_size_beats *= 2
-        while tick_number < 5:
-            tick_number *= 2
-            tick_size_beats /= 2
-        tick_locs = []
-        tick_labels = []
-        for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
-            tick_locs.append(i)
-            axL.axvline(i, linestyle="--", linewidth=0.3, color='#545454', 
-                clip_on=False, zorder=11)
-            tick_labels.append("{0:.{1}f}".format(i, decimal_precision_requires(i)))
-        plt.xticks(tick_locs, tick_labels)
-        for tick in axL.xaxis.get_major_ticks()[1::2]:
-            tick.set_pad(15)
-
-        plt.xlabel("Beats")
-        plt.ylabel("Left amplitude")
-        if len(left.shape) == 1:
-            valuesL = left
-            indexesL = range(self.start, self.start + len(left))
-        else:
-            indexesL, valuesL = zip(*left)
-        indexesL = [beats(i/self.rate) for i in indexesL]
-        plot_func(indexesL, valuesL)
-
-        # right: bottom, seconds labels
-        axR = plt.subplot(212)
-        plt.xlabel("Seconds")
-        plt.ylabel("Right amplitude")
-        if len(right.shape) == 1:
-            valuesR = right
-            indexesR = range(self.start, self.start + len(right))
-        else:
-            indexesR, valuesR = zip(*right)
-        indexesR = [i/self.rate for i in indexesR]
-        for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
-            ind = secs(str(i) + "b")
-            axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', 
-                clip_on=False, zorder=11)
-        plot_func(indexesR, valuesR)
-
-        info_block("Viewing waveform...")
-        # plt.rcParams['agg.path.chunksize'] = 99999999999999999
-        if fill and len(indexesR) < 1_000_000:
-            axR.fill_between(indexesR, valuesR, color='#43C6FF')
-            axL.fill_between(indexesL, valuesL, color='#43C6FF')
-        plt.show()
+    def plot(self, left, right=None, plot_type="line", fill=None, title=None):
+        rel_plot(
+            left, 
+            start=self.start, 
+            end=self.end, 
+            rate=self.rate, 
+            right=right, 
+            fill=fill,
+            plot_type=plot_type,
+            title=title,
+            obj_name=self.obj.name,
+            obj_type=self.obj.type
+        )
 
 
     def get_frames_left(self, **kwargs):
@@ -207,7 +125,7 @@ class Analysis():
 
     def find_peaks(self, frames):
         """
-        returns peaks as (sample index, )
+        returns peaks as (sample index, slope)
         """
         info_block("Finding peaks...")
 
@@ -234,12 +152,14 @@ class Analysis():
 
     def filter_peaks(self, peaks):
         """
+        returns peaks as (sample_index, slope)
         """
         info_block("Filtering peaks...")
 
         avg_slope = np.mean(peaks[:,1])
         peaks = peaks[peaks[:,1] > avg_slope]
-        sorted_peaks = peaks[peaks[:, 1].argsort()][::-1]
+
+        sorted_peaks = NpOps.sort(peaks, 1)
 
         p_ind = 0
         while p_ind < sorted_peaks.shape[0]:
@@ -256,9 +176,110 @@ class Analysis():
                     comp_ind += 1
             p_ind += 1
 
-        return sorted_peaks # filtered peaks
+        return sorted_peaks # (sample_index, slope)
 
 
+
+
+
+def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None, 
+        plot_type="line", obj_type=None, obj_name=None):
+    """
+    left and right must be numpy arr with shape (x, 2) arrays of (index, value) to plot.
+    if right is not given, assumed to be mono left
+    """
+    info_block("Generating plot...")
+    fig = pylab.gcf()
+    fig.canvas.set_window_title("{0} '{1}'".format(obj_type, obj_name))
+
+    # channels
+    left = left_or_mono
+    if right is None:
+        right = left_or_mono
+    # fill
+    if fill is None:
+        if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
+            fill = True
+        else:
+            fill = False
+    # title
+    if title is not None:
+        fig.suptitle(title)
+    # plot type
+    if plot_type == "scatter":
+        plot_func = plt.scatter
+        fill = False
+    elif plot_type == "bar":
+        plot_func = plt.bar
+    else:
+        plot_func = plt.plot
+
+    # left: top, beats labels
+    axL = plt.subplot(211)
+    pos = axL.get_position()
+    pos.y0 -= 0.06
+    pos.y1 -= 0.06
+    axL.set_position(pos)
+    axL.xaxis.tick_top()
+    axL.xaxis.set_label_position('top')
+
+    start_beats, _ = whole_beats(start / rate)
+    end_beats, _ = whole_beats(end / rate)
+    tick_size_beats = 1
+    tick_number = end_beats - start_beats
+    if tick_number < 2:
+        start_beats = beats(start / rate)
+        end_beats = beats(end / rate)
+        tick_size_beats = end_beats - start_beats
+        tick_number = 1
+    while tick_number > 10:
+        tick_number /= 2
+        tick_size_beats *= 2
+    while tick_number < 5:
+        tick_number *= 2
+        tick_size_beats /= 2
+    tick_locs = []
+    tick_labels = []
+    for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
+        tick_locs.append(i)
+        axL.axvline(i, linestyle="--", linewidth=0.3, color='#545454', 
+            clip_on=False, zorder=11)
+        tick_labels.append("{0:.{1}f}".format(i, decimal_precision_requires(i)))
+    plt.xticks(tick_locs, tick_labels)
+    for tick in axL.xaxis.get_major_ticks()[1::2]:
+        tick.set_pad(15)
+
+    plt.xlabel("Beats")
+    plt.ylabel("Left amplitude")
+    if len(left.shape) == 1:
+        valuesL = left
+        indexesL = range(start, start + len(left))
+    else:
+        indexesL, valuesL = zip(*left)
+    indexesL = [beats(i/rate) for i in indexesL]
+    plot_func(indexesL, valuesL)
+
+    # right: bottom, seconds labels
+    axR = plt.subplot(212)
+    plt.xlabel("Seconds")
+    plt.ylabel("Right amplitude")
+    if len(right.shape) == 1:
+        valuesR = right
+        indexesR = range(start, start + len(right))
+    else:
+        indexesR, valuesR = zip(*right)
+    indexesR = [i/rate for i in indexesR]
+    for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
+        ind = secs(str(i) + "b")
+        axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', 
+            clip_on=False, zorder=11)
+    plot_func(indexesR, valuesR)
+
+    info_block("Viewing waveform...")
+    if fill and len(indexesR) < 1_000_000:
+        axR.fill_between(indexesR, valuesR, color='#43C6FF')
+        axL.fill_between(indexesL, valuesL, color='#43C6FF')
+    plt.show()
 
 
 
@@ -283,15 +304,5 @@ def decimal_precision_requires(float_val):
 
 
 
-def super_sort(the_list, ind=None, ind2=None, high_to_low=False):
-    """
-    list, index1, index2, reverse.
-    sorted by list[ind1][ind2] keys, for given indexs
-    """
-    if ind != None:
-        if ind2 != None:
-            return sorted(the_list, key=lambda i: i[ind][ind2], reverse=high_to_low)
-        return sorted(the_list, key=lambda i: i[ind], reverse=high_to_low)
-    return sorted(the_list, reverse=high_to_low)
 
 

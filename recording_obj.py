@@ -75,7 +75,7 @@ class Recording(Rel_Object_Data):
             section_head("Initializing {0} '{1}'...".format(self.type, self.name))
         self.rate = rate
         self.source = source
-        self.arr = np.array(array)
+        self.arr = np.asarray(array)
         self.parent = parent
         self.pan_val = pan_val
         self.command_line_init()
@@ -218,8 +218,7 @@ class Recording(Rel_Object_Data):
         except FileNotFoundError:
             pass
         if len(self.arr.shape) < 2:
-            transpose = self.arr.reshape(-1, 1)
-            self.arr = np.hstack((transpose, transpose))
+            self.arr = NpOps.stereoify(self.arr)
         t2 = time.time()
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
             source.split('/')[-1], t2-t1))

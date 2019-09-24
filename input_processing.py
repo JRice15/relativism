@@ -485,9 +485,12 @@ def valid_beat(note, BPM=None):
     note = str(note).lower().strip()
     # split number and beat name
     note = re.sub(r'%', '', note)
-    if re.match(r"^[0-9]*(\.[0-9]+){0,1}[a-z]{1,3}$", note) is None:
+    if re.match(
+        #  num   decimal        sci notation        note name
+        r"^[0-9]*(\.[0-9]+){0,1}(e-{0,1}[0-9]+){0,1}[a-z]{1,3}$", note
+    ) is None:
         raise TypeError
-    temp_split = re.sub(r"^([0-9]*(\.[0-9]+){0,1})", r"\1%", note)
+    temp_split = re.sub(r"^([0-9]*(\.[0-9]+){0,1}(e-{0,1}[0-9]+){0,1})", r"\1%", note)
     num, note = temp_split.split("%")
     # handle number
     if num == "":

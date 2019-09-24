@@ -3,13 +3,20 @@ from integraters import *
 
 
 
-"""
+class BaseGenerator:
 
-synth sounds
+    @staticmethod
+    def wave(period, dur, shift=0, amp=1):
+        factor = 2 * np.pi * period
+        return amp * np.sin(
+            (np.arange(int(dur)) - shift) * factor
+        )
 
-"""
 
 class Generator:
+    """
+    class with subcategories for generating tones, clicks, synths, etc
+    """
 
     class SimpleWave:
 
@@ -24,13 +31,10 @@ class Generator:
             """
             print("\nGenerating simple sine wave ...")
             freq = f(freq)
-            dur = secs(dur)
+            dur = samps(dur)
             amp = inpt_process(amp, 'flt', allowed=[0, 2])
             period = rate / freq
-            pi2 = 2 * math.pi
-            arr = [
-                [j, j] for j in (amp * math.sin( (i * pi2) / period ) for i in range(int(rate * dur)))
-                ]
+            arr = BaseGenerator.wave(period, dur, shift=0, amp=amp)
             source_block = ["generator", sys._getframe().f_code.co_name, 
                             "frequency", freq,
                             "duration", dur,

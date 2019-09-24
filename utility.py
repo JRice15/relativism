@@ -5,6 +5,7 @@ import time
 import timeit
 from output_and_prompting import *
 import functools
+import numpy as np
 
 @contextmanager
 def suppress_output():
@@ -82,7 +83,42 @@ def style(*styles):
         print(Colors.END, end='')
 
 
+class NpOps:
+    """
+    custom helpful numpy operations
+    """
 
+    @staticmethod
+    def stereoify(arr):
+        """
+        turn [0, 1, 2] into [ [0, 0], [1, 1], [2, 2] ]
+        """
+        transpose = arr.reshape(-1, 1)
+        return np.hstack((transpose, transpose))
+
+    @staticmethod
+    def monoify(arr):
+        return np.mean(arr, axis=1)
+
+    @staticmethod
+    def get_channels(arr):
+        return arr[:,0], arr[:1]
+
+    @staticmethod
+    def sort(array, column=0, high_to_low=True):
+        """
+        sort by column. must set array variable equal to this call 
+        (np arrays not mutable)
+        """
+        if high_to_low:
+            return array[array[:, column].argsort()][::-1]
+        else:
+            return array[array[:, column].argsort()]
+
+
+    @staticmethod
+    def sigmoid(arr):
+        return 1 / (1 + np.exp(-arr))
 
 
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):
