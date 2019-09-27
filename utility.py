@@ -105,6 +105,10 @@ class NpOps:
         return arr[:,0], arr[:1]
 
     @staticmethod
+    def join_channels(left, right):
+        return np.vstack((left, right)).T
+
+    @staticmethod
     def sort(array, column=0, high_to_low=True):
         """
         sort by column. must set array variable equal to this call 
@@ -116,9 +120,6 @@ class NpOps:
             return array[array[:, column].argsort()]
 
 
-    @staticmethod
-    def sigmoid(arr):
-        return 1 / (1 + np.exp(-arr))
 
 
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):

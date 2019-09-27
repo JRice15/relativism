@@ -31,6 +31,7 @@ class Analysis():
         self.arr = rec.arr[self.start:self.end]
         self.mono_arr = np.mean(self.arr, axis=1)
         self.samp_len = self.end - self.start
+        self.sec_len = self.samp_len / self.rate
         self.average_amplitude = np.mean(np.abs(self.mono_arr))
 
         self.frame_length = None
@@ -150,6 +151,7 @@ class Analysis():
 
         return np.asarray(slopes)
 
+
     def filter_peaks(self, peaks):
         """
         returns peaks as (sample_index, slope)
@@ -167,9 +169,9 @@ class Analysis():
             while comp_ind < sorted_peaks.shape[0]:
                 comp_val = sorted_peaks[comp_ind][0]
                 # remove smaller items. 4 seems to get them all
-                if (comp_val - (4 * self.frame_length) <
+                if (comp_val - (5 * self.frame_length) <
                     sorted_peaks[p_ind][0] <
-                    comp_val + (4 * self.frame_length)
+                    comp_val + (5 * self.frame_length)
                 ):
                     sorted_peaks = np.delete(sorted_peaks, comp_ind, 0)
                 else:

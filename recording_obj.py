@@ -436,9 +436,7 @@ class Recording(Rel_Object_Data):
         """
         factor = inpt_process(factor, 'float', allowed=[0, 10])
         print("  amplifying by {0}x...".format(factor))
-        for i in range(len(self.arr)):
-            self.arr[i][0] *= factor
-            self.arr[i][1] *= factor
+        self.arr *= factor
 
 
     @public_process
@@ -506,13 +504,15 @@ class Recording(Rel_Object_Data):
         if arr is None:
             arr = self.arr
         if self.pan_val > 0:
-            return [
-                [i * -(1 - self.pan_val), j + (self.pan_val * i)] for i, j in arr
-            ]
+            return NpOps.join_channels(
+                arr[:,0] * (1 - self.pan_val),
+                arr[:,1] + (arr[:,0] * self.pan_val)
+            )
         elif self.pan_val < 0:
-            return [
-                [i - (self.pan_val * j), j * (1 + self.pan_val)] for i, j in arr
-            ]
+            return NpOps.join_channels(
+                arr[:,0] + (arr[:,1] * -self.pan_val), 
+                arr[:,1] * (1 + self.pan_val)
+            )
         else:
             return arr
 

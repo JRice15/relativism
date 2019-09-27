@@ -6,11 +6,26 @@ from integraters import *
 class BaseGenerator:
 
     @staticmethod
-    def wave(period, dur, shift=0, amp=1):
-        factor = 2 * np.pi * period
+    def wave(dur, period, shift=0, amp=1):
+        """
+        generate sine wave by period and dur, shift and amp
+        """
+        factor = 2 * np.pi / period
         return amp * np.sin(
             (np.arange(int(dur)) - shift) * factor
         )
+    
+    @staticmethod
+    def wave_point(index_or_arr, period, shift=0, amp=1):
+        """
+        pass index as single num or as np.array
+        """
+        factor = 2 * np.pi / period
+        return amp * np.sin(
+            (index_or_arr - shift) * factor
+        )
+    
+
 
 
 class Generator:
@@ -34,7 +49,7 @@ class Generator:
             dur = samps(dur)
             amp = inpt_process(amp, 'flt', allowed=[0, 2])
             period = rate / freq
-            arr = BaseGenerator.wave(period, dur, shift=0, amp=amp)
+            arr = BaseGenerator.wave(dur, period, shift=0, amp=amp)
             source_block = ["generator", sys._getframe().f_code.co_name, 
                             "frequency", freq,
                             "duration", dur,
