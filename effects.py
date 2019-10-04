@@ -149,93 +149,6 @@ def angle_to_pan(a):
     return p
 
 
-class Reverb1_Node():
-
-    def __init__(self, parent, x, y):
-        """
-        r: reverb parent
-        coord: coordinate
-        """
-        self.parent = parent
-        self.x = x
-        self.y = y
-        self.other_nodes = [] # [other_node, angle, dist]
-        self.purpose = 'node'
-
-    def __eq__(self, other):
-        try:
-            return (self.__class__ == other.__class__) and (self.x == other.x) and (self.y == other.y)
-        except:
-            return False
-        
-    def bounce(self, samp, in_angle, offset):
-        """
-        samp_data as [sample, offset in samples]
-        pass single sample of audio, will return that sample
-        """
-        samp *= (1 - self.parent.dampening)
-        # too quiet now
-        if samp < 0.005:
-            return
-        for n in self.other_nodes:
-            # i as [node, angle, dist]
-            new_offset = int(offset + (n[2] / 343 * self.parent.rate))
-            n[0].bounce(samp, n[1], new_offset)
-
-
-class Reverb1_Source(Reverb1_Node):
-
-    def __init__(self, parent, arr, x, y):
-        super().__init__(parent, x, y)
-        self.arr = arr
-        self.parent.nodes.append(self)
-        self.purpose = 'source'
-
-
-    def start(self):
-        for samp_ind in range(len(self.arr)):
-            if samp_ind % self.parent.rate == 0:
-                info_line("{0} seconds computed".format(samp_ind / self.parent.rate))
-            samp = self.arr[samp_ind]
-            for n in self.other_nodes:
-                if n[0].purpose != 'listener':
-                    # n as [node, angle, dist]
-                    pan = angle_to_pan(n[1]) * self.parent.spread
-                    samp_val = (samp[0] * (1 - pan)) + (samp[1] * (1 + pan))
-                    offset = int(n[2] / 343 * self.parent.rate) + samp_ind
-                    n[0].bounce(samp_val, n[1], offset)
-
-
-    def bounce(self, samp, in_angle, offset):
-        pass
-
-
-
-class Reverb1_Listener(Reverb1_Node):
-
-    def __init__(self, parent, x, y):
-        super().__init__(parent, x, y)
-        self.parent.nodes.append(self)
-        self.wet_out = [[0, 0] for _ in range(len(self.parent.rec.arr))]
-        self.purpose = 'listener'
-
-
-    def bounce(self, samp, in_angle, offset):
-        """
-        sets data to self.wet_out
-        """
-        pan = angle_to_pan(in_angle) * 0.5
-        samp_val = [samp * (0.5 - pan), samp * (0.5 + pan)]
-        error = True
-        while error:
-            try:
-                self.wet_out[offset][0] += samp_val[0]
-                self.wet_out[offset][1] += samp_val[1]
-                error = False
-            except IndexError:
-                self.wet_out += [[0, 0] for _ in range(1 + offset - len(self.wet_out))]
-
-
 
 
 
@@ -262,8 +175,8 @@ class Reverb1():
         # self.add_node(0, -size)
 
         # source must init before set_other_nodes
-        self.listener = Reverb1_Listener(self, 0, 0)
-        self.source = Reverb1_Source(self, rec.arr, 0, size/2)
+        self.listener = Reverb1.Reverb1_Listener(self, 0, 0)
+        self.source = Reverb1.Reverb1_Source(self, rec.arr, 0, size/2)
 
         self.set_other_nodes()
 
@@ -275,7 +188,7 @@ class Reverb1():
 
 
     def add_node(self, x, y):
-        node = Reverb1_Node(self, x, y)
+        node = Reverb1.Reverb1_Node(self, x, y)
         self.nodes.append(node)
 
 
@@ -312,6 +225,92 @@ class Reverb1():
         wet.amplify(self.wet * 1/100)
         self.rec.amplify(self.dry * 1/100)
         self.rec.arr = mix(self.rec, wet, name='temp_mix').arr
+
+
+    class Reverb1_Node():
+
+        def __init__(self, parent, x, y):
+            """
+            r: reverb parent
+            coord: coordinate
+            """
+            self.parent = parent
+            self.x = x
+            self.y = y
+            self.other_nodes = [] # [other_node, angle, dist]
+            self.purpose = 'node'
+
+        def __eq__(self, other):
+            try:
+                return (self.__class__ == other.__class__) and (self.x == other.x) and (self.y == other.y)
+            except:
+                return False
+            
+        def bounce(self, samp, in_angle, offset):
+            """
+            samp_data as [sample, offset in samples]
+            pass single sample of audio, will return that sample
+            """
+            samp *= (1 - self.parent.dampening)
+            # too quiet now
+            if samp < 0.005:
+                return
+            for n in self.other_nodes:
+                # i as [node, angle, dist]
+                new_offset = int(offset + (n[2] / 343 * self.parent.rate))
+                n[0].bounce(samp, n[1], new_offset)
+
+
+    class Reverb1_Source(Reverb1.Reverb1_Node):
+
+        def __init__(self, parent, arr, x, y):
+            super().__init__(parent, x, y)
+            self.arr = arr
+            self.parent.nodes.append(self)
+            self.purpose = 'source'
+
+
+        def start(self):
+            for samp_ind in range(len(self.arr)):
+                if samp_ind % self.parent.rate == 0:
+                    info_line("{0} seconds computed".format(samp_ind / self.parent.rate))
+                samp = self.arr[samp_ind]
+                for n in self.other_nodes:
+                    if n[0].purpose != 'listener':
+                        # n as [node, angle, dist]
+                        pan = angle_to_pan(n[1]) * self.parent.spread
+                        samp_val = (samp[0] * (1 - pan)) + (samp[1] * (1 + pan))
+                        offset = int(n[2] / 343 * self.parent.rate) + samp_ind
+                        n[0].bounce(samp_val, n[1], offset)
+
+
+        def bounce(self, samp, in_angle, offset):
+            pass
+
+
+    class Reverb1_Listener(Reverb1.Reverb1_Node):
+
+        def __init__(self, parent, x, y):
+            super().__init__(parent, x, y)
+            self.parent.nodes.append(self)
+            self.wet_out = [[0, 0] for _ in range(len(self.parent.rec.arr))]
+            self.purpose = 'listener'
+
+
+        def bounce(self, samp, in_angle, offset):
+            """
+            sets data to self.wet_out
+            """
+            pan = angle_to_pan(in_angle) * 0.5
+            samp_val = [samp * (0.5 - pan), samp * (0.5 + pan)]
+            error = True
+            while error:
+                try:
+                    self.wet_out[offset][0] += samp_val[0]
+                    self.wet_out[offset][1] += samp_val[1]
+                    error = False
+                except IndexError:
+                    self.wet_out += [[0, 0] for _ in range(1 + offset - len(self.wet_out))]
 
 
 
