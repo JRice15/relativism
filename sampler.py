@@ -65,7 +65,7 @@ class Sample(Recording):
                 self.parent.type, self.parent.get_name()))
 
 
-class SampleGroup(Rel_Object_Data):
+class SampleGroup(RelativismPublicObject):
 
     def __init__(self, name=None):
         super().__init__(self)
@@ -115,9 +115,10 @@ class SampleGroup(Rel_Object_Data):
         self.samples[sample_obj.name] = sample_obj
 
 
-class Rhythm:
+class Rhythm(RelativismPublicObject):
 
     def __init__(self, parent=None, name=None, sample=None):
+        super().__init__()
         print("\n* Initializing Rhythm")
         self.done_init = False
         self.parent = parent
@@ -271,9 +272,10 @@ class Rhythm:
                 self.parent.type, self.parent.get_name()))
 
 
-class Active:
+class Active(RelativismPublicObject):
 
     def __init__(self, parent, act_rhythm, act_sample, muted=None):
+        super().__init__()
         print("\n* Initializing active pair")
         self.rhythm = act_rhythm
         self.sample = act_sample
@@ -307,7 +309,7 @@ class Active:
 
 
 
-class Sampler:
+class Sampler(RelativismPublicObject):
     """
     Attr:
         dir: directory
@@ -319,6 +321,7 @@ class Sampler:
     """
 
     def __init__(self, name, directory, BPM=None):
+        super().__init__()
         print("\n* Initializing sampler")
         self.type = 'Sampler'
         self.directory = directory

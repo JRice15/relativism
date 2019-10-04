@@ -1,4 +1,4 @@
-from relativism import *
+# from relativism import *
 from contextlib import contextmanager
 import sys, os
 import time
@@ -119,7 +119,22 @@ class NpOps:
         else:
             return array[array[:, column].argsort()]
 
+    @staticmethod
+    def column_min(arr, column=0):
+        return arr[:,column].min()
 
+    @staticmethod
+    def column_max(arr, column=0):
+        return arr[:,column].max()
+
+    @staticmethod
+    def set_indexes(arr, values_to_set):
+        """
+        set indexes of array in (index, value) pair forms with another array
+        """
+        indexes = np.intersect1d(arr[:,0], values_to_set[:,0], assume_unique=True, return_indices=True)
+        arr[indexes[1]] = values_to_set[indexes[2]]
+        return arr
 
 
 def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=['val'], low_to_high=False):

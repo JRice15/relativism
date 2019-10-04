@@ -49,7 +49,7 @@ add_to_sampler
 
 
 
-class Recording(Rel_Object_Data):
+class Recording(RelativismPublicObject):
     """
     Attributes:
         type (str): 'Recording'

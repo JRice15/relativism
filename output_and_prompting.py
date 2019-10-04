@@ -1,4 +1,4 @@
-from relativism import *
+# from relativism import *
 from utility import style
 
 def p(message, indent=2, o="", h=False, start=""):

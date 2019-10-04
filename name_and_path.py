@@ -11,19 +11,50 @@ from output_and_prompting import *
 
 """ Opening projects & samplers """
 
+
+class RelativismObject():
+    """
+    open_type: class to create: "project", "sampler", "recording";
+    open_mode: "o" (open) or "c" (create)
+    """
+
+    def __init__(self, open_type=None, open_mode=None):
+        # command line init for projects
+        if open_type == "project":
+            for i in sys.argv[1:]:
+                if re.fullmatch(r"^proj=.+", i) or re.fullmatch(r"^p=.+", i):
+                    proj_name = re.sub(r".+=", "", i)
+                else:
+                    err_mess("Unrecognized command line flag: '" + i +"'. Ignoring...")
+        
+        # type and mode for open
+        if open_type is None:
+            self.open_type = self.choose_open_type()
+        else:
+            self.open_type = open_type
+        if open_mode is None:
+            self.choose_open_mode()
+        else:
+            self.open_mode = open_mode
+
+
+
+
+    def choose_open_type(self):
+        info_block("What object would you like to create? Enter the letter corresponding with your choice:")
+        info_list(["(P) Project", "(S) Sampler", ""])
+        self.open_mode = inpt("letter", allowed="oc")
+
+    def choose_open_mode(self):
+        p("Create new {0} (C), or Open existing (O)?")
+        self.open_mode = inpt("letter", allowed="oc")
+
+
+
 def namepath_init(open_type):
     """
     open a project or sampler
     """
-
-    proj_name, proj_path = None, None
-
-    if open_type == "project":
-        for i in sys.argv[1:]:
-            if re.fullmatch(r"^proj=.+", i) or re.fullmatch(r"^p=.+", i):
-                proj_name = re.sub(r".+=", "", i)
-            else:
-                print("  > Unrecognized command line flag: '" + i +"'. Ignoring...")
 
     if proj_name is None:
         open_mode = select_init_mode(open_type)
@@ -84,15 +115,14 @@ def select_open_name(open_type):
             paths[i] = re.sub(r"    ", "\t", paths[i])
         paths = [i.strip().split("\t") for i in paths]
         paths = [i for i in paths if len(i) > 1]
-        print("    defined {0} names:".format(open_type))
+        info_block("Defined {0} names:".format(open_type))
         for i in paths:
             if i[0] == open_type:
                 print("      '" + i[1] + "' \t" + i[2])
     except FileNotFoundError:
         pass
-    print("\n  Select name of project to open: ", end="")
-    proj_name = inpt()
-    proj_name = re.sub(r"\s+", "_", proj_name)
+    p("Select name of project to open")
+    proj_name = inpt('file')
     return proj_name
 
 def get_open_path(open_mode, open_type, proj_name, proj_path):

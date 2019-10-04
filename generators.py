@@ -56,7 +56,6 @@ class Generator:
                             "amplitude", amp]
             return Recording(array=arr, source=source_block, rate=rate, name=name)
 
-
         @staticmethod
         def square(freq, dur, amp=0.05, rate=44100, name=None):
             """
@@ -78,7 +77,6 @@ class Generator:
                             "duration", dur,
                             "amplitude", amp]
             return Recording(array=arr, source=source_block, rate=rate, name=name)
-
 
         @staticmethod
         def triangle(freq, dur, amp=0.1, rate=44100, name=None):

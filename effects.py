@@ -76,6 +76,18 @@ class Bitcrusher:
 
 
 
+class Oscillator:
+
+    @staticmethod
+    def tremelo(rate, depth, stereo_width, starting_phase=0):
+        """
+        cat:
+        desc: oscillate volume
+        """
+        rate = 1 / samps(rate)
+        pass
+
+
 
 def scrambler(obj, amount):
     """

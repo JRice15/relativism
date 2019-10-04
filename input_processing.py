@@ -7,7 +7,7 @@ from utility import *
 """ clean input """
 
 
-def inpt(mode=None, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
+def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
         allowed=None, required=True, quit_on_q=True):
     """
     get and clean input via some specifications
@@ -86,7 +86,7 @@ def inpt_process(val, mode, allowed=None):
         letter: one letter, str of allowed
         arg: for process arg entry
     """
-    if mode == None:
+    if mode == "None":
         return val
     elif mode == "arg":
         val = re.sub(r"[^-_.a-z0-9]", "", val)
@@ -169,9 +169,11 @@ def inpt_process(val, mode, allowed=None):
             p("> Invalid: " + allowed_str)
             val = inpt(mode)
     elif mode == "letter":
-        if (len(val) != 1) or (val not in allowed):
+        if (len(val) != 1) or (allowed is not None and val not in allowed):
             p("> Select one of " + ", ".join(allowed.upper()))
             val = inpt("letter", allowed=allowed)
+    else:
+        raise UnexpectedIssue
     return val
 
 

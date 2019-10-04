@@ -66,18 +66,21 @@ class Analysis():
 
 
     def plot(self, left, right=None, plot_type="line", fill=None, title=None):
-        rel_plot(
-            left, 
-            start=self.start, 
-            end=self.end, 
-            rate=self.rate, 
-            right=right, 
-            fill=fill,
-            plot_type=plot_type,
-            title=title,
-            obj_name=self.obj.name,
-            obj_type=self.obj.type
-        )
+        if left.shape[0] == 0:
+            err_mess("No data to plot!")
+        else:
+            rel_plot(
+                left, 
+                start=self.start, 
+                end=self.end, 
+                rate=self.rate,
+                right=right,
+                fill=fill,
+                plot_type=plot_type,
+                title=title,
+                obj_name=self.obj.name,
+                obj_type=self.obj.type
+            )
 
 
     def get_frames_left(self, **kwargs):
@@ -114,8 +117,6 @@ class Analysis():
 
         return np.array(frames) # (start index, avg amplitude)
 
-
-
     def play_frame(self, samp_start, samp_dur=None):
         if samp_dur is None:
             samp_dur = self.frame_length
@@ -151,7 +152,6 @@ class Analysis():
 
         return np.asarray(slopes)
 
-
     def filter_peaks(self, peaks):
         """
         returns peaks as (sample_index, slope)
@@ -159,7 +159,7 @@ class Analysis():
         info_block("Filtering peaks...")
 
         avg_slope = np.mean(peaks[:,1])
-        peaks = peaks[peaks[:,1] > avg_slope]
+        peaks = peaks[peaks[:,1] >= avg_slope]
 
         sorted_peaks = NpOps.sort(peaks, 1)
 
@@ -200,10 +200,13 @@ def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None,
         right = left_or_mono
     # fill
     if fill is None:
-        if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
-            fill = True
-        else:
-            fill = False
+        try:
+            if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
+                fill = True
+            else:
+                fill = False
+        except ValueError:
+            pass
     # title
     if title is not None:
         fig.suptitle(title)
