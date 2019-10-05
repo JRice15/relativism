@@ -2,7 +2,7 @@ from recording_obj import *
 from integraters import *
 from generators import *
 from name_and_path import *
-
+from relativism import Relativism
 
 
 """
@@ -130,7 +130,7 @@ class Rhythm(RelativismPublicObject):
         self.variability = None
         self.period = None
         self.length = None
-        self.beats = [] # [place, length, start]
+        self.beats = [] # [place, length, start in sample]
 
         print("\n  * Setting Rhythm attributes ('q' to cancel any time)")
         self.set_length()
@@ -197,10 +197,10 @@ class Rhythm(RelativismPublicObject):
     @public_process
     def set_length(self, length=None):
         if length is None:
-            p("Enter a number for the length in beats of this Rhythm")
-            self.length = inpt('int')
+            p("Enter a length in beats/seconds for this Rhythm")
+            self.length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
         else:
-            self.length = inpt_process(length, 'int')
+            self.length = samps(inpt_process(length, 'beats'), Relativism.DEFAULT_SAMPLERATE)
 
     @public_process
     def set_variability(self, var=None):
@@ -308,6 +308,25 @@ class Active(RelativismPublicObject):
         return self.name
 
 
+    def generate_active(self, length):
+        """
+        generate this active pair. length is samples
+        """
+        length = math.ceil(length / self.rhythm.length)
+        beats_to_mix = []
+        base_offset = 0
+        biggest_offset = 0
+        while biggest_offset < length:
+            for i in self.rhythm.beats:
+                offset = i[0] + base_offset
+                biggest_offset = offset if offset > biggest_offset else biggest_offset
+                if biggest_offset >= length:
+                    break
+                beats_to_mix.append([self.sample.rec, offset])
+            base_offset += self.rhythm.length
+        mixed = mix_multiple(beats_to_mix)
+        return mixed
+
 
 class Sampler(RelativismPublicObject):
     """
@@ -386,6 +405,7 @@ class Sampler(RelativismPublicObject):
 
 
     def add_sample_group(self):
+        # TODO: add sample group
         self.smps.append(SampleGroup())
 
     @public_process
@@ -488,17 +508,21 @@ class Sampler(RelativismPublicObject):
         act = self.choose('active')
         act.muted = False
 
-    # Generating #
     @public_process
-    def generate(self):
-        p("Choose an integer number for length in beats to generate")
-        beats = inpt("int", allowed=[0, None])
-        generated_active = []
+    def generate(self, reps=None):
+        """
+        desc: generate variable sampler output
+        args:
+            active name: name of active pair to generate
+            reps: number of repetitions of active rhythm to generate
+        """
+        length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
         for a in self.active:
             if not a.muted:
-                generated_active.append(simple_generate(a, beats))
-        final = mix_multiple(generated_active)
-        final.playback()
+                rec = a.generate_active(length)
+        return mixed
+
+
 
     # Meta-functions & Helpers #
     def choose(self, attr, name=None):
@@ -552,17 +576,6 @@ class Sampler(RelativismPublicObject):
 
 
 
-
-def simple_generate(active, length):
-    rhyth = active.rhythm
-    smp = active.sample
-    reps = math.ceil(length / rhyth.length)
-    beats_to_mix = []
-    for i in rhyth.beats:
-        offset = i[0]
-        beats_to_mix.append([smp.rec, offset])
-    mixed = mix_multiple(beats_to_mix)
-    return mixed
 
 
 

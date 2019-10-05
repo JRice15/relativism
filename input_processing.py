@@ -113,12 +113,12 @@ def inpt_process(val, mode, allowed=None):
                 for_prompt=True
             )
             val = inpt("note", help_callback=note_options)
-    elif mode == "beat":
+    elif mode in ("beat", "beats", "beatsec", "beat/sec"):
         try:
             valid_beat(val)
         except:
             info_block(
-                "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
+                "> Value '{0}' is not a validly formed beat/seconds. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
             val = inpt("beat", help_callback=beat_options)

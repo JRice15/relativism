@@ -11,6 +11,7 @@ class Relativism():
 
     DEBUG = True
     TEST_BPM = 120
+    DEFAULT_SAMPLERATE = 44100
 
     RELATIVISM_PATH_FILE = ".relativism.tsv"
 
