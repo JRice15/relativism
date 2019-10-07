@@ -353,10 +353,9 @@ class Active(RelativismPublicObject):
     class SamplerVariationGenerator():
 
         def __init__(self):
-            
+            pass
 
 
-        def 
 
 
 

@@ -3,6 +3,7 @@ import re
 import time
 from output_and_prompting import *
 from utility import *
+from relativism import Relativism
 
 """ clean input """
 
@@ -75,6 +76,7 @@ def inpt_process(val, mode, allowed=None):
     processes individual modes for inpt
     also used as input validation
     mode: str:
+        standard, stnd: whitespace, alphnum, underscore and dash, periods commas
         obj, file, alphanum, name: whitespaces to underscore, alphanumeric
         y-n: yes or no question, returns bool
         beat: valid beat input
@@ -86,8 +88,10 @@ def inpt_process(val, mode, allowed=None):
         letter: one letter, str of allowed
         arg: for process arg entry
     """
-    if mode == "None":
+    if mode == "none":
         return val
+    elif mode in ("standard", 'stnd'):
+        val = re.sub(r"[^-_a-z0-9. ]", "", val)
     elif mode == "arg":
         val = re.sub(r"[^-_.a-z0-9]", "", val)
     elif mode in ("y-n", "y/n", "yn"):
@@ -116,7 +120,7 @@ def inpt_process(val, mode, allowed=None):
     elif mode in ("beat", "beats", "beatsec", "beat/sec"):
         try:
             valid_beat(val)
-        except:
+        except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed beat/seconds. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
@@ -173,7 +177,7 @@ def inpt_process(val, mode, allowed=None):
             p("> Select one of " + ", ".join(allowed.upper()))
             val = inpt("letter", allowed=allowed)
     else:
-        raise UnexpectedIssue
+        raise UnexpectedIssue("Unknown process mode")
     return val
 
 
