@@ -65,3 +65,11 @@ class Relativism():
 
     def set_output(self):
         pass
+
+
+
+
+class BPM:
+
+    def __init__(self, initial_BPM):
+        self.bpm_markers = [0, initial_BPM] # 

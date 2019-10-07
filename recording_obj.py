@@ -137,7 +137,7 @@ class Recording(RelativismPublicObject):
         # Help
         elif mode == "h":
             raise NotImplementedError
-        
+
 
     def record_live(self):
         """
@@ -222,6 +222,91 @@ class Recording(RelativismPublicObject):
         t2 = time.time()
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
             source.split('/')[-1], t2-t1))
+
+
+    # Saving #
+    def pre_process(self, process):
+        """
+        actions to run before process: save current rec to 
+        """
+        if process != 'undo':
+            self.update_recents()
+
+
+    def post_process(self, process):
+        """
+        """
+        if self[process].is_edit_rec(process):
+            self.save(process=process, silent=True)
+
+
+    def update_recents(self):
+        if len(self.recents) == 0 or (np.array_equal(self.recents[0], self.arr)):
+            self.recents.insert(0, self.arr)
+            if len(self.recents) > 5:
+                self.recents.pop()
+
+
+    @public_process
+    def undo(self):
+        """
+        cat: save
+        desc: reverts audio to previous iteration. saves only 5 previous iterations each session
+        """
+        section_head("Undoing...")
+        self.arr = self.recents.pop(0)
+
+
+    @public_process
+    def save(self, silent=False, process=None):
+        """
+        cat: save
+        desc: save data
+        """
+        if not isinstance(silent, bool):
+            silent = False
+        self.write_audio(self.name, self.parent.directory)
+        self.write_metadata()
+
+
+    def write_metadata(self):
+        pass
+
+
+
+    def write_audio(self, outfile, directory=""):
+        """
+        silent write to wav
+        """
+        outfile = re.sub(r"\..*", ".wav", outfile)
+        if ".wav" not in outfile:
+            outfile += ".wav"
+        if directory != "" and directory[-1] != "/":
+            directory += '/'
+        fullpath = directory + outfile
+        sf.write(fullpath, self.arr, self.rate)
+
+
+    @public_process
+    def export_to_wav(self, outfile=None):
+        """
+        cat: save
+        desc: save recording to wav file
+        args:
+            outfile: filename to save to. do not include '.wav' or any other extention
+        """
+        section_head("Writing to file")
+        if outfile is None:
+            print("  Enter output file name: ", end="")
+            outfile = inpt("file")
+        try:
+            info_line("writing...")
+            t1 = time.time()
+            self.write_audio(outfile)
+            t2 = time.time()
+            info_line("written successfully in {0:.4f} seconds".format(t2 - t1))
+        except TypeError as e:
+            print("  > Failed to write to file '{0}': {1}".format(outfile, e))
 
 
     # Info #
@@ -587,98 +672,23 @@ class Recording(RelativismPublicObject):
                 pass
 
 
-    # Saving #
-    def pre_process(self, process):
-        """
-        actions to run before process: save current rec to 
-        """
-        if process != 'undo':
-            self.update_recents()
-
-
-    def post_process(self, process):
-        """
-        """
-        self.save(process=process, silent=True)
-
-
-    def update_recents(self):
-        if len(self.recents) == 0 or (np.array_equal(self.recents[0], self.arr)):
-            self.recents.insert(0, self.arr)
-            if len(self.recents) > 5:
-                self.recents.pop()
-
-
     @public_process
-    def undo(self):
+    def random_method(self):
         """
-        cat: save
-        desc: reverts audio to previous iteration. saves only 5 previous iterations each session
+        desc: implement random sound-editing on recording, with random args
+        cat: edit
         """
-        section_head("Undoing...")
-        self.arr = self.recents.pop(0)
-
-
-    @public_process
-    def save(self, silent=False, process=None):
-        """
-        cat: save
-        desc: save data
-        """
-        # TODO: determine whether save should happen
-        if not isinstance(silent, bool):
-            silent = False
-        if (self.parent is None):
-            if not silent:
-                err_mess("{0} {1} has no parent to save under!".format(self.type, self.name))
-            return False
-        else:
-            # duplicate with no recents
-            dup = Recording(array=self.arr, source=self.source, name=self.name,
-                rate=self.rate, parent=self.parent, hidden=True)
-            try:
-                self.parent.save_child__(dup)
-                return True
-            except (AttributeError, NotImplementedError):
-                    err_mess("Parent {0} '{1}' has not implemented save feature".format(
-                        self.parent.type, self.parent.get_name()))
-
-
-    @public_process
-    def write_to_wav(self, outfile=None):
-        """
-        cat: meta
-        desc: save recording to wav file
-        args:
-            outfile: filename to save to. do not include .wav or any other extention
-        """
-        section_head("Writing to file")
-        if outfile is None:
-            print("  Enter output file name: ", end="")
-            outfile = inpt("file")
+        methods = [i[1] for i in self.method_data_by_category['Edits'].items()]
+        method_data = rd.choice(methods)
+        args = method_data.get_random_defaults()
         try:
-            info_line("writing...")
-            t1 = time.time()
-            self.write(outfile)
-            t2 = time.time()
-            info_line("written successfully in {0:.4f} seconds".format(t2 - t1))
-        except TypeError as e:
-            print("  > Failed to write to file '{0}': {1}".format(outfile, e))
+            method_data.method_func(*args)
+        except Exception as e:
+            err_mess("Random Process error:")
+            show_error(e)
 
 
-    def write(self, outfile, directory=""):
-        """
-        silent write to wav
-        """
-        outfile = re.sub(r"\..*", ".wav", outfile)
-        if ".wav" not in outfile:
-            outfile += ".wav"
-        if directory != "" and directory[-1] != "/":
-            directory += '/'
-        fullpath = directory + outfile
-        sf.write(fullpath, self.arr, self.rate)
-
-
+    # Other #
     @public_process
     def duplicate(self):
         """
@@ -698,22 +708,6 @@ class Recording(RelativismPublicObject):
             )
         else:
             err_mess("has no parent to duplicate to!")
-
-
-    # Other #
-    @public_process
-    def random_method(self):
-        """
-        desc: implement random sound-editing on recording, with random args
-        """
-        methods = [i[1] for i in self.method_data_by_category['Edits'].items()]
-        method_data = rd.choice(methods)
-        args = method_data.get_random_defaults()
-        try:
-            method_data.method_func(*args)
-        except e:
-            err_mess("Random Process error:")
-            show_error(e)
 
 
 def sd_select_device(dev_type='in'):

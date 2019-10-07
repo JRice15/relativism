@@ -92,6 +92,7 @@ class RelativismPublicObject:
             self.method_func = getattr(obj, method)
 
             self.category = None
+            self.raw_category = None
             self.args = []
             self.desc = ""
 
@@ -116,7 +117,8 @@ class RelativismPublicObject:
                             if title in ("desc", "descrip", "description"):
                                 self.desc = content.strip()
                             elif title in ("catg", "cat", "category", "catgry", "categry"):
-                                self.set_category(content.strip())
+                                self.category = self.display_category(content.strip())
+                                self.raw_category = self.parse_category(content.strip())
                             elif title in ("args", "arguments"):
                                 args_now = True
                         else:
@@ -129,7 +131,25 @@ class RelativismPublicObject:
                 self.category = "Other"
 
 
-        def set_category(self, category):
+
+        def parse_category(self, category):
+            category = category.lower()
+            if category in ("edit", "edits"):
+                category = "edit"
+            elif category in ("meta", "metadata"):
+                category = "meta"
+            elif category in ("info", "repr", "representation"):
+                category = "info"
+            elif category in ("save", "saving"):
+                category = "save"
+            elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
+                category = "effect"
+            else:
+                category = "other"
+            return category
+
+
+        def display_category(self, category):
             if category in ("edit", "edits"):
                 category = "Edits"
             elif category in ("meta", "metadata"):
@@ -142,7 +162,7 @@ class RelativismPublicObject:
                 category = "Effects"
             else:
                 category = "Other"
-            self.category = category
+            return category
 
 
         def display(self):
@@ -171,6 +191,20 @@ class RelativismPublicObject:
                 else:
                     argstr.append(i.name)
             return ", ".join(argstr)
+
+
+        def is_edit_rec(self):
+            """
+            is category that the rec.arr should be saved on
+            """
+            return self.raw_category in ('edit', 'effect')
+
+        def is_edit_meta(self, cat):
+            """
+            if is catg that rec metadata should be save on
+            """
+            return self.raw_category in ('meta')
+
 
 
     class ArgData:

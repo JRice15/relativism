@@ -3,7 +3,8 @@ from integraters import *
 from generators import *
 from name_and_path import *
 from relativism import Relativism
-
+from object_data import *
+from controller import *
 
 """
 
@@ -127,14 +128,12 @@ class Rhythm(RelativismPublicObject):
         self.name = name
         if name is None:
             self.rename()
-        self.variability = None
         self.period = None
         self.length = None
         self.beats = [] # [place, length, start in sample]
 
         print("\n  * Setting Rhythm attributes ('q' to cancel any time)")
         self.set_length()
-        self.set_variability()
         self.set_period()
         self.done_init = True
 
@@ -201,14 +200,6 @@ class Rhythm(RelativismPublicObject):
             self.length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
         else:
             self.length = samps(inpt_process(length, 'beats'), Relativism.DEFAULT_SAMPLERATE)
-
-    @public_process
-    def set_variability(self, var=None):
-        if var is None:
-            p("Enter the variability (in percentage, 0-100%) of this Rhythm")
-            self.variability = inpt('pcnt')
-        else:
-            self.variability = inpt_process(var, 'pcnt')
 
     @public_process
     def set_period(self, period=None):
@@ -281,6 +272,7 @@ class Active(RelativismPublicObject):
         self.sample = act_sample
         self.muted = muted
         self.name = None
+        self.variability = Active.Variability()
         self.rename()
         if muted is None:
             p("Should this active pair begin muted?", o='y/n')
@@ -292,6 +284,14 @@ class Active(RelativismPublicObject):
             out_str += " (muted)"
         out_str += ": Rhythm '{0}', Sample '{1}'".format(self.rhythm.get_name(), self.sample.get_name())
         return out_str
+
+    @public_process
+    def info(self):
+        """
+        cat: info
+        desc: 
+        """
+        print(str(self))
 
     @public_process
     def rename(self, name=None):
@@ -307,12 +307,20 @@ class Active(RelativismPublicObject):
     def get_name(self):
         return self.name
 
+    @public_process
+    def set_variability(self, var=None):
+        if var is None:
+            p("Enter the variability (in percentage, 0-100%) of this Rhythm")
+            self.variability = inpt('pcnt')
+        else:
+            self.variability = inpt_process(var, 'pcnt')
+
 
     def generate_active(self, length):
         """
         generate this active pair. length is samples
         """
-        length = math.ceil(length / self.rhythm.length)
+        length = length // self.rhythm.length
         beats_to_mix = []
         base_offset = 0
         biggest_offset = 0
@@ -326,6 +334,30 @@ class Active(RelativismPublicObject):
             base_offset += self.rhythm.length
         mixed = mix_multiple(beats_to_mix)
         return mixed
+
+
+    class Variability(Controller):
+
+        def __init__(self):
+            super().__init__(self.sample.rate, "variability")
+        
+
+        def validate_value(self, value):
+            return inpt_process(value, 'pcnt')
+
+        def apply(self, rec_arr):
+            raise NotImplementedError
+
+
+
+    class SamplerVariationGenerator():
+
+        def __init__(self):
+            
+
+
+        def 
+
 
 
 class Sampler(RelativismPublicObject):
@@ -517,10 +549,12 @@ class Sampler(RelativismPublicObject):
             reps: number of repetitions of active rhythm to generate
         """
         length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
+        recs = []
         for a in self.active:
             if not a.muted:
-                rec = a.generate_active(length)
-        return mixed
+                recs.append( a.generate_active(length) )
+        mixed = mix_multiple(recs)
+        mixed.playback()
 
 
 
@@ -577,12 +611,6 @@ class Sampler(RelativismPublicObject):
 
 
 
-
-
-def generate_part(part, length):
-    reps = math.ceil(length / part.length)
-    for i in part.active:
-        pass
 
 
 
