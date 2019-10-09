@@ -8,7 +8,7 @@ Relativism is a project to edit, analyze,
 and synthesize music. 
 
 ## What can it do?
-With easy commandline program interface, you can:
+With an easy command-line interface, you can:
 * read audio in many formats
 * record audio live from any audio input
 * write audio to .wav format
