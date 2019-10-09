@@ -32,18 +32,20 @@ def process(obj):
                 try:
                     method_name, args = command[0], command[1:]
 
+                    # get method
+                    try:
+                        method = obj.get_method(method_name).method_func
+                        process_exists = True
+                    except KeyError:
+                        raise AttributeError("{0} '{1}' has no process {2}".format(obj.type, obj.name, method_name))
+
                     # pre process
                     try:
                         obj.pre_process(method_name)
                     except (NotImplementedError, AttributeError):
                         pass
 
-                    # call method
-                    try:
-                        method = obj[method_name].method_func
-                        process_exists = True
-                    except KeyError:
-                        raise AttributeError("{0} '{1}' has no process {2}".format(obj.type, obj.name, method_name))
+                    # call process
                     try:
                         method(*args)
                     except TypeError as e:
@@ -58,7 +60,11 @@ def process(obj):
                         obj.post_process(method_name)
                     except (NotImplementedError, AttributeError): 
                         pass
+                    
+                    # complete, go to next command
                     break
+
+                # error handling & autofill
                 except Exception as e:
                     if process_exists and 'required positional argument' not in str(e):
                         show_error(e)

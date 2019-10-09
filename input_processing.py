@@ -1,9 +1,9 @@
-from errors import *
+# from errors import *
 import re
 import time
-from output_and_prompting import *
-from utility import *
-from relativism import Relativism
+# from output_and_prompting import *
+# from utility import *
+# from relativism import Relativism
 
 """ clean input """
 
@@ -158,7 +158,7 @@ def inpt_process(val, mode, allowed=None):
                     "> Value '{0}' is not a valid number (decimal allowed). Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
-                val = inpt("int")
+                val = inpt("float")
         try:
             if allowed is not None:
                 if allowed[0] is not None: assert val >= allowed[0]

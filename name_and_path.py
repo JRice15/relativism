@@ -12,7 +12,7 @@ from output_and_prompting import *
 """ Opening projects & samplers """
 
 
-class RelativismObject():
+class MakeRelativismObject():
     """
     open_type: class to create: "project", "sampler", "recording";
     open_mode: "o" (open) or "c" (create)
@@ -49,6 +49,16 @@ class RelativismObject():
         p("Create new {0} (C), or Open existing (O)?")
         self.open_mode = inpt("letter", allowed="oc")
 
+
+
+    def read_metadata(self, filename_or_fullpath, directory="."):
+        """
+        no dir arg means filename is full path. do not include extension
+        """
+        fullpath = parse_path(filename_or_fullpath, directory)
+        with open(fullpath, 'r') as f:
+            data = json.load(f)
+        return data
 
 
 def namepath_init(open_type):

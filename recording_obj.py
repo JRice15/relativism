@@ -13,7 +13,6 @@ import sounddevice as sd
 import soundfile as sf
 from pydub import AudioSegment as pd
 
-from data_save import *
 from errors import *
 from name_and_path import *
 from process import *
@@ -22,7 +21,7 @@ from input_processing import *
 from output_and_prompting import *
 from object_data import *
 
-from analysis import *
+# from analysis import *
 
 
 """
@@ -64,9 +63,18 @@ class Recording(RelativismPublicObject):
 
 
     # Initialization #
-    def __init__(self, array=None, source=None, name=None, rate=44100, \
-            parent=None, hidden=False, type_='Recording', pan_val=0, mode=None):
-        super().__init__(include=["effects"])
+    def __init__(self, 
+            array=None, 
+            source=None, 
+            name=None, 
+            rate=44100,
+            parent=None, 
+            hidden=False, 
+            type_='Recording', 
+            pan_val=0, 
+            mode=None
+        ):
+        super().__init__()
         self.type = type_ # for inheritance
         self.name = name
         if name is None:
@@ -92,7 +100,6 @@ class Recording(RelativismPublicObject):
             else:
                 self.init_mode()
         self.recents = [] # for undoing
-        self.include_effects = True
         if not hidden:
             self.save(silent=True)
 
@@ -251,10 +258,13 @@ class Recording(RelativismPublicObject):
     def undo(self):
         """
         cat: save
-        desc: reverts audio to previous iteration. saves only 5 previous iterations each session
+        desc: reverts to previous state (maximum of 5 times)
         """
         section_head("Undoing...")
-        self.arr = self.recents.pop(0)
+        if len(self.recents) != 0:
+            self.arr = self.recents.pop(0)
+        else:
+            err_mess("No history to revert to!")
 
 
     @public_process
@@ -265,13 +275,22 @@ class Recording(RelativismPublicObject):
         """
         if not isinstance(silent, bool):
             silent = False
-        self.write_audio(self.name, self.parent.directory)
+        if self.parent is None:
+            directory = ""
+        else:
+            directory = self.parent.directory
+        self.write_audio(self.name, directory)
         self.write_metadata()
 
 
-    def write_metadata(self):
-        pass
+    def format_metadata(self):
+        attrs = {i:j for i, j in vars(self).items() if i not in vars(RelativismPublicObject()).keys()}
+        del attrs['arr']
+        del attrs['recents']
+        return attrs
 
+    def load_metadata(self):
+        pass
 
 
     def write_audio(self, outfile, directory=""):
@@ -740,7 +759,7 @@ def sd_select_device(dev_type='in'):
 
 def main_rec_obj():
     
-    a = Recording()
+    a = Recording(source='sources/t.wav', name='test')
 
     process(a)
 

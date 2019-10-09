@@ -4,8 +4,6 @@ from output_and_prompting import *
 import numpy as np
 from os.path import dirname
 import math
-import pylab
-from utility import *
 
 
 class Analysis():
@@ -183,108 +181,6 @@ class Analysis():
 
 
 
-
-def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None, 
-        plot_type="line", obj_type=None, obj_name=None):
-    """
-    left and right must be numpy arr with shape (x, 2) arrays of (index, value) to plot.
-    if right is not given, assumed to be mono left
-    """
-    info_block("Generating plot...")
-    fig = pylab.gcf()
-    fig.canvas.set_window_title("{0} '{1}'".format(obj_type, obj_name))
-
-    # channels
-    left = left_or_mono
-    if right is None:
-        right = left_or_mono
-    # fill
-    if fill is None:
-        try:
-            if min( (np.min(left[:,1]), np.min(right[:,1])) ) >= 0:
-                fill = True
-            else:
-                fill = False
-        except ValueError:
-            pass
-    # title
-    if title is not None:
-        fig.suptitle(title)
-    # plot type
-    if plot_type == "scatter":
-        plot_func = plt.scatter
-        fill = False
-    elif plot_type == "bar":
-        plot_func = plt.bar
-    else:
-        plot_func = plt.plot
-
-    # left: top, beats labels
-    axL = plt.subplot(211)
-    pos = axL.get_position()
-    pos.y0 -= 0.06
-    pos.y1 -= 0.06
-    axL.set_position(pos)
-    axL.xaxis.tick_top()
-    axL.xaxis.set_label_position('top')
-
-    start_beats, _ = whole_beats(start / rate)
-    end_beats, _ = whole_beats(end / rate)
-    tick_size_beats = 1
-    tick_number = end_beats - start_beats
-    if tick_number < 2:
-        start_beats = beats(start / rate)
-        end_beats = beats(end / rate)
-        tick_size_beats = end_beats - start_beats
-        tick_number = 1
-    while tick_number > 10:
-        tick_number /= 2
-        tick_size_beats *= 2
-    while tick_number < 5:
-        tick_number *= 2
-        tick_size_beats /= 2
-    tick_locs = []
-    tick_labels = []
-    for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
-        tick_locs.append(i)
-        axL.axvline(i, linestyle="--", linewidth=0.3, color='#545454', 
-            clip_on=False, zorder=11)
-        tick_labels.append("{0:.{1}f}".format(i, decimal_precision_requires(i)))
-    plt.xticks(tick_locs, tick_labels)
-    for tick in axL.xaxis.get_major_ticks()[1::2]:
-        tick.set_pad(15)
-
-    plt.xlabel("Beats")
-    plt.ylabel("Left amplitude")
-    if len(left.shape) == 1:
-        valuesL = left
-        indexesL = range(start, start + len(left))
-    else:
-        indexesL, valuesL = zip(*left)
-    indexesL = [beats(i/rate) for i in indexesL]
-    plot_func(indexesL, valuesL)
-
-    # right: bottom, seconds labels
-    axR = plt.subplot(212)
-    plt.xlabel("Seconds")
-    plt.ylabel("Right amplitude")
-    if len(right.shape) == 1:
-        valuesR = right
-        indexesR = range(start, start + len(right))
-    else:
-        indexesR, valuesR = zip(*right)
-    indexesR = [i/rate for i in indexesR]
-    for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
-        ind = secs(str(i) + "b")
-        axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', 
-            clip_on=False, zorder=11)
-    plot_func(indexesR, valuesR)
-
-    info_block("Viewing waveform...")
-    if fill and len(indexesR) < 1_000_000:
-        axR.fill_between(indexesR, valuesR, color='#43C6FF')
-        axL.fill_between(indexesL, valuesL, color='#43C6FF')
-    plt.show()
 
 
 

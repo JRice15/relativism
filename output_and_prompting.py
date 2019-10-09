@@ -1,5 +1,5 @@
 # from relativism import *
-from utility import style
+from utility import *
 
 def p(message, indent=2, o="", h=False, start=""):
     """
@@ -13,7 +13,7 @@ def p(message, indent=2, o="", h=False, start=""):
     notices = " ("
     if o != "":
         notices += o + ", "
-    notices += "'q' to quit"
+    notices += "'q' to quit/cancel"
     if h:
         notices += ", 'h' for help/info"
     notices += "):"

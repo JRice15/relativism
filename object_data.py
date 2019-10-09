@@ -1,6 +1,8 @@
 import re
 from output_and_prompting import *
 import random as rd
+import json
+
 
 #decorator
 def public_process(func):
@@ -18,7 +20,43 @@ def is_public_process(func):
         return False
 
 
-class RelativismPublicObject:
+def parse_path(filename_or_fullpath, directory):
+    """
+    parse path for reading and writing metadata
+    """
+    filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
+    filename_or_fullpath += '.relativism-obj'
+    if directory[-1] != '/':
+        directory += '/'
+    fullpath = directory + filename_or_fullpath
+    return fullpath
+
+
+class RelativismObject():
+    """
+    base class for objects that are saved and loaded
+    """
+
+    def __init__(self, reload_data=None):
+        
+        self.name = None
+        self.type = None
+
+    def write_metadata(self, filename_or_fullpath, directory="."):
+        """
+        if no directory arg filename is fullpath. do not include extension.
+        create 'parse_metadata' method to override default
+        """
+        try:
+            data = self.parse_metadata()
+        except AttributeError:
+            data = vars(self)
+        fullpath = parse_path(filename_or_fullpath, directory)
+        with open(fullpath, 'w') as f:
+            json.dump(data, f)
+
+
+class RelativismPublicObject(RelativismObject):
     """
     implements methods for showing public process methods.
     use getitem to get method by str.
@@ -26,6 +64,7 @@ class RelativismPublicObject:
     """
 
     def __init__(self, obj=None, include=None):
+        super().__init__()
         if obj is None:
             obj = self
         self.method_data_by_category = {}
@@ -50,7 +89,7 @@ class RelativismPublicObject:
                 self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
 
 
-    def __getitem__(self, arg):
+    def get_method(self, arg):
         for i in self.method_data_by_category.items():
             try:
                 return i[1][arg]
@@ -74,10 +113,6 @@ class RelativismPublicObject:
             for j in i[1].items():
                 j[1].display()
 
-
-
-    def process(self):
-        process(self)
 
 
     class MethodData:

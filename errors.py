@@ -30,11 +30,8 @@ class UnexpectedIssue(Exception):
 class Cancel(Exception):
     """
     the user cancelled out of whatever is going on.
-    pass obj to save it to file
     """
-    def __init__(self, obj=None):
-        if obj is not None:
-            obj.save()
+
 
 
 class RateError(Exception):
