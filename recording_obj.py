@@ -20,8 +20,9 @@ from utility import *
 from input_processing import *
 from output_and_prompting import *
 from object_data import *
+from relativism import *
 
-# from analysis import *
+from analysis import *
 
 
 """
@@ -100,8 +101,8 @@ class Recording(RelativismPublicObject):
             else:
                 self.init_mode()
         self.recents = [] # for undoing
-        if not hidden:
-            self.save(silent=True)
+        # if not hidden:
+        #     self.save(silent=True)
 
 
     def command_line_init(self):
@@ -379,8 +380,8 @@ class Recording(RelativismPublicObject):
             [duration: beats/seconds. default 5]
             [start: beat/seconds to start at. defualts to beginning]
         """
-        duration = secs(duration)
-        start = secs(start)
+        duration = Conversion.secs(duration)
+        start = Conversion.secs(start)
         section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
@@ -418,11 +419,11 @@ class Recording(RelativismPublicObject):
             [precision: percent of how detailed the plot should be. default 50]
         """
         precision = inpt_process(precision, 'pcnt', allowed=[5, 10000])
-        start = samps(start, self.rate)
-        if end is None or end == "-1" or samps(end, self.rate) > self.size_samps():
+        start = Conversion.samps(start, self.rate)
+        if end is None or end == "-1" or Conversion.samps(end, self.rate) > self.size_samps():
             end = self.size_samps()
         else:
-            end = samps(end, self.rate)
+            end = Conversion.samps(end, self.rate)
         if end <= start:
             err_mess("End cannot be before or equal to start")
             raise Cancel
@@ -497,11 +498,11 @@ class Recording(RelativismPublicObject):
         """
         i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
         f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
-        start = int(secs(start) * self.rate)
+        start = Conversion.samps(start, self.rate)
         if end is None:
             end = self.size_samps()
         else:
-            end = int(secs(end) * self.rate)
+            end = Conversion.samps(end, self.rate)
         print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
         beginning = self.arr[:start]
 
@@ -564,13 +565,13 @@ class Recording(RelativismPublicObject):
             length: beats/seconds to extend; 0, 1;
             [placement: "a"=after, "b"=before. default after]
         """
-        length = secs(length)
+        length = Conversion.secs(length)
         placement = inpt_process(placement, "letter", allowed="ab")
         if placement == "b":
             before = " before"
         else:
             before = ""
-        print("  extending by {0} seconds{1}...".format(length, before))
+        print("  extending by {0} beats/seconds{1}...".format(length, before))
         silence = np.zeros( shape=(int(self.rate * length), 2) )
         if placement == "b":
             self.arr = np.vstack((silence, self.arr))
@@ -630,13 +631,13 @@ class Recording(RelativismPublicObject):
             left: beat/second; 0, 5;
             [right: beat/second. defaults to end; 10, 15;]
         """
-        left = secs(left)
+        left = Conversion.secs(left)
         if right is None:
-            print("  trimming first {0} seconds".format(left))
+            print("  trimming first {0} beats/seconds".format(left))
             right = self.size_samps()
         else:
-            right = secs(right)
-            print("  trimming everything outside {0} to {1} seconds".format(left, right))
+            right = Conversion.secs(right)
+            print("  trimming everything outside {0} to {1} beats/seconds".format(left, right))
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
             if not inpt("y-n"):
@@ -655,9 +656,9 @@ class Recording(RelativismPublicObject):
             duration: duration in beats/seconds of fade-in; 0, 10;
             [start: beat/second to begin. defaults 0]
         """
-        seconds = secs(dur)
-        start = secs(start)
-        print("  Fading in {0} seconds starting at {1} seconds...".format(seconds, start))
+        seconds = Conversion.secs(dur)
+        start = Conversion.secs(start)
+        print("  Fading in {0} beats/seconds starting at {1} beats/seconds...".format(seconds, start))
         length = int(self.rate * seconds)
         for i in range(length):
             try:
@@ -679,8 +680,8 @@ class Recording(RelativismPublicObject):
         if end is None:
             end = self.size_secs()
         else:
-            end = secs(end)
-        seconds = secs(dur)
+            end = Conversion.secs(end)
+        seconds = Conversion.secs(dur)
         print("  Fading out {0} seconds ending at {1} seconds...".format(seconds, end))
         length = int(self.rate * seconds)
         for i in range(int(end) - length, int(end)):

@@ -1,6 +1,6 @@
 from recording_obj import *
 from generators import *
-
+from output_and_prompting import *
 
 class Distortion:
 
@@ -79,12 +79,12 @@ class Bitcrusher:
 class Oscillator:
 
     @staticmethod
-    def tremelo(rate, depth, stereo_width, starting_phase=0):
+    def tremelo(rec, rate, depth, stereo_width, starting_phase=0):
         """
         cat:
         desc: oscillate volume
         """
-        rate = 1 / samps(rate)
+        rate = 1 / Conversion.samps(rate, rec.rate)
         pass
 
 
@@ -97,15 +97,14 @@ def scrambler(obj, amount):
         amount: number of scrambles to perform, integer >=1; 1, 10;
     """
     amount = inpt_process(amount, "int", allowed=[1, None])
-
     while amount >= 1:
         print("  scrambling, {0} to go...".format(amount))
         chunk = obj.rate // rd.randint(2, 8)
         start = rd.randint(0, len(obj.arr) - chunk)
         new = rd.randint(0, len(obj.arr) - chunk)
         chunk_arr = obj.arr[start:start+chunk]
-        obj.arr = obj.arr[:start] + obj.arr[start+chunk:]
-        obj.arr = obj.arr[:new] + chunk_arr + obj.arr[new:]
+        obj.arr = np.concatenate((obj.arr[:start], obj.arr[start+chunk:]))
+        obj.arr = np.concatenate((obj.arr[:new], chunk_arr, obj.arr[new:]))
         amount -= 1
 
 
@@ -261,7 +260,7 @@ class Reverb1():
                 n[0].bounce(samp, n[1], new_offset)
 
 
-    class Reverb1_Source(Reverb1.Reverb1_Node):
+    class Reverb1_Source(Reverb1_Node):
 
         def __init__(self, parent, arr, x, y):
             super().__init__(parent, x, y)
@@ -288,7 +287,7 @@ class Reverb1():
             pass
 
 
-    class Reverb1_Listener(Reverb1.Reverb1_Node):
+    class Reverb1_Listener(Reverb1_Node):
 
         def __init__(self, parent, x, y):
             super().__init__(parent, x, y)
@@ -324,15 +323,15 @@ def get_effects():
 def effects_main():
     """
     """
-    a = Recording(source='t.wav', name='b')
-    b = Recording(source='t.wav', name='b')
+    a = Recording()
 
-    a.trim(0, 5)
+    scrambler(a, 1000)
 
-    r = Reverb1(a, size=100, dampening=20, wet=100, dry=0)
+    a.playback()
 
-    # b.playback(30)
-    a.playback(0)
+    sf.write("scamble_piano.wav", a.arr, a.rate)
+
+
 
 
 

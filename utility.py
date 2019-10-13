@@ -40,6 +40,12 @@ def timeit_(func, args, reps=1000, times=7):
     print("{0} took {1}".format(func.__name__, time))
 
 
+def decimal_format(val):
+    val = "{0:.5f}".format(val)
+    val = re.sub(r"0+$", "", val)
+    val = re.sub(r"\.$", "", val)
+    return val
+
 
 class Colors:
     """ ANSI color codes """

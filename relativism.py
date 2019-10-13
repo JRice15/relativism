@@ -9,11 +9,11 @@ from output_and_prompting import *
 
 class Relativism():
 
-    DEBUG = True
-    TEST_BPM = 120
-    DEFAULT_SAMPLERATE = 44100
+    _debug = True
+    _bpm = 120
+    _rate = 44100
 
-    RELATIVISM_PATH_FILE = ".relativism.tsv"
+    _relativism_file_path = ".relativism.tsv"
 
     def __init__(self):
         # set default output
@@ -21,14 +21,14 @@ class Relativism():
 
         # read project names
         try:
-            data_file = open(self.RELATIVISM_PATH_FILE, "r")
+            data_file = open(self._relativism_file_path, "r")
             paths = data_file.readlines()
             data_file.close()
             paths = [re.sub(r"    ", "\t", i) for i in paths]
             paths = [i.strip().split("\t") for i in paths]
             paths = [i for i in paths if len(i) > 1]
         except FileNotFoundError:
-            path_f = open(self.RELATIVISM_PATH_FILE, "w")
+            path_f = open(self._relativism_file_path, "w")
             path_f.close()
             paths = []
         self.names_and_paths = {}
@@ -55,13 +55,34 @@ class Relativism():
             print("  '" + proj_name + "': " + proj_path)
             return proj_name, proj_path
 
+
+    @staticmethod
+    def debug():
+        return Relativism._debug
+
     def debug_on(self):
         info_block("Debug On. Errors may propogate to top level and halt execution with no save")
-        self.DEBUG = True
+        self._debug = True
     
     def debug_off(self):
         info_block("Debug Off")
-        self.DEBUG = False
+        self._debug = False
+
+    @staticmethod
+    def bpm():
+        return Relativism._bpm
+
+    def set_bpm(self, bpm):
+        self._bpm = bpm
+
+    @staticmethod
+    def rate():
+        return Relativism._rate
+
+    def set_rate(self, rate):
+        Relativism._rate = rate
+
+
 
     def set_output(self):
         pass
