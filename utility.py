@@ -1,12 +1,14 @@
 # from relativism import *
 from contextlib import contextmanager
-import sys, os
+import sys
+import os
 import time
 import timeit
 import functools
 import numpy as np
 import pylab
 import matplotlib.pyplot as plt
+import re
 
 
 @contextmanager

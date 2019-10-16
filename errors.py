@@ -40,3 +40,7 @@ class RateError(Exception):
     """
 
 
+class UnknownError(Exception):
+    """
+    fallback case for error that is unsure how to be handled
+    """

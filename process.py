@@ -107,7 +107,7 @@ def process_error_handling(e, command, obj):
         elif 'positional argument' in message:
             process_complete_args(e, command, obj)
         else:
-            process_error_handling(NotImplementedError(message), process, obj)
+            process_error_handling(UnknownError(message), process, obj)
     elif isinstance(e, ValueError):
         err_mess("Argument entered incorrectly: {0}".format(message))
     elif isinstance(e, AttributeError):
@@ -125,7 +125,7 @@ def process_error_handling(e, command, obj):
             else:
                 process_error_handling(SyntaxError(message), process, obj)
         else:
-            process_error_handling(NotImplementedError(message), process, obj)
+            process_error_handling(UnknownError(message), process, obj)
     elif isinstance(e, SyntaxError):
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
     elif isinstance(e, PermissionError):
