@@ -20,13 +20,15 @@ class Project:
     """
     """
 
-    def __init__(self, name, directory):
+
+    def __init__(self, name, directory, rate):
         """
         """
         self.name = name
         self.type = 'Project'
         self.dir = directory
         self.recs = {}
+        self.rate = rate
 
 
     def get_name(self):

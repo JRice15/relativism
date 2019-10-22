@@ -26,8 +26,8 @@ class Distortion:
             percent: 0-100%
         """
         print("  Saw Distortion at {0} hz and {1}%".format(freq, pct))
-        period = rec.rate / inpt_process(freq, 'freq')
-        amount = inpt_process(pct, 'pcnt', allowed=[0, 100]) / 100
+        period = rec.rate / inpt_validate(freq, 'freq')
+        amount = inpt_validate(pct, 'pcnt', allowed=[0, 100]) / 100
 
         # TODO: amplitude analysis
         amp = 0.5
@@ -84,7 +84,6 @@ class Oscillator:
         cat:
         desc: oscillate volume
         """
-        rate = 1 / Conversion.samps(rate, rec.rate)
         pass
 
 
@@ -96,7 +95,7 @@ def scrambler(obj, amount):
     args:
         amount: number of scrambles to perform, integer >=1; 1, 10;
     """
-    amount = inpt_process(amount, "int", allowed=[1, None])
+    amount = inpt_validate(amount, "int", allowed=[1, None])
     while amount >= 1:
         print("  scrambling, {0} to go...".format(amount))
         chunk = obj.rate // rd.randint(2, 8)
@@ -160,12 +159,12 @@ class Reverb1():
         """
         section_head("Reverb1")
         self.rec = rec
-        self.size = inpt_process(size, 'float', allowed=[1, None])
-        self.dampening = inpt_process(dampening, 'pcnt', allowed=[0, None]) * 1/100
-        self.wet = inpt_process(wet, 'pcnt', allowed=[0, None])
-        self.dry = inpt_process(dry, 'pcnt', allowed=[0, None])
+        self.size = inpt_validate(size, 'float', allowed=[1, None])
+        self.dampening = inpt_validate(dampening, 'pcnt', allowed=[0, None]) * 1/100
+        self.wet = inpt_validate(wet, 'pcnt', allowed=[0, None])
+        self.dry = inpt_validate(dry, 'pcnt', allowed=[0, None])
         self.rate = rec.rate
-        self.spread = inpt_process(spread, 'pcnt', allowed=[0, 200]) * 1/100
+        self.spread = inpt_validate(spread, 'pcnt', allowed=[0, 200]) * 1/100
 
         self.nodes = []
         # self.add_node(0,size)

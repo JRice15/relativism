@@ -1,4 +1,4 @@
-# from relativism import *
+from relativism import *
 from contextlib import contextmanager
 import sys
 import os

@@ -82,7 +82,7 @@ class Recording(RelativismPublicObject):
             self.rename()
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.type, self.name))
-        self.rate = rate
+        self.rate = RelSamps(rate)
         self.source = source
         self.arr = np.asarray(array)
         self.parent = parent
@@ -290,6 +290,7 @@ class Recording(RelativismPublicObject):
         del attrs['recents']
         return attrs
 
+
     def load_metadata(self):
         pass
 
@@ -380,8 +381,8 @@ class Recording(RelativismPublicObject):
             [duration: beats/seconds. default 5]
             [start: beat/seconds to start at. defualts to beginning]
         """
-        duration = Conversion.secs(duration)
-        start = Conversion.secs(start)
+        duration = inpt_validate(duration, 'beatsec')
+        start = inpt_validate(start, 'beatsec')
         section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
@@ -418,15 +419,17 @@ class Recording(RelativismPublicObject):
             [end: seconds/beats to end view window. -1 selects end. default end]
             [precision: percent of how detailed the plot should be. default 50]
         """
-        precision = inpt_process(precision, 'pcnt', allowed=[5, 10000])
-        start = Conversion.samps(start, self.rate)
-        if end is None or end == "-1" or Conversion.samps(end, self.rate) > self.size_samps():
+        start = inpt_validate(start, 'beatsec')
+        if (end is None) or (end == "-1"):
             end = self.size_samps()
         else:
-            end = Conversion.samps(end, self.rate)
+            end = inpt_validate(end, 'beatsec')
+            if end.samples_value >= self.size_samps():
+                end = self.size_samps()
         if end <= start:
             err_mess("End cannot be before or equal to start")
             raise Cancel
+        precision = inpt_validate(precision, 'pcnt', allowed=[5, 10000])
 
         info_block("Generating waveform at {0}%...".format(precision))
 
@@ -434,8 +437,6 @@ class Recording(RelativismPublicObject):
         frame_len = (end - start) / (precision * 2)
         anlsys.set_frame_lengths(frame_len)
 
-        # left = anlsys.get_frames_left()
-        # right = anlsys.get_frames_right()
         left = anlsys.arr[:, 0]
         right = anlsys.arr[:, 1]
 
@@ -456,7 +457,7 @@ class Recording(RelativismPublicObject):
             name = inpt("obj")
             info_block("Named '{0}'".format(name))
         else:
-            name = inpt_process(name, 'obj')
+            name = inpt_validate(name, 'obj')
         self.name = name
         try:
             self.parent.validate_child_name(self)
@@ -473,7 +474,7 @@ class Recording(RelativismPublicObject):
         args:
             factor: number >0; 0.2, 3
         """
-        factor = inpt_process(factor, 'float', allowed=[0, None])
+        factor = inpt_validate(factor, 'float', allowed=[0, None])
         print("  stretching by a factor of {0}...".format(factor))
         new_rec = []
         factor_count = 0
@@ -496,13 +497,13 @@ class Recording(RelativismPublicObject):
             [start: beat/second to begin. defaults beginning]
             [end: beat/second to end. defaults to end of rec]
         """
-        i_factor = inpt_process(i_factor, "flt", allowed=[0, None])
-        f_factor = inpt_process(f_factor, "flt", allowed=[0, None])
-        start = Conversion.samps(start, self.rate)
+        i_factor = inpt_validate(i_factor, "flt", allowed=[0, None])
+        f_factor = inpt_validate(f_factor, "flt", allowed=[0, None])
+        start = inpt_validate(start, 'beatsec')
         if end is None:
             end = self.size_samps()
         else:
-            end = Conversion.samps(end, self.rate)
+            end = inpt_validate(end, 'beatsec')
         print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
         beginning = self.arr[:start]
 
@@ -539,7 +540,7 @@ class Recording(RelativismPublicObject):
         args:
             factor: num >0; 0.5, 1.5;
         """
-        factor = inpt_process(factor, 'float', allowed=[0, 10])
+        factor = inpt_validate(factor, 'float', allowed=[0, 10])
         print("  amplifying by {0}x...".format(factor))
         self.arr *= factor
 
@@ -551,7 +552,7 @@ class Recording(RelativismPublicObject):
         args:
             times: integer number of times to repeat, >=1; 1, 10;
         """
-        times = inpt_process(times, 'int', allowed=[1, None])
+        times = inpt_validate(times, 'int', allowed=[1, None])
         print("  repeating {0} times...".format(times))
         self.arr = np.vstack([self.arr] * times)
 
@@ -565,8 +566,8 @@ class Recording(RelativismPublicObject):
             length: beats/seconds to extend; 0, 1;
             [placement: "a"=after, "b"=before. default after]
         """
-        length = Conversion.secs(length)
-        placement = inpt_process(placement, "letter", allowed="ab")
+        length = inpt_validate(length, 'beatsec')
+        placement = inpt_validate(placement, "letter", allowed="ab")
         if placement == "b":
             before = " before"
         else:
@@ -597,7 +598,7 @@ class Recording(RelativismPublicObject):
         args:
             amount: number from -1 (left) to 1 (right); -1, 1;
         """
-        amount = inpt_process(amount, 'float', allowed=[-1, 1])
+        amount = inpt_validate(amount, 'float', allowed=[-1, 1])
         print("  Setting pan to {0}...".format(amount))
         self.pan_val = amount
 
@@ -631,12 +632,12 @@ class Recording(RelativismPublicObject):
             left: beat/second; 0, 5;
             [right: beat/second. defaults to end; 10, 15;]
         """
-        left = Conversion.secs(left)
+        left = inpt_validate(left, 'beatsec')
         if right is None:
             print("  trimming first {0} beats/seconds".format(left))
             right = self.size_samps()
         else:
-            right = Conversion.secs(right)
+            right = inpt_validate(right, 'beatsec')
             print("  trimming everything outside {0} to {1} beats/seconds".format(left, right))
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
@@ -656,8 +657,8 @@ class Recording(RelativismPublicObject):
             duration: duration in beats/seconds of fade-in; 0, 10;
             [start: beat/second to begin. defaults 0]
         """
-        seconds = Conversion.secs(dur)
-        start = Conversion.secs(start)
+        seconds = inpt_validate(dur, 'beatsec')
+        start = inpt_validate(start, 'beatsec')
         print("  Fading in {0} beats/seconds starting at {1} beats/seconds...".format(seconds, start))
         length = int(self.rate * seconds)
         for i in range(length):

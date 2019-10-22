@@ -1,10 +1,10 @@
-from errors import *
+# from errors import *
 import re
 import time
 # from output_and_prompting import *
 # from utility import *
-from relativism import *
-from data_types import *
+# from relativism import *
+# from data_types import 
 
 """ clean input """
 
@@ -47,7 +47,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
             return inpt(mode, split_modes=split_modes, catch=catch, 
                 catch_callback=catch_callback, allowed=allowed, required=required)
         else:
-            return ''
+            return ""
     if val in ("h", "help"):
         try:
             help_callback()
@@ -66,13 +66,13 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
                         t_mode = split_modes[i]
                     except IndexError:
                         t_mode = split_modes[-1]
-            val[i] = inpt_process(val[i], t_mode)
+            val[i] = inpt_validate(val[i], t_mode)
     else:
-        val = inpt_process(val, mode, allowed)
+        val = inpt_validate(val, mode, allowed)
     return val
 
 
-def inpt_process(val, mode, allowed=None):
+def inpt_validate(val, mode, allowed=None):
     """
     processes individual modes for inpt
     also used as input validation
@@ -110,23 +110,23 @@ def inpt_process(val, mode, allowed=None):
         val = re.sub(r"_{2,}", "_", val)
     elif mode in ("note", "freq"):
         try:
-            val = Conversion.valid_freq(val)
+            val = RelPitch.valid_freq(val)
         except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
                 indent=2,
                 for_prompt=True
             )
-            val = inpt("note", help_callback=Conversion.note_options)
+            val = inpt("note", help_callback=RelPitch.note_options)
     elif mode in ("beat", "beats", "beatsec", "beat/sec"):
         try:
-            val = Conversion.valid_beatsec(val)
+            val = RelTime.valid_beatsec(val)
         except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed beat/seconds. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt("beat", help_callback=Conversion.beat_options)
+            val = inpt("beat", help_callback=RelTime.beat_options)
     # number inputs
     elif mode in ("pcnt", "percent", "int", "flt", "float"):
         if mode in ("pcnt", "percent"):

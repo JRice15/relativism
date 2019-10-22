@@ -67,7 +67,7 @@ class Controller(RelativismObject, abc.ABC):
         )
 
     def validate_edit_type(self, edit_type):
-        edit_type = inpt_process(edit_type, 'alphanum')
+        edit_type = inpt_validate(edit_type, 'alphanum')
         for t in self.valid_edit_types.values():
             if edit_type in t:
                 return edit_type
@@ -77,7 +77,7 @@ class Controller(RelativismObject, abc.ABC):
         return self.validate_edit_type(edit_type)
 
     def validate_change_type(self, change_type):
-        change_type = inpt_process(change_type, 'alphanum')
+        change_type = inpt_validate(change_type, 'alphanum')
         if change_type in self.valid_change_types:
             return change_type
         else:
@@ -160,7 +160,7 @@ class Controller(RelativismObject, abc.ABC):
                     continue
 
                 try:
-                    beatsec = inpt_process(command[1], 'beat')
+                    beatsec = inpt_validate(command[1], 'beat')
                 except IndexError:
                     p("Choose a beat/sec for this marker to occur at")
                     beatsec = inpt('beat')
@@ -181,7 +181,7 @@ class Controller(RelativismObject, abc.ABC):
                         err_mess("No marker to move at {0}".format(beatsec))    
                         continue
                     del self.markers[sample_ind]
-                    new_beatsec = inpt_process(command[2], 'beat')
+                    new_beatsec = inpt_validate(command[2], 'beat')
                     new_samp_ind = samps(new_beatsec, self.rate)
                     try:
                         replace = self.markers[new_samp_ind]
@@ -230,7 +230,7 @@ class TestController(Controller):
 
     
     def validate_value(self, value):
-        return inpt_process(value, 'float', allowed=[0, 2])
+        return inpt_validate(value, 'float', allowed=[0, 2])
     
 
     def apply(self, rec_arr):

@@ -80,7 +80,7 @@ class SampleGroup(RelativismPublicObject):
             p("Enter a name for this {0}".format(self.type))
             self.name = inpt('name')
         else:
-            self.name = inpt_process(name, 'name')
+            self.name = inpt_validate(name, 'name')
 
     @public_process
     def list_samples(self):
@@ -98,7 +98,7 @@ class SampleGroup(RelativismPublicObject):
             p("Choose the name of the sample to process")
             name = inpt('name')
         else:
-            name = inpt_process(name, 'name')
+            name = inpt_validate(name, 'name')
         try:
             self.samples[name]
         except KeyError:
@@ -189,7 +189,7 @@ class Rhythm(RelativismPublicObject):
             print("  Enter a name for this Rhythm: ", end="")
             name = inpt("obj")
         else:
-            name = inpt_process(name, 'obj')
+            name = inpt_validate(name, 'obj')
         self.name = name
         print("  named '" + name + "'")
 
@@ -199,7 +199,7 @@ class Rhythm(RelativismPublicObject):
             p("Enter a length in beats/seconds for this Rhythm")
             self.length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
         else:
-            self.length = samps(inpt_process(length, 'beats'), Relativism.DEFAULT_SAMPLERATE)
+            self.length = samps(inpt_validate(length, 'beats'), Relativism.DEFAULT_SAMPLERATE)
 
     @public_process
     def set_period(self, period=None):
@@ -208,7 +208,7 @@ class Rhythm(RelativismPublicObject):
                 "a beat", h=True)
             self.period = inpt('beat', help_callback=beat_options)
         else:
-            self.period = inpt_process(period, "beat")
+            self.period = inpt_validate(period, "beat")
 
     @public_process
     def add_beats(self):
@@ -300,7 +300,7 @@ class Active(RelativismPublicObject):
             name = inpt("obj")
             print("  named '{0}'".format(name))
         else:
-            name = inpt_process(name, "obj")
+            name = inpt_validate(name, "obj")
         self.name = name
 
     @public_process
@@ -313,7 +313,7 @@ class Active(RelativismPublicObject):
             p("Enter the variability (in percentage, 0-100%) of this Rhythm")
             self.variability = inpt('pcnt')
         else:
-            self.variability = inpt_process(var, 'pcnt')
+            self.variability = inpt_validate(var, 'pcnt')
 
 
     def generate_active(self, length):
@@ -343,7 +343,7 @@ class Active(RelativismPublicObject):
         
 
         def validate_value(self, value):
-            return inpt_process(value, 'pcnt')
+            return inpt_validate(value, 'pcnt')
 
         def apply(self, rec_arr):
             raise NotImplementedError
@@ -396,7 +396,7 @@ class Sampler(RelativismPublicObject):
     @public_process
     def set_bpm(self, BPM=None):
         if BPM is not None:
-            self.BPM = inpt_process(BPM, "flt", allowed=[1, 9999])
+            self.BPM = inpt_validate(BPM, "flt", allowed=[1, 9999])
         else:
             self.BPM = inpt("flt", allowed=[1, 9999])
 

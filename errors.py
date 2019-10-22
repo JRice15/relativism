@@ -44,3 +44,11 @@ class UnknownError(Exception):
     """
     fallback case for error that is unsure how to be handled
     """
+
+class InitOrderError(Exception):
+    """
+    when things are not initialized in the right order so
+    something goes wrong
+    """
+
+

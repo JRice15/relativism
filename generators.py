@@ -45,12 +45,11 @@ class Generator:
             returns Recording obj
             """
             print("\nGenerating simple sine wave ...")
-            freq = Conversion.freq(note)
-            dur = Conversion.samps(dur, rate)
-            amp = inpt_process(amp, 'flt', allowed=[0, 2])
-            period = rate / frq
-            arr = BaseGenerator.wave(dur, period, shift=0, amp=amp)
-            source_block = ["generator", sys._getframe().f_code.co_name, 
+            freq = RelPitch.valid_freq(note)
+            dur = RelTime.valid_beatsec(dur).samps()
+            amp = inpt_validate(amp, 'flt', allowed=[0, 2])
+            arr = BaseGenerator.wave(dur, freq.get_period(rate), shift=0, amp=amp)
+            source_block = ["generator", sys._getframe().f_code.co_name,
                             "note", freq,
                             "duration", dur,
                             "amplitude", amp]
@@ -65,13 +64,13 @@ class Generator:
                 rate (sps) 44100 
             """
             print("\nGenerating simple square wave ...")
-            frq = Conversion.freq(note)
-            dur = Conversion.secs(dur)
-            period = int(rate / frq)
+            freq = RelPitch.valid_freq(note)
+            dur = RelSecs.valid_beatsec(dur)
+            period = freq.get_period(rate)
             period_arr = [amp] * (period // 2) + [-amp] * ((period + 1) // 2)
-            arr = period_arr * int(frq * dur)
+            arr = period_arr * int(freq * dur)
             arr = arr[:int(rate * dur)]
-            arr =  [[i, i] for i in arr]
+            arr = [[i, i] for i in arr]
             source_block = ["generator", sys._getframe().f_code.co_name, 
                             "frequency", note,
                             "duration", dur,
@@ -87,8 +86,8 @@ class Generator:
                 rate (sps) 44100 
             """
             print("\nGenerating simple triangle wave ...")
-            freq = Conversion.freq(freq)
-            dur = Conversion.secs(dur)
+            freq = RelPitch.valid_freq(freq)
+            dur = RelSecs.valid_beatsec(dur)
             period = int(rate / freq)
             period_arr = []
             delta = 4 * amp / period # amount change per sample
@@ -115,8 +114,8 @@ class Generator:
                 rate (sps) 44100 
             """
             print("\nGenerating simple triangle wave ...")
-            freq = Conversion.freq(freq)
-            dur = Conversion.secs(dur)
+            freq = RelPitch.valid_freq(freq)
+            dur = RelSecs.valid_beatsec(dur)
             period = int(rate / freq)
             arr = []
             delta = 4 * amp / period # amount change per sample
@@ -143,8 +142,8 @@ class Generator:
             returns Recording obj
             """
             print("\nGenerating square synth 1...")
-            freq = Conversion.freq(freq)
-            dur = Conversion.secs(dur)
+            freq = RelPitch.valid_freq(freq)
+            dur = RelSecs.valid_beatsec(dur)
             a = []
             note = freq / (2 ** 4)
             for i in range(1, 5):
