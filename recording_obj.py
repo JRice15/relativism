@@ -82,7 +82,7 @@ class Recording(RelativismPublicObject):
             self.rename()
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.type, self.name))
-        self.rate = RelSamps(rate)
+        self.rate = Units.rate(rate)
         self.source = source
         self.arr = np.asarray(array)
         self.parent = parent
@@ -161,7 +161,7 @@ class Recording(RelativismPublicObject):
             rate = 44100
         self.rate = rate
         print("  Press Enter to begin recording, or 'q' to quit: ", end="")
-        inpt(required=False)
+        inpt("none", required=False)
         time.sleep(0.05)
         section_head("Recording at input {0} ({1}) for {2} seconds".format(device_ind, \
             device_name, record_time))

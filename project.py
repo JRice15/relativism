@@ -1,9 +1,10 @@
+
+from data_types import *
 from recording_obj import *
 from generators import *
 from recording_obj import *
 from integraters import *
 from sampler import *
-
 
 
 
@@ -20,16 +21,33 @@ class Project:
     """
     """
 
+    # global access for the current instance
+    _current = None
+
+    TESTRATE = Units.rate(44100)
+    TESTBPM = Units.bpm(120)
 
     def __init__(self, name, directory, rate):
         """
         """
+        Project._instance = self
         self.name = name
         self.type = 'Project'
         self.dir = directory
         self.recs = {}
         self.rate = rate
+        self.bpm_controller = "______" #TODO
 
+
+    @staticmethod
+    def get_rate():
+        return Project.TESTRATE
+        return Project._current.rate
+
+    @staticmethod
+    def get_bpm(context=None):
+        return Project.TESTBPM
+        return Project._current.bpm_controller.get_bpm(context)
 
     def get_name(self):
         return self.name

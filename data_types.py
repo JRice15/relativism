@@ -1,6 +1,21 @@
+"""
+creating data with units
+
+Units.new() is method to create arbitrary units, and Units.samps/.secs/.beats
+are shortcuts to common ones. 
+
+Project.rate is used for sample-related conversions, and you must pass a bpm
+context to conversion methods <value>.secs/.samps/.beats when converting to
+or from beats (as bpm can be variable throughout project). Bpm context is handled
+in Project.get_bpm()
+"""
+
+
 import pint
 from errors import *
 
+import math
+import re
 
 
 
@@ -14,72 +29,108 @@ def RelUnit(number, type_):
 
 
 
+def proj_rate_wrapper():
+    try:
+        return Project.get_rate()
+    except NameError:
+        return Units.rate(44100)
+
+def proj_bpm_wrapper(bpm_context):
+    try:
+        return Project.get_bpm(bpm_context)
+    except NameError:
+        return Units.bpm(120)
+
+
 
 class Units:
     """
-    a pretty hacky class for creating data with units
+    class for creating data with units
     """
 
     # unit registry
     _reg = pint.UnitRegistry()
 
-    # base units shorthand
-    _reg.Quantity.bu = _reg.Quantity.to_base_units
-
-    # common unit shorthands
-    _reg.Quantity.samps = lambda v: v.to('samps')
-    _reg.Quantity.secs = lambda v: v.to('secs')
-    _reg.Quantity.beats = lambda v: v.to('beats')
-
     @staticmethod
     def setup():
         """
-        initalize beat and percent units
+        initalize beat, samplerate, and percent units
         """
+
+        # define beats
         for i in Units._get_beat_frac_tables():
             if i[2] == "beat":
-                Units._reg.define("beat = [rhythm_time] = b")
+                Units._reg.define("beat = [beat_time] = b")
             else:
                 Units._reg.define("{0} = {1} beat = {2}".format(i[2], i[1], i[0]))
 
+        # define samples
+        Units._reg.define("sample = [sample_time] = samp")
+
+        # percent
         Units._reg.define(pint.unit.UnitDefinition('percent', 'pct', ('pct', 'pcnt'), 
             pint.converters.ScaleConverter(1 / 100.0)))
 
+        # samplerate
+        cont = pint.Context('samplerate')
+        cont.add_transformation("[sample_time]", "[time]", 
+            lambda reg, x: x / proj_rate_wrapper())
+        cont.add_transformation("[time]", "[sample_time]",
+            lambda reg, x: x * proj_rate_wrapper())
+        Units._reg.add_context(cont)
+        Units._reg.enable_contexts('samplerate')
+
+        # bpm
+        cont = pint.Context("bpm")
+        cont.add_transformation("[beat_time]", "[time]", 
+            lambda reg, x, bpm_context: x / proj_bpm_wrapper(bpm_context).to("beats/second"))
+        cont.add_transformation("[time]", "[beat_time]", 
+            lambda reg, x, bpm_context: x * proj_bpm_wrapper(bpm_context).to("beats/second"))
+        Units._reg.add_context(cont)
 
     @staticmethod
-    def set_rate(rate):
-        """
-        set samples to second conversion
-        """
-        samp_unit_str = "sample = 1 / {0} second = samp".format(rate)
-        Units._reg.define(samp_unit_str)
-
+    def bpm_convert_context(bpm_context):
+        return Units._reg.context('bpm', bpm_context=bpm_context)
 
     @staticmethod
     def new(*args):
-        return Units._reg.Quantity(*args)
+        if isinstance(args[0], Units._reg.Quantity):
+            try:
+                return args[0].to(args[1])
+            except:
+                return args[0]
+        else:
+            return Units._reg.Quantity(*args)
+
+    # Rate Makers
+
+    @staticmethod
+    def rate(val):
+        return Units.new(val, "samples/second")
+
+    @staticmethod
+    def bpm(val):
+        return Units.new(val, "beats/minute")
+
+    # Time Makers
 
     @staticmethod
     def samps(val):
-        return val.to('samples')
+        return Units.new(val, "samples")
 
     @staticmethod
     def secs(val):
-        return val.to('seconds')
+        return Units.new(val, "seconds")
 
-    def beats(self):
-        beat_num = self.samples_value * Relativism.bpm() / (Relativism.rate() * 60)
-        return RelBeats(beat_num, "b")
+    @staticmethod
+    def beats(val):
+        try:
+            int(val)
+            return Units.new(val, 'beats')
+        except ValueError:
+            # already have beat-type in string
+            return Units.new(val)
 
-    def whole_beats(self):
-        """
-        get num of beats (quarter-notes) from seconds.
-        return whole beats
-        """
-        bps = Relativism.bpm() / 60
-        beat_num = int(self.secs().secs_value * bps)
-        # remainder = self.secs().secs_value % bps
-        return RelBeats(beat_num)
 
     # static conversion helpers
     @staticmethod
@@ -185,9 +236,7 @@ class Units:
         print("\n    Time can also be indicated with just a number, which will be")
         print("    interpreted as seconds")
 
-
-
-
+    # FREQUENCY
 
     def _freq_to_note(self):
         freq_to_note = {v:k for k,v in RelPitch._get_freq_table().items()}
@@ -204,9 +253,9 @@ class Units:
         return cents_freq
 
 
-
     def octave(self, num):
         return self * (2 ** num)
+
 
     def get_period(self, rate):
         """
@@ -250,7 +299,7 @@ class Units:
         """
         get formatted freq from table
         """
-        freq_arr = RelPitch._get_freq_table()
+        freq_arr = Units._get_freq_table()
         # if note is wrong sharp/flat (ie E#)
         note = re.sub("e#", "f", note)
         note = re.sub("fb", "e", note)
@@ -260,6 +309,9 @@ class Units:
 
     @staticmethod
     def _get_freq_table():
+        """
+        big note-name to freq mapping
+        """
         return {
             "c0": 16.35,
             "c#0": 17.32,
@@ -453,10 +505,8 @@ class Units:
     @staticmethod
     def show_freq_table():
         info_title('Note\tFrequency (Hz)')
-        for i in RelPitch._get_freq_table():
+        for i in Units._get_freq_table().items():
             info_line(str(i[0]).capitalize() + ": \t" + str(i[1]))
-
-
 
 
     @staticmethod
@@ -467,13 +517,58 @@ class Units:
 
 
 
+class UnitOperations:
+    """
+    methods to be aliased onto Units._reg.Quantity, below
+    """
 
+    @staticmethod
+    def samps(value, bpm_context=None):
+        """
+        convert to samples, with optional bpm_context
+        """
+        with Units.bpm_convert_context(bpm_context):
+            return value.to('samples')
+
+    @staticmethod
+    def secs(value, bpm_context=None):
+        """
+        convert to secs, with optional bpm_context
+        """
+        with Units.bpm_convert_context(bpm_context):        
+            return value.to('seconds')
+
+    @staticmethod
+    def beats(value, bpm_context=None):
+        """
+        convert to beats, with optional bpm_context
+        """
+        with Units.bpm_convert_context(bpm_context):
+            return value.to('beats')
+
+    @staticmethod
+    def trunc(value):
+        """
+        truncate value
+        """
+        return Units.new(int(value.magnitude), value.units)
+
+"""
+hacky method creation by aliasing
+"""
+
+# common unit alias methods for Quantity
+Units._reg.Quantity.samps = UnitOperations.samps
+Units._reg.Quantity.secs = UnitOperations.secs
+Units._reg.Quantity.beats = UnitOperations.beats
+
+# base units alias
+Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units
+
+# round
+Units._reg.Quantity.trunc = UnitOperations.trunc
+
+# init
 Units.setup()
 
-
-Units.set_rate(44100)
-
-a = Units.new("2 min")
-
-print(a.secs())
 

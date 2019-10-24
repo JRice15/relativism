@@ -1,10 +1,10 @@
-# from errors import *
+from data_types import *
+from errors import *
 import re
 import time
-# from output_and_prompting import *
-# from utility import *
-# from relativism import *
-# from data_types import 
+from output_and_prompting import *
+from utility import *
+from relativism import *
 
 """ clean input """
 
@@ -51,6 +51,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
     if val in ("h", "help"):
         try:
             help_callback()
+            val = ""
         except:
             err_mess("No help is configured for this action")
     if mode == "split":
@@ -110,23 +111,36 @@ def inpt_validate(val, mode, allowed=None):
         val = re.sub(r"_{2,}", "_", val)
     elif mode in ("note", "freq"):
         try:
-            val = RelPitch.valid_freq(val)
+            val = Units.freq(val)
         except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
                 indent=2,
                 for_prompt=True
             )
-            val = inpt("note", help_callback=RelPitch.note_options)
-    elif mode in ("beat", "beats", "beatsec", "beat/sec"):
+            val = inpt("note", help_callback=Units.note_options)
+    elif mode in ("beat", "beats", "b"):
         try:
-            val = RelTime.valid_beatsec(val)
-        except TypeError:
+            val = Units.beats(val)
+            if not val.check('[beat_time]'):
+                raise ValueError
+        except:
             info_block(
-                "> Value '{0}' is not a validly formed beat/seconds. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
+                "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt("beat", help_callback=RelTime.beat_options)
+            val = inpt("beat", help_callback=Units.beat_options)
+    elif mode in ("sec", "second", "seconds"):
+        try:
+            val = Units.secs(val)
+            if not val.check('[time]'):
+                raise ValueError
+        except:
+            info_block(
+                "> Value '{0}' is not a validly formed second. Enter intended value ('q' to cancel): ".format(val),
+                for_prompt=True
+            )
+            val = inpt("second")
     # number inputs
     elif mode in ("pcnt", "percent", "int", "flt", "float"):
         if mode in ("pcnt", "percent"):
@@ -180,4 +194,5 @@ def inpt_validate(val, mode, allowed=None):
     else:
         raise UnexpectedIssue("Unknown process mode")
     return val
+
 
