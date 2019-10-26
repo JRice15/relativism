@@ -1,10 +1,22 @@
 import unittest
+from unittest.mock import patch
 
 from data_types import *
 from input_processing import *
 from relativism import *
 from project import *
 
+
+
+
+@contextmanager
+def test_input_call(correct_input):
+    try:
+        with suppress_output():
+            with patch("builtins.input", return_value=correct_input):
+                yield
+    finally:
+        pass
 
 
 class TestCases(unittest.TestCase):
@@ -27,8 +39,16 @@ class TestCases(unittest.TestCase):
 
     def test_input_processing(self):
 
+
         self.assertEqual(inpt_validate("42hb", "beat"), Units.new(42, "hb"))
 
+        self.assertEqual(inpt_validate("42", "pcnt"), Units.new("42pcnt"))
+
+        with test_input_call(correct_input="4.29"):
+            self.assertEqual(inpt_validate("4.333333b", "float"), 4.29)
+
+        with test_input_call(correct_input="L"):
+            self.assertEqual(inpt_validate("G", "letter", allowed="MLK"), "l")
 
 
 if __name__ == "__main__":

@@ -90,25 +90,40 @@ def inpt_validate(val, mode, allowed=None):
         letter: one letter, str of allowed
         arg: for process arg entry
     """
+    nl()
+    print(val, type(val), mode)
+
+
     if mode == "none":
         return val
+
     elif mode in ("standard", 'stnd'):
         val = re.sub(r"[^-_a-z0-9. ]", "", val)
+
     elif mode == "arg":
         val = re.sub(r"[^-_.a-z0-9]", "", val)
+
     elif mode in ("y-n", "y/n", "yn"):
         if len(val) == 0 or val[0] not in "yn":
             print("  > Enter 'y' or 'n': ", end="")
-            return inpt("y-n")
+            return inpt(mode)
         if val[0] == "y":
             val = True
         else:
             val = False
+
+    elif mode == "letter":
+        if (len(val) != 1) or (allowed is not None and val not in allowed):
+            p("> Select one of " + ", ".join(allowed.upper()))
+            val = inpt(mode, allowed=allowed)
+
+
     elif mode in ("obj", "file", "alphanum", "name"):
         val = re.sub(r"\s+", "_", val)
         val = re.sub(r"-", "_", val)
         val = re.sub(r"[^_a-z0-9]", "", val)
         val = re.sub(r"_{2,}", "_", val)
+
     elif mode in ("note", "freq"):
         try:
             val = Units.freq(val)
@@ -118,7 +133,8 @@ def inpt_validate(val, mode, allowed=None):
                 indent=2,
                 for_prompt=True
             )
-            val = inpt("note", help_callback=Units.note_options)
+            val = inpt(mode, help_callback=Units.note_options)
+
     elif mode in ("beat", "beats", "b"):
         try:
             val = Units.beats(val)
@@ -129,7 +145,8 @@ def inpt_validate(val, mode, allowed=None):
                 "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt("beat", help_callback=Units.beat_options)
+            val = inpt(mode, help_callback=Units.beat_options)
+
     elif mode in ("sec", "second", "seconds"):
         try:
             val = Units.secs(val)
@@ -137,25 +154,28 @@ def inpt_validate(val, mode, allowed=None):
                 raise ValueError
         except:
             info_block(
-                "> Value '{0}' is not a validly formed second. Enter intended value ('q' to cancel): ".format(val),
+                "> Value '{0}' is not a validly number for seconds. Enter intended value ('q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt("second")
+            val = inpt(mode)
+
     # number inputs
-    elif mode in ("pcnt", "percent", "int", "flt", "float"):
-        if mode in ("pcnt", "percent"):
+    elif mode in ("pcnt", "pct", "percent", "int", "flt", "float"):
+
+        if mode in ("pcnt", "pct", "percent"):
             if isinstance(val, str):
                 val = re.sub(r"%", "", val)
             try:
-                val = float(val)
+                val = Units.pcnt(val)
             except (ValueError):
                 info_block(
                     "> Value '{0}' is not a valid percentage. Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
-                val = inpt("pcnt")
+                val = inpt(mode)
             if allowed is None:
                 allowed = [0, None]
+
         elif mode == "int":
             try:
                 val = int(val)
@@ -164,7 +184,8 @@ def inpt_validate(val, mode, allowed=None):
                     "> Value '{0}' is not a valid integer. Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
-                val = inpt("int")
+                val = inpt(mode)
+
         elif mode in ("flt", "float"):
             try:
                 val = float(val)
@@ -173,11 +194,14 @@ def inpt_validate(val, mode, allowed=None):
                     "> Value '{0}' is not a valid number (decimal allowed). Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
-                val = inpt("float")
+                val = inpt(mode)
+
         try:
             if allowed is not None:
-                if allowed[0] is not None: assert val >= allowed[0]
-                if allowed[1] is not None: assert val <= allowed[1]
+                if allowed[0] is not None: 
+                    assert val >= allowed[0]
+                if allowed[1] is not None: 
+                    assert val <= allowed[1]
         except AssertionError:
             allowed_str = []
             if allowed[0] is not None:
@@ -187,12 +211,10 @@ def inpt_validate(val, mode, allowed=None):
             allowed_str = " and ".join(allowed_str)
             p("> Invalid: " + allowed_str)
             val = inpt(mode)
-    elif mode == "letter":
-        if (len(val) != 1) or (allowed is not None and val not in allowed):
-            p("> Select one of " + ", ".join(allowed.upper()))
-            val = inpt("letter", allowed=allowed)
+
     else:
         raise UnexpectedIssue("Unknown process mode")
+
     return val
 
 
