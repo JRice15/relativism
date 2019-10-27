@@ -82,6 +82,8 @@ def inpt_validate(val, mode, allowed=None):
         obj, file, alphanum, name: whitespaces to underscore, alphanumeric
         y-n: yes or no question, returns bool
         beat: valid beat input
+        sec: float as second
+        beatsec: beat or second
         note, freq: valid note/freq input
         int: integer, optional allowed list
         flt: float, optional allowed list
@@ -90,10 +92,6 @@ def inpt_validate(val, mode, allowed=None):
         letter: one letter, str of allowed
         arg: for process arg entry
     """
-    nl()
-    print(val, type(val), mode)
-
-
     if mode == "none":
         return val
 
@@ -124,22 +122,20 @@ def inpt_validate(val, mode, allowed=None):
         val = re.sub(r"[^_a-z0-9]", "", val)
         val = re.sub(r"_{2,}", "_", val)
 
-    elif mode in ("note", "freq"):
+    elif mode in ("note", "freq", "frq", "frequency"):
         try:
-            val = Units.freq(val)
+            val = PitchUnits.valid_pitch(val)
         except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
                 indent=2,
                 for_prompt=True
             )
-            val = inpt(mode, help_callback=Units.note_options)
+            val = inpt(mode, help_callback=PitchUnits.note_options)
 
     elif mode in ("beat", "beats", "b"):
         try:
             val = Units.beats(val)
-            if not val.check('[beat_time]'):
-                raise ValueError
         except:
             info_block(
                 "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
@@ -159,6 +155,22 @@ def inpt_validate(val, mode, allowed=None):
             )
             val = inpt(mode)
 
+    elif mode in ("beatsec", "beat/sec"):
+        try:
+            val = Units.beats(val)
+        except:
+            try:
+                val = Units.secs(val)
+                if not val.check('[time]'):
+                    raise ValueError            
+            except:
+                info_block(
+                    "> Value '{0}' is not a validly formed beat or second. Enter intended value ('q' to cancel): ".format(val),
+                    for_prompt=True
+                )
+                val = inpt(mode)
+
+
     # number inputs
     elif mode in ("pcnt", "pct", "percent", "int", "flt", "float"):
 
@@ -175,6 +187,12 @@ def inpt_validate(val, mode, allowed=None):
                 val = inpt(mode)
             if allowed is None:
                 allowed = [0, None]
+            try:
+                allowed[0] = Units.pcnt(allowed[0])
+            except: pass
+            try:
+                allowed[1] = Units.pcnt(allowed[1])
+            except: pass
 
         elif mode == "int":
             try:
