@@ -51,6 +51,14 @@ add_to_sampler
 
 class Recording(RelativismPublicObject):
     """
+    Args:
+        mode: "read", "record", or leave as None to use data passed in array
+        array: nparray for arr data, if mode is None
+        file: file to read from, for readfile mode
+        source_block: info dict if rec is generated
+        name: name of array (will prompt if not given)
+        rate: defaults to 
+
     Attributes:
         type (str): 'Recording'
         arr (list or None): wav array, if none is set will be read from file
@@ -65,41 +73,39 @@ class Recording(RelativismPublicObject):
 
     # Initialization #
     def __init__(self, 
+            mode=None,
             array=None, 
-            source=None, 
+            file=None,
+            source_block=None,
             name=None, 
             rate=44100,
             parent=None, 
             hidden=False, 
             type_='Recording', 
-            pan_val=0, 
-            mode=None
+            pan_val=0,
         ):
         super().__init__()
-        self.type = type_ # for inheritance
+        self.type = type_
         self.name = name
         if name is None:
             self.rename()
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.type, self.name))
         self.rate = Units.rate(rate)
-        self.source = source
+        self.source = source_block
         self.arr = np.asarray(array)
         self.parent = parent
         self.pan_val = pan_val
         self.command_line_init()
-        if mode is not None:
-            if mode in ('read', 'file', 'read_file'):
-                self.read_file()
-            elif mode in ('record', 'record_live'):
-                self.record_live()
-            else:
-                raise UnexpectedIssue("unknown mode {0}".format(mode))
-        if array is None:
-            if source is not None:
-                self.read_file()
-            else:
+        if mode in ('read', 'file', 'read_file'):
+            self.read_file()
+        elif mode in ('record', 'record_live'):
+            self.record_live()
+        elif mode is None:
+            if array is None:
                 self.init_mode()
+        else:
+            raise UnexpectedIssue("Unknown mode {0}".format(mode))
         self.recents = [] # for undoing
         # if not hidden:
         #     self.save(silent=True)
@@ -159,14 +165,14 @@ class Recording(RelativismPublicObject):
         rate = inpt('int', required=False)
         if rate == '':
             rate = 44100
-        self.rate = rate
+        self.rate = Units.rate(rate)
         print("  Press Enter to begin recording, or 'q' to quit: ", end="")
         inpt("none", required=False)
         time.sleep(0.05)
         section_head("Recording at input {0} ({1}) for {2} seconds".format(device_ind, \
             device_name, record_time))
         sd.default.channels = 2
-        recording = sd.rec(int(record_time * rate), rate, device=device_name)
+        recording = sd.rec(ind(record_time * rate), rate, device=device_name)
         sd.wait()
         info_block("Finished recording")
         self.arr = recording
@@ -216,7 +222,8 @@ class Recording(RelativismPublicObject):
         self.source = ["file", source]
         # Reading and Processing File
         try:
-            self.arr, self.rate = sf.read(file)
+            self.arr, rate = sf.read(file)
+            self.rate = Units.rate(rate)
         except RuntimeError:
             print("  > unable to find or read '{0}'. Is that the correct extension?".format(source))
             self.source = None
@@ -333,8 +340,8 @@ class Recording(RelativismPublicObject):
     # Info #
     def __repr__(self):
         string = "'{0}'. {1} object from".format(self.name, self.type)
-        for ind in range(len(self.source) // 2):
-            string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
+        for key, val in self.source.items():
+            string += " {0}: {1};".format(key, val)
         return string
 
 
@@ -349,8 +356,8 @@ class Recording(RelativismPublicObject):
         for ind in range(1, len(self.source) // 2):
             print("    {0}: {1}".format(self.source[2 * ind], self.source[2 * ind + 1]))
         info_line("parent: {0}".format(self.parent))
-        info_line("rate: {0} samples per second".format(self.rate))
-        info_line("size: {0:.4f} seconds, {1:,} samples".format(self.size_secs(), self.size_samps()))
+        info_line("rate: {0}".format(self.rate))
+        info_line("size: {0:.4f}, {1:,}".format(self.size_secs(), self.size_samps()))
         info_line("pan: {0}".format(self.pan_val))
 
 
@@ -360,7 +367,7 @@ class Recording(RelativismPublicObject):
         desc: get the length in samples
         args:
         """
-        return self.arr.shape[0]
+        return Units.samps(self.arr.shape[0])
 
 
     def size_secs(self):
@@ -369,7 +376,7 @@ class Recording(RelativismPublicObject):
         desc: get the length in seconds
         args:
         """
-        return self.size_samps() / self.rate
+        return (self.size_samps() / self.rate).to_secs()
 
 
     @public_process
@@ -386,11 +393,11 @@ class Recording(RelativismPublicObject):
         section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
-        start_ind = int(start * self.rate)
+        start_ind = ind(start * self.rate)
         if duration <= 0:
             end_ind = self.size_samps()
         else:
-            end_ind = start_ind + int(duration * self.rate)
+            end_ind = start_ind + ind(duration * self.rate)
         arr = self.arr[start_ind : end_ind]
         arr = self.get_panned_rec(arr)
 
@@ -475,7 +482,7 @@ class Recording(RelativismPublicObject):
             factor: number >0; 0.2, 3
         """
         factor = inpt_validate(factor, 'float', allowed=[0, None])
-        print("  stretching by a factor of {0}...".format(factor))
+        print("  stretching by a factor of {0:.4f}...".format(factor))
         new_rec = []
         factor_count = 0
         for i in self.arr:
@@ -499,18 +506,18 @@ class Recording(RelativismPublicObject):
         """
         i_factor = inpt_validate(i_factor, "flt", allowed=[0, None])
         f_factor = inpt_validate(f_factor, "flt", allowed=[0, None])
-        start = inpt_validate(start, 'beatsec')
+        start = inpt_validate(start, 'beatsec').to_samps()
         if end is None:
             end = self.size_samps()
         else:
-            end = inpt_validate(end, 'beatsec')
-        print("  sliding stretch, from factor {0}x to {1}x...".format(i_factor, f_factor))
+            end = inpt_validate(end, 'beatsec').to_samps()
+        print("  sliding stretch, from factor {0:.4f}x to {1:.4f}x...".format(i_factor, f_factor))
         beginning = self.arr[:start]
 
         middle = []
         factor_count = 0
         factor = i_factor
-        delta_factor = (f_factor - i_factor) / (end - start)
+        delta_factor = (f_factor - i_factor) / ind(end - start)
         for i in self.arr[start:end]:
             factor_count += factor
             for _ in range(int(factor_count)):
@@ -572,8 +579,8 @@ class Recording(RelativismPublicObject):
             before = " before"
         else:
             before = ""
-        print("  extending by {0} beats/seconds{1}...".format(length, before))
-        silence = np.zeros( shape=(int(self.rate * length), 2) )
+        print("  extending by {0}{1}...".format(length, before))
+        silence = np.zeros( shape=(ind(self.rate * length), 2) )
         if placement == "b":
             self.arr = np.vstack((silence, self.arr))
         else:
@@ -630,22 +637,23 @@ class Recording(RelativismPublicObject):
         desc: trim to only contain audio between <left> and <right>
         args:
             left: beat/second; 0, 5;
-            [right: beat/second. defaults to end; 10, 15;]
+            [right: beat/second. defaults to end; 10]
         """
         left = inpt_validate(left, 'beatsec')
         if right is None:
-            print("  trimming first {0} beats/seconds".format(left))
+            print("  trimming first {0}".format(left))
             right = self.size_samps()
         else:
             right = inpt_validate(right, 'beatsec')
-            print("  trimming everything outside {0} to {1} beats/seconds".format(left, right))
+            print("  trimming everything outside {0} to {1}".format(left, right))
+        left, right = left.to_secs(), right.to_secs()
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
             if not inpt("y-n"):
                 return
             self.arr = np.empty(shape=(0,2))
         else:
-            self.arr = self.arr[int(left * self.rate) : int(right * self.rate)]  
+            self.arr = self.arr[ind(left * self.rate) : ind(right * self.rate)]  
 
 
     @public_process
@@ -658,15 +666,16 @@ class Recording(RelativismPublicObject):
             [start: beat/second to begin. defaults 0]
         """
         seconds = inpt_validate(dur, 'beatsec')
-        start = inpt_validate(start, 'beatsec')
-        print("  Fading in {0} beats/seconds starting at {1} beats/seconds...".format(seconds, start))
-        length = int(self.rate * seconds)
+        start = ind(inpt_validate(start, 'beatsec'))
+        print("  fading in {0} starting at {1}...".format(seconds, start))
+        length = ind(self.rate * seconds)
         for i in range(length):
             try:
                 self.arr[i + start][0] *= i / length
                 self.arr[i + start][1] *= i / length
             except IndexError:
-                pass
+                if i + start >= 0:
+                    return
 
 
     @public_process
@@ -681,11 +690,11 @@ class Recording(RelativismPublicObject):
         if end is None:
             end = self.size_secs()
         else:
-            end = Conversion.secs(end)
-        seconds = Conversion.secs(dur)
-        print("  Fading out {0} seconds ending at {1} seconds...".format(seconds, end))
-        length = int(self.rate * seconds)
-        for i in range(int(end) - length, int(end)):
+            end = inpt_validate(end, "beatsec")
+        seconds = inpt_validate(dur, "beatsec")
+        print("  Fading out {0} ending at {1}...".format(seconds, end))
+        length = ind(self.rate * seconds)
+        for i in range(ind(end) - length, ind(end)):
             try:
                 self.arr[i][0] *= (length - i) / length
                 self.arr[i][1] *= (length - i) / length

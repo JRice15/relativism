@@ -49,10 +49,10 @@ class Generator:
             dur = RelTime.valid_beatsec(dur).samps()
             amp = inpt_validate(amp, 'flt', allowed=[0, 2])
             arr = BaseGenerator.wave(dur, freq.get_period(rate), shift=0, amp=amp)
-            source_block = ["generator", sys._getframe().f_code.co_name,
-                            "note", freq,
-                            "duration", dur,
-                            "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name,
+                            "note": freq,
+                            "duration": dur,
+                            "amplitude": amp}
             return Recording(array=arr, source=source_block, rate=rate, name=name)
 
         @staticmethod
@@ -71,10 +71,10 @@ class Generator:
             arr = period_arr * int(freq * dur)
             arr = arr[:int(rate * dur)]
             arr = [[i, i] for i in arr]
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                            "frequency", note,
-                            "duration", dur,
-                            "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "frequency": note,
+                            "duration": dur,
+                            "amplitude": amp}
             return Recording(array=arr, source=source_block, rate=rate, name=name)
 
         @staticmethod
@@ -99,10 +99,10 @@ class Generator:
                     delta *= -1
             arr = period_arr * int(freq * dur * 1.1)
             arr = arr[:int(rate * dur)]
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                            "frequency", freq,
-                            "duration", dur,
-                            "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "frequency": freq,
+                            "duration": dur,
+                            "amplitude": amp}
             return Recording(array=arr, source=source_block, rate=rate, name=name)
 
         @staticmethod
@@ -125,10 +125,10 @@ class Generator:
                 val += delta
                 if abs(val) > (amp + 0.001):
                     delta *= -1
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                            "frequency", freq,
-                            "duration", dur,
-                            "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "frequency": freq,
+                            "duration": dur,
+                            "amplitude": amp}
             return Recording(array=arr, source=source_block, rate=rate, name=name)
 
 
@@ -149,10 +149,10 @@ class Generator:
             for i in range(1, 5):
                 a.append(Generator.SimpleWave.square(note * (2 ** i), dur, amp=amp, name="synth tone"))
             rec = mix_multiple(*a)
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                            "frequency", freq,
-                            "duration", dur,
-                            "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "frequency": freq,
+                            "duration": dur,
+                            "amplitude": amp}
             rec.source = source_block
             return rec
 
@@ -164,11 +164,11 @@ class Generator:
             array = [
                 [amp, amp]
             ]
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                        "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "amplitude": amp}
             return Recording(
                 array=array,
-                source=source_block
+                source_block=source_block
             )
 
         @staticmethod
@@ -177,11 +177,11 @@ class Generator:
             for _ in range(300):
                 a = rd.random() * amp
                 array.append([a, a])
-            source_block = ["generator", sys._getframe().f_code.co_name, 
-                        "amplitude", amp]
+            source_block = {"generator": sys._getframe().f_code.co_name, 
+                            "amplitude": amp}
             return Recording(
                 array=array,
-                source=source_block
+                source_block=source_block
             )
 
 

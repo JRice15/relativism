@@ -125,21 +125,37 @@ class Units:
 
     @staticmethod
     def rate(val):
-        return Units.new(numerize(val), "samples/second")
+        try:
+            val.check("[sample_time]/[time]")
+            return val.to_rate()
+        except:
+            return Units.new(numerize(val), "samples/second")
 
     @staticmethod
     def bpm(val):
-        return Units.new(numerize(val), "beats/minute")
+        try:
+            val.check("[beat_time]/[time]")
+            return val
+        except:
+            return Units.new(numerize(val), "beats/minute")
 
     # BEATS/TIME
 
     @staticmethod
     def samps(val):
-        return Units.new(numerize(val), "samples")
+        try:
+            val.check("[sample_time]")
+            return val.to_samps()
+        except:
+            return Units.new(numerize(val), "samples")
 
     @staticmethod
     def secs(val):
-        return Units.new(numerize(val), "seconds")
+        try:
+            val.check("[beat_time]")
+            return val.to_secs()
+        except:
+            return Units.new(numerize(val), "seconds")
 
     @staticmethod
     def beats(beat_str):
@@ -147,11 +163,15 @@ class Units:
         must pass beat-string (b, 2qn, 5 eb, etc)
         """
         # already have beat-type in string
-        val = Units.new(beat_str)
-        if val.check("[beat_time]"):
+        try:
+            val.check("[beat_time]")
             return val
-        else:
-            raise ValueError("Invalid beat string, dimension was '{}'".format(val.dimensionality))
+        except:  
+            val = Units.new(beat_str)
+            if val.check("[beat_time]"):
+                return val
+            else:
+                raise ValueError("Invalid beat string, dimension was '{}'".format(val.dimensionality))
 
     @staticmethod
     def _get_beat_frac_tables():
@@ -210,12 +230,16 @@ class Units:
     # FREQUENCY
     @staticmethod
     def freq(val):
-        return RelFreq(float(val))
+        if isinstance(val, PitchUnits):
+            return val.to_freq()
+        return RelFreq(numerize(val))
     
     @staticmethod
     def note(val):
+        if isinstance(val, PitchUnits):
+            return val.to_note()
         return RelNote(val)
-
+        
     # Misc Makers
 
     @staticmethod
@@ -240,6 +264,14 @@ class UnitOperations:
             return value.to('samples')
 
     @staticmethod
+    def inverse_samps(value, bpm_context=None):
+        """
+        convert to 1 / samples
+        """
+        with Units.bpm_convert_context(bpm_context):
+            return (1 / (1 / value).to_samps())
+
+    @staticmethod
     def secs(value, bpm_context=None):
         """
         convert to secs, with optional bpm_context
@@ -262,7 +294,13 @@ class UnitOperations:
         """
         return Units.new(int(value.magnitude), value.units)
 
-
+    @staticmethod
+    def rate(value, bpm_context=None):
+        """
+        convert to samples/sec, with optional bpm_context
+        """
+        with Units.bpm_convert_context(bpm_context):
+            return value.to("samples/sec")
 
 """
 hacky method creation by aliasing
@@ -273,12 +311,29 @@ hacky method creation by aliasing
 Units._reg.Quantity.to_samps = UnitOperations.samps
 Units._reg.Quantity.to_secs = UnitOperations.secs
 Units._reg.Quantity.to_beats = UnitOperations.beats
+Units._reg.Quantity.to_invsamps = UnitOperations.inverse_samps
+Units._reg.Quantity.to_rate = UnitOperations.rate
 
 # base units alias
 Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units
 
-# round
+# truncating and int()
 Units._reg.Quantity.trunc = UnitOperations.trunc
+
+# indexing function and aliasing
+def ind(value):
+    """
+    get magnitude of sample value for indexing
+    """
+    try:
+        return int(value.to_samps().magnitude)
+    except:
+        raise TypeError("Value to be used as an index could not converted to samples")
+
+
+Units._reg.Quantity.__index__ = ind
+
+
 
 # init
 Units.setup()

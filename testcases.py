@@ -1,3 +1,11 @@
+"""
+
+set FULLREC to true to test all Recording public processes
+
+
+"""
+
+
 import unittest
 from unittest.mock import patch
 
@@ -6,6 +14,10 @@ from input_processing import *
 from relativism import *
 from project import *
 
+
+
+global FULLREC
+FULLREC = False
 
 
 
@@ -31,10 +43,16 @@ class TestCases(unittest.TestCase):
         self.assertEqual(samps.to_beats(), Units.beats("2b"))
         self.assertEqual(samps.to_secs().to_beats().to_samps(), samps)
 
-        # Quantity.trunc
-        samps *= 3.22134567
-        self.assertEqual(samps.trunc().magnitude % 1, 0)
-        self.assertEqual(samps.to_secs().trunc().magnitude, 3)
+        self.assertEqual(Units.beats("6b"), Units.beats("12hb"))
+        self.assertNotEqual(Units.beats("4b"), Units.new("8.0000001hb"))
+
+        mult = Units.rate(44100/2) * Units.secs(0.2)
+        made = Units.secs(0.1).to_samps()
+        self.assertEqual(made, mult)
+
+        a = Units.rate(44100)
+        b = Units.rate(a)
+        self.assertEqual(a, b)
 
         # beat and time addition and conversion
         beats = Units.beats("4b")
@@ -49,12 +67,19 @@ class TestCases(unittest.TestCase):
 
         self.assertEqual(Units.freq(44100 / 4).get_period(), Units.samps(4))
 
+        # Quantity.trunc
+        samps *= 3.22134567
+        self.assertEqual(samps.trunc().magnitude % 1, 0)
+        self.assertEqual(samps.to_secs().trunc().magnitude, 3)
 
         # percent
         a = Units.pcnt("20")
         b = a * Units.secs(4)
         self.assertEqual(b, Units.secs(0.8))
 
+        # ind() func
+        a = Units.rate("200") * Units.new(2, "second") * Units.new("10 percent")
+        self.assertEqual(ind(a), 40)
 
 
     def test_input_processing(self):
@@ -67,6 +92,22 @@ class TestCases(unittest.TestCase):
 
         with test_input_call(correct_input="L"):
             self.assertEqual(inpt_validate("G", "letter", allowed="MLK"), "l")
+
+        self.assertEqual(inpt_validate("42.8b", "beatsec"), Units.beats("42.8b"))
+        self.assertEqual(inpt_validate("42.8", "beatsec"), Units.secs(42.8))
+
+
+    def test_recording(self):
+
+        if FULLREC:
+            with suppress_output():
+                obj = Recording(source="testcases/soundvision.wav", name="test-soundvision")
+            self.assertEqual(obj.rate, Units.rate("44100"))
+            methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
+
+            for m in methods:
+                args = m.get_random_defaults()
+                m.method_func(*args)
 
 
 
