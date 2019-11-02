@@ -8,15 +8,17 @@ from object_data import *
 
 class ControllerMarker(RelativismObject):
 
-    def __init__(self, sample_ind, beatsec, value, change_type):
-        self.sample_ind = sample_ind
+    def __init__(self, beatsec, value, change_type):
         self.beatsec = beatsec
         self.value = value
         self.change_type = change_type
 
-
     def __repr__(self):
         return "{0}: {1} ({2} change)".format(self.beatsec, self.value, self.change_type)
+
+
+    def samps(self):
+        return self.beatsec.to_samps()
 
 
 class Controller(RelativismObject, abc.ABC):
@@ -45,20 +47,21 @@ class Controller(RelativismObject, abc.ABC):
     def __init__(self, rate, _type):
         self.rate = rate
         self.type = _type
-        self.markers = {} # key: samps; value: ControllerNode
-    
+        self.beat_markers = {} # beats (base units only) quant: ControllerNode
+        self.sec_markers = {} # secs: ControllerNode
 
     def display_markers(self):
         info_title("Controller for {0}".format(self.type))
-        if len(self.markers) == 0:
+        if len(self.beat_markers) == 0 and len(self.sec_markers) == 0:
             info_list("(empty)")
-        for i in sorted(self.markers):
-            info_list(self.markers[i])
+        for i in sorted(self.beat_markers):
+            info_list(self.beat_markers[i])
+        for i in sorted(self.sec_markers):
+            info_list(self.sec_markers[i])
 
     def plot(self):
         ind, val = self.generate()
         channel = np.asarray(list(zip(ind, val)))
-        print(channel)
         rel_plot(
             left_or_mono=channel,
             start=0,
@@ -122,7 +125,6 @@ class Controller(RelativismObject, abc.ABC):
         # while i < len(markers):
         #     output = np.concatenate
 
-
     @abc.abstractmethod
     def apply(self, rec_arr):
         """
@@ -164,7 +166,7 @@ class Controller(RelativismObject, abc.ABC):
                 except IndexError:
                     p("Choose a beat/sec for this marker to occur at")
                     beatsec = inpt('beat')
-                sample_ind = samps(beatsec, self.rate)
+                sample_ind = beatsec
 
                 if edit_type in self.valid_edit_types['del']:
                     try:
@@ -216,7 +218,6 @@ class Controller(RelativismObject, abc.ABC):
             except Cancel:
                 pass
         
-
 
     def get_help(self):
         pass

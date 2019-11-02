@@ -96,9 +96,9 @@ class Recording(RelativismPublicObject):
         self.arr = np.asarray(array)
         self.parent = parent
         self.pan_val = pan_val
-        self.command_line_init()
+        # self.command_line_init()
         if mode in ('read', 'file', 'read_file'):
-            self.read_file()
+            self.read_file(file)
         elif mode in ('record', 'record_live'):
             self.record_live()
         elif mode is None:
@@ -111,22 +111,27 @@ class Recording(RelativismPublicObject):
         #     self.save(silent=True)
 
 
-    def command_line_init(self):
-        """
-        set source file from command line
-        """
 
-        indexes_to_del = []
-        for i in range(1, len(sys.argv)):
-            val = sys.argv[i].lower().strip()
-            if re.fullmatch(r"^file=.+", val) or re.fullmatch(r"^f=.+", val):
-                self.source = re.sub(r".+=", "", val)
-                indexes_to_del.append(i)
-            else:
-                print("  > Unrecognized command line flag: '" + val +"'. Ignoring...")
+    def get_path(self):
+        return self.parent.get_path() + self.name
 
-        for i in sorted(indexes_to_del, reverse=True):
-            del sys.argv[i]
+
+    # def command_line_init(self):
+    #     """
+    #     set source file from command line
+    #     """
+
+    #     indexes_to_del = []
+    #     for i in range(1, len(sys.argv)):
+    #         val = sys.argv[i].lower().strip()
+    #         if re.fullmatch(r"^file=.+", val) or re.fullmatch(r"^f=.+", val):
+    #             self.file = re.sub(r".+=", "", val)
+    #             indexes_to_del.append(i)
+    #         else:
+    #             print("  > Unrecognized command line flag: '" + val +"'. Ignoring...")
+
+    #     for i in sorted(indexes_to_del, reverse=True):
+    #         del sys.argv[i]
 
 
     def init_mode(self):
@@ -184,49 +189,45 @@ class Recording(RelativismPublicObject):
         ]
 
 
-    def read_file(self):
+    def read_file(self, file=None):
         """
         reads files for recording object init
         takes multiple formats (via PyDub and Soundfile)
         updates self.source, self.arr, self.rate
         """
         section_head("Reading file")
-        source = self.source
-        if source is None:
+        if file is None:
             print("  Choose an input sound file...")
             time.sleep(1)
             with suppress_output():
                 root = tk.Tk()
                 root.withdraw()
                 root.update()
-                source = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
+                file = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
                 root.update()
                 root.destroy()
-            if source == "":
+            if file == "":
                 raise Cancel
         # Handling file types
         info_block("reading...")
         t1 = time.time()
-        if source[-3:] == "wav":
-            file = source
-        else:
+        filename = file.split('/')[-1]
+        if file[-3:] != "wav":
             try:
-                not_wav = pd.from_file(source, source[-3:])
+                not_wav = pd.from_file(file, file[-3:])
                 not_wav.export(".temp_soundfile.wav", format="wav")
                 file = ".temp_soundfile.wav"
             except FileNotFoundError:
-                print("  > unable to find file '{0}'".format(source))
+                print("  > unable to find file '{0}'".format(filename))
                 print("  > make sure to include .wav/.mp3/etc extension")
-                self.source = None
                 return self.read_file()
-        self.source = ["file", source]
+        self.source = ["file", file]
         # Reading and Processing File
         try:
             self.arr, rate = sf.read(file)
             self.rate = Units.rate(rate)
         except RuntimeError:
-            print("  > unable to find or read '{0}'. Is that the correct extension?".format(source))
-            self.source = None
+            print("  > unable to find or read '{0}'. Is that the correct extension?".format(filename))
             return self.read_file()
         try:
             os.remove(".temp_soundfile.wav")
@@ -236,7 +237,7 @@ class Recording(RelativismPublicObject):
             self.arr = NpOps.stereoify(self.arr)
         t2 = time.time()
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
-            source.split('/')[-1], t2-t1))
+            filename, t2-t1))
 
 
     # Saving #
@@ -251,7 +252,7 @@ class Recording(RelativismPublicObject):
     def post_process(self, process):
         """
         """
-        if self[process].is_edit_rec(process):
+        if self.get_method(process).is_edit_rec():
             self.save(process=process, silent=True)
 
 
@@ -594,8 +595,7 @@ class Recording(RelativismPublicObject):
         desc: swap stereo channels
         """
         print("  swapping stereo channels...")
-        self.arr[:,[0, 1]] = self.arr[:,[1, 0]]
-
+        self.arr = NpOps.swap_channels(self.arr)
 
     @public_process
     def pan(self, amount):

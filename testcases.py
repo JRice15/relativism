@@ -59,6 +59,8 @@ class TestCases(unittest.TestCase):
         beats += Units.secs(1.3).to_beats()
         self.assertEqual(beats, Units.new("13.2b") / 2)
 
+        self.assertEqual(Units.beats("12.2 qb").beat_repr(), "12.2qb")
+
         # freq and note conversion and comparison
         a3note = Units.note("a3")
         a4 = a3note.shift_octaves(1)

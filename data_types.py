@@ -302,6 +302,16 @@ class UnitOperations:
         with Units.bpm_convert_context(bpm_context):
             return value.to("samples/sec")
 
+    @staticmethod
+    def beat_repr(value):
+        if value.check('[beat_time]'):
+            for i in Units._get_beat_frac_tables():
+                if i[2] == str(value.units):
+                    return "{0}{1}".format(value.magnitude, i[0])
+        else:
+            raise TypeError("Non-beat argument for beat_repr")
+
+
 """
 hacky method creation by aliasing
 """
@@ -313,6 +323,7 @@ Units._reg.Quantity.to_secs = UnitOperations.secs
 Units._reg.Quantity.to_beats = UnitOperations.beats
 Units._reg.Quantity.to_invsamps = UnitOperations.inverse_samps
 Units._reg.Quantity.to_rate = UnitOperations.rate
+Units._reg.Quantity.beat_repr = UnitOperations.beat_repr
 
 # base units alias
 Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units

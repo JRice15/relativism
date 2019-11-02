@@ -119,6 +119,11 @@ class NpOps:
         return np.vstack((left, right)).T
 
     @staticmethod
+    def swap_channels(arr):
+        arr[:,[0, 1]] = arr[:,[1, 0]]
+        return arr
+
+    @staticmethod
     def sort(array, column=0, high_to_low=True):
         """
         sort by column. must set array variable equal to this call 
