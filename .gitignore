@@ -2,7 +2,14 @@ __pycache__
 *.wav
 *.m4a
 *.mp3
-!testcases/*
 .DS_Store
 .vscode/
+
+!testcases/*
+
 autodrummer/
+
+TODO
+*.db
+test.py
+notes.md
