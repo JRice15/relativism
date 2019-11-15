@@ -1,10 +1,10 @@
-from recording_obj import *
-from integraters import *
-from generators import *
-from name_and_path import *
-from relativism import Relativism
-from object_data import *
-from controller import *
+from src.recording_obj import *
+from src.integraters import *
+from src.generators import *
+from src.name_and_path import *
+from src.relativism import Relativism
+from src.object_data import *
+from src.controller import *
 
 """
 

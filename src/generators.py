@@ -1,5 +1,5 @@
-from recording_obj import *
-from integraters import *
+from src.recording_obj import *
+from src.integraters import *
 
 
 

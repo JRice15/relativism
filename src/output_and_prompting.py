@@ -1,5 +1,5 @@
 # from relativism import *
-from utility import *
+from src.utility import *
 
 def p(message, indent=2, o="", h=False, start=""):
     """

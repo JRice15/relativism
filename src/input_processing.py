@@ -1,10 +1,11 @@
-from data_types import *
-from errors import *
 import re
 import time
-from output_and_prompting import *
-from utility import *
-from relativism import *
+
+from src.data_types import *
+from src.errors import *
+from src.output_and_prompting import *
+from src.utility import *
+from src.relativism import *
 
 """ clean input """
 

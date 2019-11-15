@@ -1,7 +1,8 @@
 import re
-from output_and_prompting import *
 import random as rd
 import json
+
+from src.output_and_prompting import *
 
 
 #decorator

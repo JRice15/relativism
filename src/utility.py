@@ -1,4 +1,3 @@
-from relativism import *
 from contextlib import contextmanager
 import sys
 import os
@@ -9,6 +8,9 @@ import numpy as np
 import pylab
 import matplotlib.pyplot as plt
 import re
+
+from src.relativism import *
+
 
 
 @contextmanager

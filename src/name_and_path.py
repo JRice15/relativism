@@ -1,12 +1,13 @@
 import os
-from errors import *
 import sys
 import re
 import tkinter as tk
 from tkinter import filedialog
 import time
-from input_processing import *
-from output_and_prompting import *
+
+from src.errors import *
+from src.input_processing import *
+from src.output_and_prompting import *
 
 
 """ Opening projects & samplers """

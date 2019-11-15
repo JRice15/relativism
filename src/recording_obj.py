@@ -13,16 +13,16 @@ import sounddevice as sd
 import soundfile as sf
 from pydub import AudioSegment as pd
 
-from errors import *
-from name_and_path import *
-from process import *
-from utility import *
-from input_processing import *
-from output_and_prompting import *
-from object_data import *
-from relativism import *
+from src.errors import *
+from src.name_and_path import *
+from src.process import *
+from src.utility import *
+from src.input_processing import *
+from src.output_and_prompting import *
+from src.object_data import *
+from src.relativism import *
 
-from analysis import *
+from src.analysis import *
 
 
 """

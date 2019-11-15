@@ -1,6 +1,7 @@
-from name_and_path import *
 import random as rd
-from object_data  import *
+
+from src.object_data  import *
+from src.name_and_path import *
 
 
 def process(obj):

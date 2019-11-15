@@ -1,15 +1,27 @@
+# background stuff
 __pycache__
-*.wav
-*.m4a
-*.mp3
 .DS_Store
 .vscode/
 
-!testcases/*
-
-autodrummer/
-
-TODO
+# app stuff
 *.db
+
+# compiled files
+*.out
+
+# raw audio files
+*.wav
+*.m4a
+*.mp3
+
+# include testcase audio files
+!testcases/*.wav
+
+# extensions
+ext/
+
+# misc personal files
+TODO
 test.py
 notes.md
+misc/

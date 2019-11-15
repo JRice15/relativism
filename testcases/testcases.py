@@ -9,10 +9,12 @@ set FULLREC to true to test all Recording public processes
 import unittest
 from unittest.mock import patch
 
-from data_types import *
-from input_processing import *
-from relativism import *
-from project import *
+
+
+from src.data_types import *
+from src.input_processing import *
+from src.relativism import *
+from src.project import *
 
 
 

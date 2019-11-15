@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
-from input_processing import *
-from output_and_prompting import *
 import numpy as np
 from os.path import dirname
 import math
+
+from src.input_processing import *
+from src.output_and_prompting import *
 
 
 class Analysis():

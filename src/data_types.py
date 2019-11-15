@@ -12,14 +12,11 @@ in Project.get_bpm()
 
 
 import pint
-from errors import *
-from utility import *
-
 import math
 import re
 
-
-
+from src.errors import *
+from src.utility import *
 
 
 def RelUnit(number, type_):

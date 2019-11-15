@@ -1,6 +1,6 @@
-from recording_obj import *
-from generators import *
-from output_and_prompting import *
+from src.recording_obj import *
+from src.generators import *
+from src.output_and_prompting import *
 
 class Distortion:
 

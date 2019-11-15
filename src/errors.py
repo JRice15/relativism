@@ -1,4 +1,3 @@
-""" SIGNAL ERRORS """
 
 
 class NameExistsError(Exception):
@@ -6,7 +5,6 @@ class NameExistsError(Exception):
     chosen name already exists
     """
     pass
-
 
 class NameDoesntExistError(Exception):
     """

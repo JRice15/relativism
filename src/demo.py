@@ -1,4 +1,5 @@
-from recording_obj import *
+from src.recording_obj import *
+from src.process import *
 
 
 if __name__ == "__main__":

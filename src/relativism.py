@@ -2,9 +2,10 @@
 root relativism
 """
 import re
-# from recording_obj import *
-# from input_processing import *
-# from output_and_prompting import *
+
+from src.recording_obj import *
+from src.input_processing import *
+from src.output_and_prompting import *
 
 
 class Relativism():

@@ -1,9 +1,10 @@
-from output_and_prompting import *
-from input_processing import *
 import abc
 from scipy.interpolate import interp1d
-from utility import *
-from object_data import *
+
+from src.output_and_prompting import *
+from src.input_processing import *
+from src.utility import *
+from src.object_data import *
 
 
 class ControllerMarker(RelativismObject):
@@ -231,7 +232,7 @@ class TestController(Controller):
 
     
     def validate_value(self, value):
-        return inpt_validate(value, 'float', allowed=[0, 2])
+        return inpt_validate(value, 'float', allowed=[0, 10])
     
 
     def apply(self, rec_arr):
