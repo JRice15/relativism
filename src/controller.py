@@ -7,6 +7,56 @@ from src.utility import *
 from src.object_data import *
 
 
+
+
+# testing
+
+def linear(start, startval, end, endval):
+    delta = (endval - startval) / (end - start)
+    return [startval + (delta * i) for i in range(end - start)]
+
+
+def smooth(start, startval, dstart, end, endval, dend):
+    prec = 10 # precision
+    full = []
+    frac_start = start
+    frac_sval = startval
+    frac_endval = 0
+    dfrac = dstart
+    for i in range(prec):
+        dfrac = (dfrac + dend) / 2
+        print(dfrac)
+        frac_end = end - ((prec - i - 1) * (end - start) // prec)
+        frac_endval = frac_sval + dfrac * (frac_end - frac_start)
+        full += linear(frac_start, frac_sval, frac_end, frac_endval)
+        frac_start = frac_end
+        frac_sval = frac_endval
+    return (np.array(full) - startval) * (endval - startval) / (frac_endval - startval) + startval
+
+
+lin = linear(100, 1, 120, 2)
+print(lin)
+
+plt.plot(lin)
+
+sm = smooth(100, 1, -20, 120, 2, 1)
+print(sm)
+
+plt.plot(sm)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 class ControllerMarker(RelativismObject):
 
     def __init__(self, beatsec, value, change_type):
@@ -45,14 +95,14 @@ class Controller(RelativismObject, abc.ABC):
         'move': 'move <current beat/sec> <new beat/sec>'
     }
 
-    def __init__(self, rate, _type):
+    def __init__(self, rate, reltype):
         self.rate = rate
-        self.type = _type
+        self.reltype = reltype
         self.beat_markers = {} # beats (base units only) quant: ControllerNode
         self.sec_markers = {} # secs: ControllerNode
 
     def display_markers(self):
-        info_title("Controller for {0}".format(self.type))
+        info_title("Controller for {0}".format(self.reltype))
         if len(self.beat_markers) == 0 and len(self.sec_markers) == 0:
             info_list("(empty)")
         for i in sorted(self.beat_markers):

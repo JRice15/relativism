@@ -13,7 +13,7 @@ from src.output_and_prompting import *
 """ Opening projects & samplers """
 
 
-class MakeRelativismObject():
+class ObjectFactory():
     """
     open_type: class to create: "project", "sampler", "recording";
     open_mode: "o" (open) or "c" (create)

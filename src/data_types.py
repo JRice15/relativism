@@ -14,6 +14,7 @@ in Project.get_bpm()
 import pint
 import math
 import re
+import json
 
 from src.errors import *
 from src.utility import *
@@ -253,7 +254,7 @@ class UnitOperations:
     """
 
     @staticmethod
-    def samps(value, bpm_context=None):
+    def to_samps(value, bpm_context=None):
         """
         convert to samples, with optional bpm_context
         """
@@ -261,15 +262,15 @@ class UnitOperations:
             return value.to('samples')
 
     @staticmethod
-    def inverse_samps(value, bpm_context=None):
+    def to_invsamps(value, bpm_context=None):
         """
-        convert to 1 / samples
+        convert to inverse samples, 1 / samples
         """
         with Units.bpm_convert_context(bpm_context):
             return (1 / (1 / value).to_samps())
 
     @staticmethod
-    def secs(value, bpm_context=None):
+    def to_secs(value, bpm_context=None):
         """
         convert to secs, with optional bpm_context
         """
@@ -277,12 +278,20 @@ class UnitOperations:
             return value.to('seconds')
 
     @staticmethod
-    def beats(value, bpm_context=None):
+    def to_beats(value, bpm_context=None):
         """
         convert to beats, with optional bpm_context
         """
         with Units.bpm_convert_context(bpm_context):
             return value.to('beats')
+
+    @staticmethod
+    def to_rate(value, bpm_context=None):
+        """
+        convert to samples/sec, with optional bpm_context
+        """
+        with Units.bpm_convert_context(bpm_context):
+            return value.to("samples/sec")
 
     @staticmethod
     def trunc(value):
@@ -291,13 +300,6 @@ class UnitOperations:
         """
         return Units.new(int(value.magnitude), value.units)
 
-    @staticmethod
-    def rate(value, bpm_context=None):
-        """
-        convert to samples/sec, with optional bpm_context
-        """
-        with Units.bpm_convert_context(bpm_context):
-            return value.to("samples/sec")
 
     @staticmethod
     def beat_repr(value):
@@ -313,13 +315,12 @@ class UnitOperations:
 hacky method creation by aliasing
 """
 
-
-# common unit alias methods for Quantity
-Units._reg.Quantity.to_samps = UnitOperations.samps
-Units._reg.Quantity.to_secs = UnitOperations.secs
-Units._reg.Quantity.to_beats = UnitOperations.beats
-Units._reg.Quantity.to_invsamps = UnitOperations.inverse_samps
-Units._reg.Quantity.to_rate = UnitOperations.rate
+# conversion
+Units._reg.Quantity.to_samps = UnitOperations.to_samps
+Units._reg.Quantity.to_secs = UnitOperations.to_secs
+Units._reg.Quantity.to_beats = UnitOperations.to_beats
+Units._reg.Quantity.to_invsamps = UnitOperations.to_invsamps
+Units._reg.Quantity.to_rate = UnitOperations.to_rate
 Units._reg.Quantity.beat_repr = UnitOperations.beat_repr
 
 # base units alias
@@ -337,7 +338,6 @@ def ind(value):
         return int(value.to_samps().magnitude)
     except:
         raise TypeError("Value to be used as an index could not converted to samples")
-
 
 Units._reg.Quantity.__index__ = ind
 
@@ -695,6 +695,26 @@ class RelNote(PitchUnits):
 
 
 
+
+
+class RelTypeEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, Units._reg.Quantity):
+            return "<PINTQUANT>" + str(obj)
+        return json.JSONEncoder.default(self, obj)
+
+
+def RelTypeDecoder(dct):
+
+    print(dct, type(dct))
+    for k,v in dct.items():
+
+        if "<PINTQUANT>" in str(v):
+            v = re.sub("<PINTQUANT>", "", v)
+            dct[k] = Units.new(v)
+
+    return dct
 
 
 

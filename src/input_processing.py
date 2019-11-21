@@ -1,3 +1,9 @@
+""" 
+cleaning input
+    importer must import relativism
+"""
+
+
 import re
 import time
 
@@ -5,9 +11,7 @@ from src.data_types import *
 from src.errors import *
 from src.output_and_prompting import *
 from src.utility import *
-from src.relativism import *
 
-""" clean input """
 
 
 def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
@@ -59,16 +63,16 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
         val = val.split()
         for i in range(len(val)):
             if split_modes is None:
-                t_mode = None
+                raise ValueError("Must supply a mode to inpt, but recieved None for split_modes")
             else:
                 if isinstance(split_modes, str):
-                    t_mode = split_modes
+                    this_mode = split_modes
                 else:
                     try:
-                        t_mode = split_modes[i]
+                        this_mode = split_modes[i]
                     except IndexError:
-                        t_mode = split_modes[-1]
-            val[i] = inpt_validate(val[i], t_mode)
+                        this_mode = split_modes[-1]
+            val[i] = inpt_validate(val[i], this_mode)
     else:
         val = inpt_validate(val, mode, allowed)
     return val
@@ -93,7 +97,10 @@ def inpt_validate(val, mode, allowed=None):
         letter: one letter, str of allowed
         arg: for process arg entry
     """
-    if mode == "none":
+    if mode is None:
+        raise ValueError("Must supply a mode to inpt, but recieved None")
+
+    elif mode == "none":
         return val
 
     elif mode in ("standard", 'stnd'):
@@ -232,7 +239,7 @@ def inpt_validate(val, mode, allowed=None):
             val = inpt(mode)
 
     else:
-        raise UnexpectedIssue("Unknown process mode")
+        raise UnexpectedIssue("Unknown mode for inpt_validate")
 
     return val
 

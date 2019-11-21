@@ -33,15 +33,15 @@ class Sample(Recording):
     """
 
     # Initialization #
-    def __init__(self, array=None, source=None, name=None, rate=44100, \
+    def __init__(self, array=None, source_block=None, name=None, rate=44100, \
             parent=None):
-        super().__init__(array=array, source=source, name=name, rate=rate,
-            parent=parent, type_='Sample')
+        super().__init__(array=array, source_block=source_block, name=name, rate=rate,
+            parent=parent, reltype='Sample')
 
     def __repr__(self):
         string = "'{0}'. Sample object from".format(self.name)
-        for ind in range(len(self.source) // 2):
-            string += " {0}: {1};".format(self.source[2 * ind], self.source[2 * ind + 1])
+        for ind in range(len(self.source_block) // 2):
+            string += " {0}: {1};".format(self.source_block[2 * ind], self.source_block[2 * ind + 1])
         return string
 
     @public_process
@@ -50,7 +50,7 @@ class Sample(Recording):
 
     @public_process
     def duplicate(self):
-        new_sample = Sample(array=self.arr, source=self.source, rate=self.rate, \
+        new_sample = Sample(array=self.arr, source=self.source_block, rate=self.rate, \
             parent=self.parent)
         new_sample.add_to_sampler(self.parent)
 
@@ -63,21 +63,21 @@ class Sample(Recording):
             self.parent.save_child__(self)
         except (AttributeError, NotImplementedError):
             err_mess("Parent {0} '{1}' has not implemented save feature".format(
-                self.parent.type, self.parent.get_name()))
+                self.parent.reltype, self.parent.get_name()))
 
 
 class SampleGroup(RelativismPublicObject):
 
     def __init__(self, name=None):
         super().__init__(self)
-        self.type = "Sample Group"
+        self.reltype = "Sample Group"
         self.rename()
         self.samples = {}
 
     @public_process
     def rename(self, name=None):
         if name is None:
-            p("Enter a name for this {0}".format(self.type))
+            p("Enter a name for this {0}".format(self.reltype))
             self.name = inpt('name')
         else:
             self.name = inpt_validate(name, 'name')
@@ -124,7 +124,7 @@ class Rhythm(RelativismPublicObject):
         self.done_init = False
         self.parent = parent
         self.sample = sample
-        self.type = 'Rhythm'
+        self.reltype = 'Rhythm'
         self.name = name
         if name is None:
             self.rename()
@@ -260,7 +260,7 @@ class Rhythm(RelativismPublicObject):
             self.parent.save_child__(self)
         except (AttributeError, NotImplementedError):
             info_block("Parent {0} '{1}' has not implemented save feature".format(
-                self.parent.type, self.parent.get_name()))
+                self.parent.reltype, self.parent.get_name()))
 
 
 class Active(RelativismPublicObject):
@@ -373,7 +373,7 @@ class Sampler(RelativismPublicObject):
     def __init__(self, name, directory, BPM=None):
         super().__init__()
         print("\n* Initializing sampler")
-        self.type = 'Sampler'
+        self.reltype = 'Sampler'
         self.directory = directory
         self.name = name
         self.smps = []
@@ -600,7 +600,7 @@ class Sampler(RelativismPublicObject):
         raise NotImplementedError
 
     def save_child(self, child):
-        filename = child.type.lower() + "_" + child.get_name() + ".rel-obj"
+        filename = child.reltype.lower() + "_" + child.get_name() + ".rel-obj"
         write_obj(child, filename, self.directory)
 
     @public_process

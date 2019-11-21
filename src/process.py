@@ -7,11 +7,11 @@ from src.name_and_path import *
 def process(obj):
     """
     process an object
-    'self.name()', 'self.type' required
+    'self.name()', 'self.reltype' required
     """
-    section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.type))
+    section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.reltype))
     while True:
-        p("What process to run on {0} '{1}'?".format(obj.type, obj.name), h=True, o="'o' to view process options")
+        p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), h=True, o="'o' to view process options")
         command = inpt('split', 'arg', help_callback=processes_help)
         if command == []:
             err_mess("No command entered")
@@ -20,13 +20,13 @@ def process(obj):
         elif command == ['']:
             err_mess("Only alphanumeric characters, spaces, and underscores are allowed")
             continue
-        elif command[0] in ("q", "e"):
-            info_block("Exiting processing of {0} '{1}'...".format(obj.type, obj.name))
+        elif command[0] == "q":
+            info_block("Exiting processing of {0} '{1}'...".format(obj.reltype, obj.name))
             raise Cancel(obj)
         elif command[0] in ("o", "options"):
             obj.show_processes()
         elif command[0] == "h":
-            pass # callback handled during inpt
+            pass # callback handled during inpt()
         else:
             while True:
                 process_exists = False
@@ -38,7 +38,7 @@ def process(obj):
                         method = obj.get_method(method_name).method_func
                         process_exists = True
                     except KeyError:
-                        raise AttributeError("{0} '{1}' has no process {2}".format(obj.type, obj.name, method_name))
+                        raise AttributeError("{0} '{1}' has no process {2}".format(obj.reltype, obj.name, method_name))
 
                     # pre process
                     try:
@@ -79,19 +79,19 @@ def process(obj):
 def process_complete_args(e, command, obj):
     err_mess("Wrong number of arguments: {0}".format(str(e)))
     info_title("Args for {0}: ".format(command[0]))
-    info_line(obj[command[0]].oneline_arg_list(), indent=6)
+    info_line(obj.get_method(command[0]).oneline_arg_list(), indent=6)
     # too many
     command_str = "\n      " + command[0] + " "
     if "were given" in str(e):
         p("Complete arguments", start=command_str)
-        new_args = inpt('split')
+        new_args = inpt('split', 'arg')
         return [command[0]] + new_args
     # not enough
     else:
         if len(command[1:]) > 0:
             command_str += " ".join(command[1:]) + " "
         p("Complete arguments", start=command_str)
-        new_args = inpt('split')
+        new_args = inpt('split', 'arg')
         return command + new_args
 
 
@@ -141,10 +141,10 @@ def process_error_handling(e, command, obj):
 def show_error(e):
     if not isinstance(e, Cancel):
         critical_err_mess(e.__class__.__name__ + ": " + str(e))
-        if Relativism.DEBUG:
-                p("Raise error? [y/n]")
-                if input().lower().strip() == 'y':
-                    raise e
+        if Relativism.debug():
+            p("Raise error? [y/n]")
+            if input().lower().strip() == 'y':
+                raise e
 
 
 def get_similar_methods(obj, partial):

@@ -53,7 +53,7 @@ class Generator:
                             "note": freq,
                             "duration": dur,
                             "amplitude": amp}
-            return Recording(array=arr, source=source_block, rate=rate, name=name)
+            return Recording(array=arr, source_block=source_block, rate=rate, name=name)
 
         @staticmethod
         def square(note, dur, amp=0.05, rate=44100, name=None):
@@ -75,7 +75,7 @@ class Generator:
                             "frequency": note,
                             "duration": dur,
                             "amplitude": amp}
-            return Recording(array=arr, source=source_block, rate=rate, name=name)
+            return Recording(array=arr, source_block=source_block, rate=rate, name=name)
 
         @staticmethod
         def triangle(freq, dur, amp=0.1, rate=44100, name=None):
@@ -103,7 +103,7 @@ class Generator:
                             "frequency": freq,
                             "duration": dur,
                             "amplitude": amp}
-            return Recording(array=arr, source=source_block, rate=rate, name=name)
+            return Recording(array=arr, source_block=source_block, rate=rate, name=name)
 
         @staticmethod
         def triangle_2(freq, dur, amp=0.1, rate=44100, name=None):
@@ -129,7 +129,7 @@ class Generator:
                             "frequency": freq,
                             "duration": dur,
                             "amplitude": amp}
-            return Recording(array=arr, source=source_block, rate=rate, name=name)
+            return Recording(array=arr, source_block=source_block, rate=rate, name=name)
 
 
     class Synth:
@@ -153,7 +153,7 @@ class Generator:
                             "frequency": freq,
                             "duration": dur,
                             "amplitude": amp}
-            rec.source = source_block
+            rec.source_block = source_block
             return rec
 
 

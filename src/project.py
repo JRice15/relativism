@@ -32,7 +32,7 @@ class Project:
         """
         Project._instance = self
         self.name = name
-        self.type = 'Project'
+        self.reltype = 'Project'
         self.dir = directory
         self.recs = {}
         self.rate = rate

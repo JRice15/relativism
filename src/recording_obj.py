@@ -14,14 +14,13 @@ import soundfile as sf
 from pydub import AudioSegment as pd
 
 from src.errors import *
-from src.name_and_path import *
+from src.object_data import *
 from src.process import *
 from src.utility import *
 from src.input_processing import *
 from src.output_and_prompting import *
 from src.object_data import *
 from src.relativism import *
-
 from src.analysis import *
 
 
@@ -53,85 +52,74 @@ class Recording(RelativismPublicObject):
     """
     Args:
         mode: "read", "record", or leave as None to use data passed in array
-        array: nparray for arr data, if mode is None
+        arr: np.array for arr data, if mode is None
         file: file to read from, for readfile mode
         source_block: info dict if rec is generated
         name: name of array (will prompt if not given)
-        rate: defaults to 
+        rate: defaults to 44100
+        parent:
+        hidden:
+        reltype:
+        pan_val:
 
     Attributes:
         type (str): 'Recording'
         arr (list or None): wav array, if none is set will be read from file
-        source (list): source information for where this recording came from
+        source_block (list): source_block information for where this recording came from
         name (str or None): name of this object, will be prompted if None
         rate (int): samples per second of this recording
         pan_val (float): number -1 (L) to 1 (R)
-        parent: pointer to parent Proj or Sample, if exists
-        recents: array of up to 5 recent arrays
+        parent: pointer to parent Proj or Sampler, if exists
+        recents: array of up to 5 recent arrs
     """
-
 
     # Initialization #
     def __init__(self, 
             mode=None,
-            array=None, 
+            arr=None, 
             file=None,
             source_block=None,
             name=None, 
             rate=44100,
             parent=None, 
             hidden=False, 
-            type_='Recording', 
+            reltype='Recording', 
             pan_val=0,
         ):
+
         super().__init__()
-        self.type = type_
+
+        self.reltype = reltype
         self.name = name
         if name is None:
             self.rename()
+
         if not hidden:
-            section_head("Initializing {0} '{1}'...".format(self.type, self.name))
+            section_head("Initializing {0} '{1}'...".format(self.reltype, self.name))
         self.rate = Units.rate(rate)
-        self.source = source_block
-        self.arr = np.asarray(array)
+        self.source_block = source_block
+        self.arr = np.asarray(arr)
         self.parent = parent
         self.pan_val = pan_val
+
         # self.command_line_init()
         if mode in ('read', 'file', 'read_file'):
             self.read_file(file)
         elif mode in ('record', 'record_live'):
             self.record_live()
         elif mode is None:
-            if array is None:
+            if arr is None:
                 self.init_mode()
         else:
             raise UnexpectedIssue("Unknown mode {0}".format(mode))
+
         self.recents = [] # for undoing
         # if not hidden:
         #     self.save(silent=True)
 
 
-
     def get_path(self):
         return self.parent.get_path() + self.name
-
-
-    # def command_line_init(self):
-    #     """
-    #     set source file from command line
-    #     """
-
-    #     indexes_to_del = []
-    #     for i in range(1, len(sys.argv)):
-    #         val = sys.argv[i].lower().strip()
-    #         if re.fullmatch(r"^file=.+", val) or re.fullmatch(r"^f=.+", val):
-    #             self.file = re.sub(r".+=", "", val)
-    #             indexes_to_del.append(i)
-    #         else:
-    #             print("  > Unrecognized command line flag: '" + val +"'. Ignoring...")
-
-    #     for i in sorted(indexes_to_del, reverse=True):
-    #         del sys.argv[i]
 
 
     def init_mode(self):
@@ -165,7 +153,7 @@ class Recording(RelativismPublicObject):
         section_head("Record mode")
         device_ind, device_name = sd_select_device()
         p("Enter recording duration (in seconds)")
-        record_time = inpt('float', allowed=[0, None])
+        record_time = inpt('beatsec')
         p('Choose sample rate to record at, in samples per second. Hit enter to use default 44100')
         rate = inpt('int', required=False)
         if rate == '':
@@ -174,17 +162,20 @@ class Recording(RelativismPublicObject):
         print("  Press Enter to begin recording, or 'q' to quit: ", end="")
         inpt("none", required=False)
         time.sleep(0.05)
-        section_head("Recording at input {0} ({1}) for {2} seconds".format(device_ind, \
+        section_head("Recording at input {0} ({1}) for {2}".format(device_ind, \
             device_name, record_time))
         sd.default.channels = 2
-        recording = sd.rec(ind(record_time * rate), rate, device=device_name)
+        recording = sd.rec(
+            ind(record_time * self.rate), 
+            self.rate.magnitude, 
+            device=device_name)
         sd.wait()
         info_block("Finished recording")
         self.arr = recording
         if len(self.arr.shape) < 2:
             transpose = self.arr.reshape(-1, 1)
             self.arr = np.hstack((transpose, transpose))
-        self.source = [
+        self.source_block = [
             'live recording', "input '{0}'".format(device_name)
         ]
 
@@ -221,7 +212,7 @@ class Recording(RelativismPublicObject):
                 print("  > unable to find file '{0}'".format(filename))
                 print("  > make sure to include .wav/.mp3/etc extension")
                 return self.read_file()
-        self.source = ["file", file]
+        self.source_block = ["file", file]
         # Reading and Processing File
         try:
             self.arr, rate = sf.read(file)
@@ -288,32 +279,16 @@ class Recording(RelativismPublicObject):
             directory = ""
         else:
             directory = self.parent.directory
-        self.write_audio(self.name, directory)
-        self.write_metadata()
+        self.write_audio(self.arr, self.rate, self.name, directory)
+        self.write_metadata(self.name)
 
 
-    def format_metadata(self):
-        attrs = {i:j for i, j in vars(self).items() if i not in vars(RelativismPublicObject()).keys()}
+    def parse_write_meta(self, attrs):
+        del attrs['method_data_by_category']
         del attrs['arr']
         del attrs['recents']
+        del attrs['names_to_del']
         return attrs
-
-
-    def load_metadata(self):
-        pass
-
-
-    def write_audio(self, outfile, directory=""):
-        """
-        silent write to wav
-        """
-        outfile = re.sub(r"\..*", ".wav", outfile)
-        if ".wav" not in outfile:
-            outfile += ".wav"
-        if directory != "" and directory[-1] != "/":
-            directory += '/'
-        fullpath = directory + outfile
-        sf.write(fullpath, self.arr, self.rate)
 
 
     @public_process
@@ -340,8 +315,8 @@ class Recording(RelativismPublicObject):
 
     # Info #
     def __repr__(self):
-        string = "'{0}'. {1} object from".format(self.name, self.type)
-        for key, val in self.source.items():
+        string = "'{0}'. {1} object from".format(self.name, self.reltype)
+        for key, val in self.source_block.items():
             string += " {0}: {1};".format(key, val)
         return string
 
@@ -352,10 +327,10 @@ class Recording(RelativismPublicObject):
         desc: display this objects data
         cat: info
         """
-        section_head("{0} '{1}'".format(self.type, self.name))
-        info_line("sourced from {0}: {1}".format(self.source[0], self.source[1]))
-        for ind in range(1, len(self.source) // 2):
-            print("    {0}: {1}".format(self.source[2 * ind], self.source[2 * ind + 1]))
+        section_head("{0} '{1}'".format(self.reltype, self.name))
+        info_line("sourced from {0}: {1}".format(self.source_block[0], self.source_block[1]))
+        for ind in range(1, len(self.source_block) // 2):
+            print("    {0}: {1}".format(self.source_block[2 * ind], self.source_block[2 * ind + 1]))
         info_line("parent: {0}".format(self.parent))
         info_line("rate: {0}".format(self.rate))
         info_line("size: {0:.4f}, {1:,}".format(self.size_secs(), self.size_samps()))
@@ -456,21 +431,25 @@ class Recording(RelativismPublicObject):
     def rename(self, name=None):
         """
         cat: meta
-        desc:
+        desc: rename (and resave) this object
         args:
             name: name for this object
         """
         if name is None:
-            p("Give this {0} a name".format(self.type))
+            p("Give this {0} a name".format(self.reltype))
             name = inpt("obj")
             info_block("Named '{0}'".format(name))
         else:
             name = inpt_validate(name, 'obj')
+        old_name = self.name
         self.name = name
         try:
             self.parent.validate_child_name(self)
         except AttributeError:
             pass
+        self.save()
+        os.remove(parse_path(old_name, self.directory) + ".relativism-obj")
+        os.remove(parse_path(old_name, self.directory) + ".wav")
 
 
     # Simple edit processes #
@@ -729,10 +708,10 @@ class Recording(RelativismPublicObject):
             self.parent.add_child(
                 Recording(
                     array=self.arr, 
-                    source=self.source, 
+                    source=self.source_block, 
                     rate=self.rate, 
                     parent=self.parent, 
-                    type_=self.type, 
+                    reltype=self.reltype, 
                     pan_val=self.pan_val
                 )
             )
@@ -740,7 +719,7 @@ class Recording(RelativismPublicObject):
             err_mess("has no parent to duplicate to!")
 
 
-def sd_select_device(dev_type='in'):
+def sd_select_device(device_type='in'):
     """
     type: in or out
     returns [index, name] of device
@@ -756,16 +735,36 @@ def sd_select_device(dev_type='in'):
         except IndexError:
             err_mess("No device with index {0}".format(device_ind))
             continue
-        if dev_type in ('in', 'input'):
+        if device_type in ('in', 'input'):
             if device['max_input_channels'] < 1:
                 err_mess("Device cannot be used as an input")
                 continue
-        elif dev_type in ('out', 'output'):
+        elif device_type in ('out', 'output'):
             if device['max_output_channels'] < 1:
                 err_mess("Device cannot be used as an output")
         device_name = device['name']
         info_block("'{0}' selected".format(device_name))
         return [device_ind, device_name]
+
+
+
+    # def command_line_init(self):
+    #     """
+    #     set source file from command line
+    #     """
+
+    #     indexes_to_del = []
+    #     for i in range(1, len(sys.argv)):
+    #         val = sys.argv[i].lower().strip()
+    #         if re.fullmatch(r"^file=.+", val) or re.fullmatch(r"^f=.+", val):
+    #             self.file = re.sub(r".+=", "", val)
+    #             indexes_to_del.append(i)
+    #         else:
+    #             print("  > Unrecognized command line flag: '" + val +"'. Ignoring...")
+
+    #     for i in sorted(indexes_to_del, reverse=True):
+    #         del sys.argv[i]
+
 
 
 def main_rec_obj():

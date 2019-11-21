@@ -1,9 +1,9 @@
 """
-root relativism
+highest-level parent. One instance of Relativism() per program
 """
+
 import re
 
-from src.recording_obj import *
 from src.input_processing import *
 from src.output_and_prompting import *
 
@@ -95,3 +95,8 @@ class BPM:
 
     def __init__(self, initial_BPM):
         self.bpm_markers = [0, initial_BPM] # 
+
+
+
+
+

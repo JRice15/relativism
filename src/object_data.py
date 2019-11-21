@@ -3,9 +3,13 @@ import random as rd
 import json
 
 from src.output_and_prompting import *
+from src.data_types import *
+import soundfile as sf
+import importlib
 
 
-#decorator
+
+# decorator
 def public_process(func):
     """
     decorator: allow user access via 'process'
@@ -23,10 +27,9 @@ def is_public_process(func):
 
 def parse_path(filename_or_fullpath, directory):
     """
-    parse path for reading and writing metadata
+    parse path for reading and writing metadata. Scraps extension
     """
     filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
-    filename_or_fullpath += '.relativism-obj'
     if directory[-1] != '/':
         directory += '/'
     fullpath = directory + filename_or_fullpath
@@ -38,23 +41,51 @@ class RelativismObject():
     base class for objects that are saved and loaded
     """
 
-    def __init__(self, reload_data=None):
+    def __init__(self):
         
         self.name = None
-        self.type = None
+        self.reltype = None
 
-    def write_metadata(self, filename_or_fullpath, directory="."):
+
+    def write_metadata(self, filename):
         """
-        if no directory arg filename is fullpath. do not include extension.
-        create 'parse_metadata' method to override default
+        define parse_write_meta(dict: attrs) to define which attrs to write
         """
+        attrs = {k:v for k,v in vars(self).items()}
+        attrs["__module__"] = self.__class__.__module__
+        attrs["__class__"] = self.__class__.__name__
         try:
-            data = self.parse_metadata()
+            attrs = self.parse_write_meta(attrs)
         except AttributeError:
-            data = vars(self)
-        fullpath = parse_path(filename_or_fullpath, directory)
-        with open(fullpath, 'w') as f:
-            json.dump(data, f)
+            pass
+        with open(filename, 'w') as f:
+            json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
+
+
+    def write_audio(self, arr, rate, filename, directory):
+        """
+        base wav audio saving
+        """
+        outfile = parse_path(filename, directory) + ".wav"
+        try:
+            rate = int(rate.to_rate().magnitude)
+        except AttributeError:
+            rate = int(rate)
+        sf.write(outfile, arr, rate)
+
+
+    @staticmethod
+    def load(filename):
+        """
+        load and return object from a file
+        """
+        with open(filename, "r") as f:
+            attrs = json.load(f, object_hook=RelTypeDecoder)
+        mod = importlib.import_module(attrs.pop("__module__"))
+        obj_class = getattr(mod, attrs.pop("__class__"))
+        return obj_class(**attrs)
+
+
 
 
 class RelativismPublicObject(RelativismObject):
@@ -63,6 +94,7 @@ class RelativismPublicObject(RelativismObject):
     use getitem to get method by str.
     inner classes: MethodData, ArgData
     """
+
 
     def __init__(self, obj=None, include=None):
         super().__init__()
@@ -88,6 +120,7 @@ class RelativismPublicObject(RelativismObject):
                 self.method_data_by_category[m_data.category][m_data.method_name] = m_data
             except KeyError:
                 self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
+
 
 
     def get_method(self, arg):
@@ -234,6 +267,7 @@ class RelativismPublicObject(RelativismObject):
             is category that the rec.arr should be saved on
             """
             return self.raw_category in ('edit', 'effect')
+
 
         def is_edit_meta(self, cat):
             """

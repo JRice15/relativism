@@ -78,7 +78,7 @@ class Analysis():
                 plot_type=plot_type,
                 title=title,
                 obj_name=self.obj.name,
-                obj_type=self.obj.type
+                obj_type=self.obj.reltype
             )
 
 

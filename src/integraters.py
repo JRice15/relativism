@@ -29,8 +29,8 @@ def mix(rec1, rec2, mix_level=None, offset=0, name=None):
     mix_arr[ offset : offset + arr2.shape[0]] = arr2
     mix_arr *= mix_level
     # format
-    source = ["mix", rec1.name + " with " + rec2.name]
-    mix_rec = Recording(mix_arr, source=source, name=name)
+    source_block = ["mix", rec1.name + " with " + rec2.name]
+    mix_rec = Recording(mix_arr, source_block=source_block, name=name)
     return mix_rec
 
 
@@ -63,13 +63,13 @@ def concatenate(*recs):
     add rec2 directly to back of rec1
     """
     string = "Concatenating '" + recs[0].name + "'"
-    source = ["concatenation", recs[0].name]
+    source_block = ["concatenation", recs[0].name]
     for i in recs[1:]:
         string += " and '" + i.name + "'"
-        source[1] += " + " + i.name
+        source_block[1] += " + " + i.name
     section_head(string)
     arr = np.concatenate([i.get_panned_rec() for i in recs])
-    return Recording(array=arr, source=source)
+    return Recording(array=arr, source_block=source_block)
 
 
 

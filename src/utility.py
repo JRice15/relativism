@@ -9,24 +9,28 @@ import pylab
 import matplotlib.pyplot as plt
 import re
 
-from src.relativism import *
 
 
 
 @contextmanager
-def suppress_output():
+def suppress_output(err_log_name="relativism_errors.log"):
     """
     usage:
     with suppress_output():
-        suppressed zone
+        <suppressed zone>
+    errors written to err log
     """
     with open(os.devnull, "w") as devnull:
-        old_stdout = sys.stdout
-        sys.stdout = devnull
-        try:  
-            yield
-        finally:
-            sys.stdout = old_stdout
+        with open(err_log_name, "w") as errlog:
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = devnull
+            sys.stderr = errlog
+            try:  
+                yield
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
 
 
 @contextmanager
