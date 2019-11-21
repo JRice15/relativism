@@ -85,12 +85,14 @@ class Recording(RelativismPublicObject):
             hidden=False, 
             reltype='Recording', 
             pan_val=0,
+            directory=None
         ):
 
         super().__init__()
 
         self.reltype = reltype
         self.name = name
+        self.directory = directory
         if name is None:
             self.rename()
 
@@ -284,10 +286,14 @@ class Recording(RelativismPublicObject):
 
 
     def parse_write_meta(self, attrs):
+        """
+        for parsing attribute data for writing
+        """
         del attrs['method_data_by_category']
         del attrs['arr']
+        attrs["mode"] = "file"
+        attrs["file"] = self.name + ".wav"
         del attrs['recents']
-        del attrs['names_to_del']
         return attrs
 
 
@@ -442,14 +448,23 @@ class Recording(RelativismPublicObject):
         else:
             name = inpt_validate(name, 'obj')
         old_name = self.name
-        self.name = name
         try:
             self.parent.validate_child_name(self)
+            self.name = name
         except AttributeError:
-            pass
-        self.save()
-        os.remove(parse_path(old_name, self.directory) + ".relativism-obj")
-        os.remove(parse_path(old_name, self.directory) + ".wav")
+            self.name = name
+        if old_name is not None: 
+            try:
+                os.rename(
+                    parse_path(old_name, self.directory) + ".relativism-obj",
+                    parse_path(self.name, self.directory) + ".relativism-obj",
+                )
+                os.rename(
+                    parse_path(old_name, self.directory) + ".wav",
+                    parse_path(self.name, self.directory) + ".wav"
+                )
+            except OSError:
+                pass
 
 
     # Simple edit processes #

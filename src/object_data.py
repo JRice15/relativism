@@ -30,7 +30,9 @@ def parse_path(filename_or_fullpath, directory):
     parse path for reading and writing metadata. Scraps extension
     """
     filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
-    if directory[-1] != '/':
+    if directory is None or len(directory) == 0:
+        directory = ""
+    elif directory[-1] != '/':
         directory += '/'
     fullpath = directory + filename_or_fullpath
     return fullpath

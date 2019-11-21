@@ -9,7 +9,11 @@ set FULLREC to true to test all Recording public processes
 import unittest
 from unittest.mock import patch
 
+import os, sys
 
+global relativism_dir
+relativism_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(relativism_dir)
 
 from src.data_types import *
 from src.input_processing import *
@@ -19,7 +23,7 @@ from src.project import *
 
 
 global FULLREC
-FULLREC = False
+FULLREC = True
 
 
 
@@ -104,8 +108,8 @@ class TestCases(unittest.TestCase):
     def test_recording(self):
 
         if FULLREC:
-            with suppress_output():
-                obj = Recording(source="testcases/soundvision.wav", name="test-soundvision")
+            # with suppress_output():
+            obj = Recording(mode="file", file="testcases/soundvision.wav", name="test-soundvision")
             self.assertEqual(obj.rate, Units.rate("44100"))
             methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
 

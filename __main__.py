@@ -8,7 +8,7 @@ RELATIVISM_DIR = os.path.dirname(os.path.abspath(__file__))
 ERROR_LOG = RELATIVISM_DIR + "relativism_errors.log"
 
 
-from utility import suppress_output
+from src.utility import suppress_output
 
 with suppress_output(ERROR_LOG):
     import sys
@@ -19,9 +19,7 @@ with suppress_output(ERROR_LOG):
     from src.relativism import *
 
 
-if "tests" in sys.argv:
-    from testcases.testcases import *
-    unittest.main()
+
 
 
 
