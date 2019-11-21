@@ -20,6 +20,12 @@ __pycache__
 # extensions
 ext/
 
+# error logs
+*.log
+
+# object save files
+*.relativism-obj
+
 # misc personal files
 TODO
 test.py

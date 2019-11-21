@@ -29,7 +29,6 @@ def parse_path(filename_or_fullpath, directory):
     """
     parse path for reading and writing metadata. Scraps extension
     """
-    filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
     if directory is None or len(directory) == 0:
         directory = ""
     elif directory[-1] != '/':
@@ -43,13 +42,15 @@ class RelativismObject():
     base class for objects that are saved and loaded
     """
 
+    rel_obj_extension = ".relativism-obj"
+
     def __init__(self):
         
         self.name = None
         self.reltype = None
 
 
-    def write_metadata(self, filename):
+    def write_metadata(self, filename, directory):
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
@@ -60,7 +61,8 @@ class RelativismObject():
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        with open(filename, 'w') as f:
+        path = parse_path(filename, directory) + "." + self.reltype + self.rel_obj_extension
+        with open(path, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
 
 
@@ -77,11 +79,12 @@ class RelativismObject():
 
 
     @staticmethod
-    def load(filename):
+    def load(filename, directory=None):
         """
         load and return object from a file
         """
-        with open(filename, "r") as f:
+        path = parse_path(filename, directory) + RelativismObject.rel_obj_extension
+        with open(path, "r") as f:
             attrs = json.load(f, object_hook=RelTypeDecoder)
         mod = importlib.import_module(attrs.pop("__module__"))
         obj_class = getattr(mod, attrs.pop("__class__"))

@@ -282,7 +282,7 @@ class Recording(RelativismPublicObject):
         else:
             directory = self.parent.directory
         self.write_audio(self.arr, self.rate, self.name, directory)
-        self.write_metadata(self.name)
+        self.write_metadata(self.name, self.directory)
 
 
     def parse_write_meta(self, attrs):
