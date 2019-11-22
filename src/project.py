@@ -17,7 +17,7 @@ from src.sampler import *
 
 
 
-class Project:
+class Project(RelativismPublicObject):
     """
     """
 
@@ -33,7 +33,7 @@ class Project:
         Project._instance = self
         self.name = name
         self.reltype = 'Project'
-        self.dir = directory
+        self.directory = directory
         self.recs = {}
         self.rate = rate
         self.bpm_controller = "______" #TODO
@@ -49,8 +49,6 @@ class Project:
         return Project.TESTBPM
         return Project._current.bpm_controller.get_bpm(context)
 
-    def get_name(self):
-        return self.name
 
 
     def create_sampler(self):

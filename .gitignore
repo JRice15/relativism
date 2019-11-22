@@ -25,6 +25,7 @@ ext/
 
 # object save files
 *.relativism-obj
+out/
 
 # misc personal files
 TODO

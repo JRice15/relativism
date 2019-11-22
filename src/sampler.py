@@ -33,20 +33,32 @@ class Sample(Recording):
     """
 
     # Initialization #
-    def __init__(self, array=None, source_block=None, name=None, rate=44100, \
-            parent=None):
-        super().__init__(array=array, source_block=source_block, name=name, rate=rate,
-            parent=parent, reltype='Sample')
-
-    def __repr__(self):
-        string = "'{0}'. Sample object from".format(self.name)
-        for ind in range(len(self.source_block) // 2):
-            string += " {0}: {1};".format(self.source_block[2 * ind], self.source_block[2 * ind + 1])
-        return string
-
-    @public_process
-    def get_name(self):
-        return self.name
+    def __init__(self, 
+            mode=None,
+            arr=None, 
+            file=None,
+            source_block=None,
+            name=None, 
+            rate=44100,
+            parent=None, 
+            hidden=False, 
+            reltype='Recording', 
+            pan_val=0,
+            directory="out"
+        ):
+        super().__init__(
+            mode=mode,
+            arr=arr,
+            file=file,
+            source_block=source_block,
+            name=name,
+            rate=rate,
+            parent=parent,
+            hidden=hidden,
+            reltype='Sample',
+            pan_val=pan_val,
+            directory=directory
+        )
 
     @public_process
     def duplicate(self):
@@ -370,7 +382,11 @@ class Sampler(RelativismPublicObject):
         BPM (float): float
     """
 
-    def __init__(self, name, directory, BPM=None):
+    def __init__(self,
+        name, 
+        directory="out",
+
+    ):
         super().__init__()
         print("\n* Initializing sampler")
         self.reltype = 'Sampler'
@@ -379,7 +395,7 @@ class Sampler(RelativismPublicObject):
         self.smps = []
         self.rhythms = []
         self.active = []
-        self.BPM = BPM
+        self.bpm = bpm
 
     # Representation #
     def __repr__(self):
@@ -394,11 +410,8 @@ class Sampler(RelativismPublicObject):
         return self.name
 
     @public_process
-    def set_bpm(self, BPM=None):
-        if BPM is not None:
-            self.BPM = inpt_validate(BPM, "flt", allowed=[1, 9999])
-        else:
-            self.BPM = inpt("flt", allowed=[1, 9999])
+    def edit_bpm(self, bpm=None):
+        raise NotImplementedError
 
     # Handling Samples #
     @public_process
@@ -418,11 +431,7 @@ class Sampler(RelativismPublicObject):
             if sample_mode == "f":
                 print("  Choose the file to sample...")
                 time.sleep(1)
-                root = tk.Tk()
-                root.withdraw()
-                samp_path = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
-                if samp_path == "":
-                    raise NoPathError
+                samp_path = input_file()
                 new_samp = Sample(self, rec_source=samp_path)
             else:
                 # add other ways

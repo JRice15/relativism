@@ -2,6 +2,7 @@ import random as rd
 
 from src.object_data  import *
 from src.name_and_path import *
+from src.relativism import *
 
 
 def process(obj):
@@ -48,6 +49,7 @@ def process(obj):
 
                     # call process
                     try:
+                        print("")
                         method(*args)
                     except TypeError as e:
                         if 'positional argument' in str(e):
@@ -77,13 +79,15 @@ def process(obj):
 
 
 def process_complete_args(e, command, obj):
+    if command[0] not in str(e):
+        show_error(e)
     err_mess("Wrong number of arguments: {0}".format(str(e)))
     info_title("Args for {0}: ".format(command[0]))
     info_line(obj.get_method(command[0]).oneline_arg_list(), indent=6)
     # too many
     command_str = "\n      " + command[0] + " "
     if "were given" in str(e):
-        p("Complete arguments", start=command_str)
+        p("Enter intended arguments", start=command_str)
         new_args = inpt('split', 'arg')
         return [command[0]] + new_args
     # not enough
@@ -99,18 +103,20 @@ def process_error_handling(e, command, obj):
     """
     recursive calls with NotImplementedError are for redirecting to the end else
     """
-    process = command[0]
-
+    process = command[0] if isinstance(command, list) else command
     message = str(e)
+
     if isinstance(e, TypeError):
         if 'object is not callable' in message:
-            process_error_handling(SyntaxError(message), process, obj)
+            process_error_handling(NoSuchProcess(message), process, obj)
         elif 'positional argument' in message:
             process_complete_args(e, command, obj)
         else:
             process_error_handling(UnknownError(message), process, obj)
+
     elif isinstance(e, ValueError):
         err_mess("Argument entered incorrectly: {0}".format(message))
+
     elif isinstance(e, AttributeError):
         if 'has no process' in message:
             matches = get_similar_methods(obj, process)
@@ -124,15 +130,19 @@ def process_error_handling(e, command, obj):
                 print("  -> Autofilled '{0}'".format(matches[0]))
                 return matches + command[1:]
             else:
-                process_error_handling(SyntaxError(message), process, obj)
+                process_error_handling(NoSuchProcess(message), process, obj)
         else:
             process_error_handling(UnknownError(message), process, obj)
-    elif isinstance(e, SyntaxError):
+
+    elif isinstance(e, NoSuchProcess):
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
+
     elif isinstance(e, PermissionError):
         err_mess(message)
+
     elif isinstance(e, Cancel):
         print("\n exiting processing...\n")
+
     else:
         show_error(e)
 

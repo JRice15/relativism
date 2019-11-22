@@ -4,8 +4,6 @@ import random as rd
 import re
 import sys
 import time
-import tkinter as tk
-from tkinter import filedialog
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -85,7 +83,7 @@ class Recording(RelativismPublicObject):
             hidden=False, 
             reltype='Recording', 
             pan_val=0,
-            directory=None
+            directory="out"
         ):
 
         super().__init__()
@@ -115,9 +113,14 @@ class Recording(RelativismPublicObject):
         else:
             raise UnexpectedIssue("Unknown mode {0}".format(mode))
 
-        self.recents = [] # for undoing
-        # if not hidden:
-        #     self.save(silent=True)
+        # recents for undoing
+        try:
+            os.mkdir(parse_path("recents", self.directory))
+        except FileExistsError:
+            pass
+        
+        if not hidden:
+            self.save(silent=True)
 
 
     def get_path(self):
@@ -182,42 +185,37 @@ class Recording(RelativismPublicObject):
         ]
 
 
-    def read_file(self, file=None):
+    def read_file(self, file_path=None):
         """
         reads files for recording object init
         takes multiple formats (via PyDub and Soundfile)
         updates self.source, self.arr, self.rate
         """
         section_head("Reading file")
-        if file is None:
+        if file_path is None:
             print("  Choose an input sound file...")
             time.sleep(1)
-            with suppress_output():
-                root = tk.Tk()
-                root.withdraw()
-                root.update()
-                file = filedialog.askopenfilename(initialdir = os.getcwd(), title = "Choose a sample")
-                root.update()
-                root.destroy()
-            if file == "":
-                raise Cancel
-        # Handling file types
+            file_path = input_file()
+
         info_block("reading...")
         t1 = time.time()
-        filename = file.split('/')[-1]
-        if file[-3:] != "wav":
+        filename = file_path.split('/')[-1]
+
+        # Handling file types
+        if file_path[-3:] != "wav":
             try:
-                not_wav = pd.from_file(file, file[-3:])
+                not_wav = pd.from_file(file_path, file_path[-3:])
                 not_wav.export(".temp_soundfile.wav", format="wav")
-                file = ".temp_soundfile.wav"
+                file_path = ".temp_soundfile.wav"
             except FileNotFoundError:
                 print("  > unable to find file '{0}'".format(filename))
                 print("  > make sure to include .wav/.mp3/etc extension")
                 return self.read_file()
-        self.source_block = ["file", file]
+                
+        self.source_block = ["file", file_path]
         # Reading and Processing File
         try:
-            self.arr, rate = sf.read(file)
+            self.arr, rate = sf.read(file_path)
             self.rate = Units.rate(rate)
         except RuntimeError:
             print("  > unable to find or read '{0}'. Is that the correct extension?".format(filename))
@@ -238,22 +236,42 @@ class Recording(RelativismPublicObject):
         """
         actions to run before process: save current rec to 
         """
-        if process != 'undo':
+        if self.get_method(process).is_edit_rec():
             self.update_recents()
 
 
     def post_process(self, process):
         """
+        called after process calls method.
+        if autosave is on, saves data
         """
-        if self.get_method(process).is_edit_rec():
-            self.save(process=process, silent=True)
+        if Relativism.autosave():
+            if self.get_method(process).is_edit_rec():
+                self.save_audio(self.arr, self.rate, self.name, self.directory)
+            elif self.get_method(process).is_edit_meta():
+                self.save_metadata(self.name, self.directory)
 
 
     def update_recents(self):
-        if len(self.recents) == 0 or (np.array_equal(self.recents[0], self.arr)):
-            self.recents.insert(0, self.arr)
-            if len(self.recents) > 5:
-                self.recents.pop()
+        """
+        update recents arr to include last arr
+        """
+        recents_dir = parse_path("recents", self.directory)
+        os.rename(
+            self.directory + "/" + self.name + self.rel_obj_extension,
+            recents_dir + "/" + str(time.time_ns()) + self.rel_obj_extension
+        )
+
+
+    def parse_write_meta(self, attrs):
+        """
+        for parsing attribute data for writing
+        """
+        del attrs['method_data_by_category']
+        del attrs['arr']
+        attrs["mode"] = "file"
+        attrs["file"] = self.directory + "/" + self.name + ".wav"
+        return attrs
 
 
     @public_process
@@ -270,31 +288,15 @@ class Recording(RelativismPublicObject):
 
 
     @public_process
-    def save(self, silent=False, process=None):
+    def save(self, silent=False):
         """
         cat: save
         desc: save data
         """
         if not isinstance(silent, bool):
             silent = False
-        if self.parent is None:
-            directory = ""
-        else:
-            directory = self.parent.directory
-        self.write_audio(self.arr, self.rate, self.name, directory)
-        self.write_metadata(self.name, self.directory)
-
-
-    def parse_write_meta(self, attrs):
-        """
-        for parsing attribute data for writing
-        """
-        del attrs['method_data_by_category']
-        del attrs['arr']
-        attrs["mode"] = "file"
-        attrs["file"] = self.name + ".wav"
-        del attrs['recents']
-        return attrs
+        self.save_audio(self.arr, self.rate, self.name, self.directory)
+        self.save_metadata(self.name, self.directory)
 
 
     @public_process

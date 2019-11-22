@@ -6,6 +6,8 @@ cleaning input
 
 import re
 import time
+import tkinter as tk
+from tkinter import filedialog
 
 from src.data_types import *
 from src.errors import *
@@ -244,3 +246,36 @@ def inpt_validate(val, mode, allowed=None):
     return val
 
 
+
+
+def input_file():
+    """
+    dialog box to choose a file. Raises Cancel on no selection
+    """
+    with suppress_output():
+        root = tk.Tk()
+        root.withdraw()
+        root.update()
+        file = filedialog.askopenfilename(initialdir=os.getcwd(), title="Choose a file")
+        root.update()
+        root.destroy()
+    if file == "":
+        raise Cancel
+    return file
+
+
+
+def input_dir():
+    """
+    dialog box to choose a directory. Raises Cancel on no selection
+    """
+    with suppress_output():
+        root = tk.Tk()
+        root.withdraw()
+        root.update()
+        directory = filedialog.askdirectory(initialdir=os.getcwd(), title="Choose a directory/folder")
+        root.update()
+        root.destroy()
+    if directory == "":
+        raise Cancel
+    return directory

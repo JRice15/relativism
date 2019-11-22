@@ -707,7 +707,6 @@ class RelTypeEncoder(json.JSONEncoder):
 
 def RelTypeDecoder(dct):
 
-    print(dct, type(dct))
     for k,v in dct.items():
 
         if "<PINTQUANT>" in str(v):

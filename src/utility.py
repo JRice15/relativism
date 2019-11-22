@@ -35,6 +35,9 @@ def suppress_output(err_log_name="relativism_errors.log"):
 
 @contextmanager
 def time_this(process=''):
+    """
+    debugging timer contextmanager
+    """
     t1 = time.time()
     try:
         yield
@@ -44,6 +47,9 @@ def time_this(process=''):
 
 
 def timeit_(func, args, reps=1000, times=7):
+    """
+    debugging timer for very fast operations
+    """
     time = min(timeit.Timer(functools.partial(func, *args)).repeat(times, reps))
     print("{0} took {1}".format(func.__name__, time))
 

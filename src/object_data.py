@@ -50,7 +50,7 @@ class RelativismObject():
         self.reltype = None
 
 
-    def write_metadata(self, filename, directory):
+    def save_metadata(self, filename, directory):
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
@@ -61,12 +61,12 @@ class RelativismObject():
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        path = parse_path(filename, directory) + "." + self.reltype + self.rel_obj_extension
+        path = parse_path(filename, directory) + self.rel_obj_extension
         with open(path, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
 
 
-    def write_audio(self, arr, rate, filename, directory):
+    def save_audio(self, arr, rate, filename, directory):
         """
         base wav audio saving
         """

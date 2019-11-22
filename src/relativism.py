@@ -11,10 +11,13 @@ from src.output_and_prompting import *
 class Relativism():
 
     _debug = True
+    _autosave = False
+
+
     _bpm = 120
     _rate = 44100
 
-    _relativism_file_path = ".relativism.tsv"
+    _relativism_file_path = "relativism.relativism-data"
 
     def __init__(self):
         # set default output
@@ -48,11 +51,7 @@ class Relativism():
             print("  name: '{0}'".format(proj_name))
             print("  Choose a path where your {0} will be stored. Launching...".format(open_type))
             time.sleep(1)
-            root = tk.Tk()
-            root.withdraw()
-            proj_path = filedialog.askdirectory(initialdir = os.getcwd(), title = "Directory to Store Your Project")
-            if proj_path == "":
-                raise NoPathError
+            proj_path = input_dir()
             print("  '" + proj_name + "': " + proj_path)
             return proj_name, proj_path
 
@@ -68,6 +67,12 @@ class Relativism():
     def debug_off(self):
         info_block("Debug Off")
         self._debug = False
+
+    @staticmethod
+    def autosave():
+        return Relativism.autosave
+
+    #TODO: get/set autosave
 
     @staticmethod
     def bpm():

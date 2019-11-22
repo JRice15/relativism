@@ -31,6 +31,11 @@ class Cancel(Exception):
     """
 
 
+class NoSuchProcess(Exception):
+    """
+    when process does not exist
+    """
+
 
 class RateError(Exception):
     """
