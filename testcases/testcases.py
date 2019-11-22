@@ -15,6 +15,10 @@ global relativism_dir
 relativism_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(relativism_dir)
 
+import matplotlib
+matplotlib.use("TkAgg")
+
+
 from src.data_types import *
 from src.input_processing import *
 from src.relativism import *
@@ -109,7 +113,7 @@ class TestCases(unittest.TestCase):
 
         if FULLREC:
             # with suppress_output():
-            obj = Recording(mode="file", file="testcases/soundvision.wav", name="test-soundvision")
+            obj = Recording(mode="file", file="soundvision.wav", name="test-soundvision", directory="")
             self.assertEqual(obj.rate, Units.rate("44100"))
             methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
 
