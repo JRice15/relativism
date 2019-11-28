@@ -113,7 +113,7 @@ class TestCases(unittest.TestCase):
 
         if FULLREC:
             # with suppress_output():
-            obj = Recording(mode="file", file="soundvision.wav", name="test-soundvision", directory="")
+            obj = Recording(mode="file", file="soundvision.wav", name="soundvision-test-out", directory="")
             self.assertEqual(obj.rate, Units.rate("44100"))
             methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
 

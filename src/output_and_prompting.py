@@ -2,11 +2,11 @@ from src.utility import *
 
 def p(message, indent=2, o="", h=False, start=""):
     """
-    user-prompt:
-        o: "letter and full message for some options message" (add callback to inpt)
-        'q' to quit (auto)
-        h: bool for display help
-        start: beginning of text for prompt (ie partial word to complete)
+    prompting.
+    Args:
+        o (str): description of additional options and their letter (remember to add callback to inpt)
+        h (bool): if true display "'h' for help/info"
+        start (str): beginning of text for prompt (ie partial word to complete)
     """
     message_body = str(message)
     notices = " ("

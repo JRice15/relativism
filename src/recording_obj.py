@@ -5,7 +5,6 @@ import re
 import sys
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sounddevice as sd
 import soundfile as sf
@@ -46,6 +45,8 @@ add_to_sampler
 
 
 
+
+
 class Recording(RelativismPublicObject):
     """
     Args:
@@ -63,7 +64,7 @@ class Recording(RelativismPublicObject):
     Attributes:
         type (str): 'Recording'
         arr (list or None): wav array, if none is set will be read from file
-        source_block (list): source_block information for where this recording came from
+        source_block (dict): source_block information for where this recording came from
         name (str or None): name of this object, will be prompted if None
         rate (int): samples per second of this recording
         pan_val (float): number -1 (L) to 1 (R)
@@ -97,7 +98,7 @@ class Recording(RelativismPublicObject):
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.reltype, self.name))
         self.rate = Units.rate(rate)
-        self.source_block = source_block
+        self.source_block = {} if source_block is None else source_block
         self.arr = np.asarray(arr)
         self.parent = parent
         self.pan_val = pan_val
@@ -123,10 +124,6 @@ class Recording(RelativismPublicObject):
             self.save(silent=True)
 
 
-    def get_path(self):
-        return self.parent.get_path() + self.name
-
-
     def init_mode(self):
         """
         fill in initialization via input
@@ -134,7 +131,8 @@ class Recording(RelativismPublicObject):
         call get_help/playback if asked
         returns rec array
         """
-        valid_modes = ("live Record (R)", "read from File (F)", "Help (H)")
+        valid_modes = ("live Record (R)", "read from File (F)", 
+            "relativism project or sampler Object (O)", "Help (H)")
         info_title("Available modes:")
         info_list(valid_modes)
         p("Select mode")
@@ -146,6 +144,8 @@ class Recording(RelativismPublicObject):
         # File Mode
         elif mode == "f":
             self.read_file()
+        elif mode == "o":
+            raise NotImplementedError
         # Help
         elif mode == "h":
             raise NotImplementedError
@@ -180,9 +180,9 @@ class Recording(RelativismPublicObject):
         if len(self.arr.shape) < 2:
             transpose = self.arr.reshape(-1, 1)
             self.arr = np.hstack((transpose, transpose))
-        self.source_block = [
-            'live recording', "input '{0}'".format(device_name)
-        ]
+        self.source_block = {
+            'live recording': "input '{0}'".format(device_name)
+        }
 
 
     def read_file(self, file_path=None):
@@ -212,7 +212,7 @@ class Recording(RelativismPublicObject):
                 print("  > make sure to include .wav/.mp3/etc extension")
                 return self.read_file()
                 
-        self.source_block = ["file", file_path]
+        self.source_block = {"file": file_path}
         # Reading and Processing File
         try:
             self.arr, rate = sf.read(file_path)
@@ -267,7 +267,6 @@ class Recording(RelativismPublicObject):
         """
         for parsing attribute data for writing
         """
-        del attrs['method_data_by_category']
         del attrs['arr']
         attrs["mode"] = "file"
         attrs["file"] = self.directory + "/" + self.name + ".wav"
@@ -322,18 +321,12 @@ class Recording(RelativismPublicObject):
 
 
     # Info #
-    def __repr__(self):
-        string = "'{0}'. {1} object from".format(self.name, self.reltype)
-        for key, val in self.source_block.items():
-            string += " {0}: {1};".format(key, val)
-        return string
-
-
     @public_process
     def info(self):
         """
         desc: display this objects data
         cat: info
+        dev: essentially just an expanded repr. repr is also defined in super()
         """
         section_head("{0} '{1}'".format(self.reltype, self.name))
         info_line("sourced from {0}: {1}".format(self.source_block[0], self.source_block[1]))
@@ -347,18 +340,14 @@ class Recording(RelativismPublicObject):
 
     def size_samps(self):
         """
-        cat: info
-        desc: get the length in samples
-        args:
+        length of arr in samples
         """
         return Units.samps(self.arr.shape[0])
 
 
     def size_secs(self):
         """
-        cat: info
-        desc: get the length in seconds
-        args:
+        length of arr in secs
         """
         return (self.size_samps() / self.rate).to_secs()
 
@@ -443,27 +432,16 @@ class Recording(RelativismPublicObject):
         args:
             name: name for this object
         """
-        if name is None:
-            p("Give this {0} a name".format(self.reltype))
-            name = inpt("obj")
-            info_block("Named '{0}'".format(name))
-        else:
-            name = inpt_validate(name, 'obj')
         old_name = self.name
-        try:
-            self.parent.validate_child_name(self)
-            self.name = name
-        except AttributeError:
-            self.name = name
-        if old_name is not None: 
+
+        super().rename(name)
+
+        # rename files
+        if old_name is not None:
             try:
-                os.rename(
-                    parse_path(old_name, self.directory) + ".relativism-obj",
-                    parse_path(self.name, self.directory) + ".relativism-obj",
-                )
-                os.rename(
-                    parse_path(old_name, self.directory) + ".wav",
-                    parse_path(self.name, self.directory) + ".wav"
+                os.rename(self.get_path(old_name), self.get_path())
+                os.rename(self.get_path(old_name, extension="wav"),
+                    self.get_path(extension="wav")
                 )
             except OSError:
                 pass
@@ -715,25 +693,7 @@ class Recording(RelativismPublicObject):
 
 
     # Other #
-    @public_process
-    def duplicate(self):
-        """
-        cat: save
-        desc: create identical recording
-        """
-        if self.parent is not None:
-            self.parent.add_child(
-                Recording(
-                    array=self.arr, 
-                    source=self.source_block, 
-                    rate=self.rate, 
-                    parent=self.parent, 
-                    reltype=self.reltype, 
-                    pan_val=self.pan_val
-                )
-            )
-        else:
-            err_mess("has no parent to duplicate to!")
+    #TODO: duplicate
 
 
 def sd_select_device(device_type='in'):

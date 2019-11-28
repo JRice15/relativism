@@ -8,6 +8,7 @@ from src.controller import *
 
 """
 
+
 create sampler, add samples
 
 set rhythms, frequencies
@@ -19,63 +20,6 @@ access any projects recs
 
 
 
-class Sample(Recording):
-    """
-    creates new Recording object from given, wraps in some Sample data
-    Attributes:
-        parent (Sampler): sampler object containing this
-        rec (Recording): recording object
-        on (bool)
-        start (samples index)
-        savefile
-    name is attr of Rec obj
-    if rec is not given, rec_source is required
-    """
-
-    # Initialization #
-    def __init__(self, 
-            mode=None,
-            arr=None, 
-            file=None,
-            source_block=None,
-            name=None, 
-            rate=44100,
-            parent=None, 
-            hidden=False, 
-            reltype='Recording', 
-            pan_val=0,
-            directory="out"
-        ):
-        super().__init__(
-            mode=mode,
-            arr=arr,
-            file=file,
-            source_block=source_block,
-            name=name,
-            rate=rate,
-            parent=parent,
-            hidden=hidden,
-            reltype='Sample',
-            pan_val=pan_val,
-            directory=directory
-        )
-
-    @public_process
-    def duplicate(self):
-        new_sample = Sample(array=self.arr, source=self.source_block, rate=self.rate, \
-            parent=self.parent)
-        new_sample.add_to_sampler(self.parent)
-
-    def add_to_sampler(self, sampler_obj):
-        sampler_obj.add_sample(self)
-
-    @public_process
-    def save(self):
-        try:
-            self.parent.save_child__(self)
-        except (AttributeError, NotImplementedError):
-            err_mess("Parent {0} '{1}' has not implemented save feature".format(
-                self.parent.reltype, self.parent.get_name()))
 
 
 class SampleGroup(RelativismPublicObject):
@@ -383,19 +327,30 @@ class Sampler(RelativismPublicObject):
     """
 
     def __init__(self,
-        name, 
+        name=None,
+        reltype="Sampler",
+        smps=None,
+        active=None,
+        rhythms=None,
+        bpm=None,
+        hidden=False,
         directory="out",
-
     ):
         super().__init__()
-        print("\n* Initializing sampler")
-        self.reltype = 'Sampler'
-        self.directory = directory
+        self.reltype = reltype
         self.name = name
-        self.smps = []
-        self.rhythms = []
-        self.active = []
-        self.bpm = bpm
+        if name is None:
+            self.rename()
+
+        if not hidden:
+            print("\n* Initializing {0} '{1}'".format(self.reltype, self.name))
+
+        self.directory = directory
+        self.smps = [] if smps is None else smps
+        self.rhythms = [] if rhythms is None else rhythms
+        self.active = [] if active is None else active
+        #TODO: BPM_Controller()
+        self.bpm = Units.rate(120) if bpm is None else bpm 
 
     # Representation #
     def __repr__(self):
@@ -403,39 +358,51 @@ class Sampler(RelativismPublicObject):
 
     @public_process
     def info(self):
-        raise NotImplementedError
+        """
+        cat: info
+        """
+        section_head("{0} '{1}'".format(self.reltype, self.name))
+        info_line("{0} samples".format(len(self.smps)))
+        info_line("{0} rhythms".format(len(self.rhythms)))
+        info_line("{0} active pairs".format(len(self.active)))
+        info_line("(use list_samples/rhythms/active to view them)")
 
     @public_process
-    def get_name(self):
-        return self.name
+    def rename(self, name=None):
+        """
+        cat: meta
+        desc: rename (and resave) this object
+        args:
+            name: name for this object
+        """
+        old_name = self.name
+
+        super().rename(name)
+
+        # rename files
+        if old_name is not None:
+            try:
+                os.rename(self.get_path(old_name), self.get_path())
+            except OSError:
+                pass
+
 
     @public_process
-    def edit_bpm(self, bpm=None):
+    def edit_bpm(self):
         raise NotImplementedError
+
 
     # Handling Samples #
     @public_process
     def add_sample(self, new_samp=None):
         """
-        add a sample from file, project, or another sampler
+        desc: add a sample from file, project, or another sampler
+        cat: edit
         """
-        if not isinstance(new_samp, Sample):
-            print("\n  Where would you like to select your sample from:")
-            sample_mode = "not implemented"
-            while sample_mode not in ("f", "p", "s", "q"):
-                if sample_mode == "q":
-                    raise Cancel
-                print("  File on disk (F), a Project object (P), or another Sampler object (S)?")
-                print("  : ", end="")
-                sample_mode = inpt("letter", allowed='fps')
-            if sample_mode == "f":
-                print("  Choose the file to sample...")
-                time.sleep(1)
-                samp_path = input_file()
-                new_samp = Sample(self, rec_source=samp_path)
-            else:
-                # add other ways
-                raise NotImplementedError
+        if isinstance(new_samp, Recording):
+            new_samp.reltype = "Sample"
+        else:
+            new_samp = Recording(reltype="Sample", parent=self)
         self.smps.append(new_samp)
         self.list_samples()
         print("") #newline
@@ -444,22 +411,36 @@ class Sampler(RelativismPublicObject):
             process(new_samp)
 
 
+    @public_process
     def add_sample_group(self):
+        """
+        """
         # TODO: add sample group
         self.smps.append(SampleGroup())
 
     @public_process
     def edit_sample(self):
+        """
+        cat: edit
+        desc: select sample to process
+        """
         while True:
-            print("\n  Which sample would you like to edit? ('q' to cancel, 'list' to list samples): ", end="")
+            print("\n  Which sample of {0} '{1}' would you like to edit? ('q' to cancel, 'list' to list samples): "
+                .format(self.reltype, self.name), end="")
+            sample = self.choose("sample")
             try:
-                sample = self.choose("sample")
-                sample.process()
+                process(sample)
             except Cancel:
                 continue
 
     @public_process
     def list_samples(self):
+        """
+        desc: list samples in this sampler
+        cat: info
+        dev:
+            returns bool, false if nothing to list
+        """
         print("\n  Samples loaded into '{0}':".format(self.name))
         empty = True
         for obj in self.smps:
@@ -498,6 +479,12 @@ class Sampler(RelativismPublicObject):
 
     @public_process
     def list_rhythms(self):
+        """
+        desc: list rhythms in this sampler
+        cat: info
+        dev:
+            returns bool, false if nothing to list
+        """
         print("\n  Rhythms loaded into '{0}':".format(self.name))
         empty = True
         for obj in self.rhythms:
@@ -513,7 +500,7 @@ class Sampler(RelativismPublicObject):
         if not isinstance(act_rhythm, Rhythm):
             p("Choose a rhythm for this active pair")
             act_rhythm = self.choose('rhythm')
-        if not isinstance(act_sample, Sample):
+        if not isinstance(act_sample, Recording):
             p("Choose a sample for this active pair")
             act_sample = self.choose('sample')
         new_active = Active(self, act_rhythm, act_sample)
@@ -521,6 +508,12 @@ class Sampler(RelativismPublicObject):
 
     @public_process
     def list_active(self):
+        """
+        desc: list active pairs in this sampler
+        cat: info
+        dev:
+            returns bool, false if nothing to list
+        """
         info_title("Active pairs in '{0}':".format(self.name))
         empty = True
         for a in self.active:
@@ -533,7 +526,8 @@ class Sampler(RelativismPublicObject):
     @public_process
     def mute(self):
         """
-        mute an active pair
+        cat: edit
+        desc: mute an active pair
         """
         info_block("Choose an active pair to mute")
         act = self.choose('active')
@@ -543,7 +537,8 @@ class Sampler(RelativismPublicObject):
     @public_process
     def unmute(self):
         """
-        unmute an active pair
+        cat: edit
+        desc: unmute an active pair
         """
         act = self.choose('active')
         act.muted = False
@@ -605,16 +600,10 @@ class Sampler(RelativismPublicObject):
             print("  > Name doesnt exist. Enter intended value (q to quit): ")
             return self.choose(attr)
 
-    def save_rhythm_to_rec(self):
-        raise NotImplementedError
-
-    def save_child(self, child):
-        filename = child.reltype.lower() + "_" + child.get_name() + ".rel-obj"
-        write_obj(child, filename, self.directory)
 
     @public_process
-    def save(self):
-        raise NotImplementedError
+    def save(self, silent=False):
+        self.save_metadata(self.name, self.directory)
 
 
 

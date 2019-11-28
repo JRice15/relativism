@@ -3,6 +3,7 @@ import random as rd
 import json
 
 from src.output_and_prompting import *
+from src.input_processing import *
 from src.data_types import *
 import soundfile as sf
 import importlib
@@ -29,6 +30,7 @@ def parse_path(filename_or_fullpath, directory):
     """
     parse path for reading and writing metadata. Scraps extension
     """
+    filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
     if directory is None or len(directory) == 0:
         directory = ""
     elif directory[-1] != '/':
@@ -37,17 +39,68 @@ def parse_path(filename_or_fullpath, directory):
     return fullpath
 
 
+
+
+
+
+
 class RelativismObject():
     """
     base class for objects that are saved and loaded
     """
 
-    rel_obj_extension = ".relativism-obj"
+    _rel_obj_extension = ".relativism-obj"
 
     def __init__(self):
         
         self.name = None
+        self.directory = "out"
         self.reltype = None
+
+
+    def __repr__(self):
+        string = "'{0}'. {1} object".format(self.name, self.reltype)
+        try:
+            self.source_block
+        except AttributeError:
+            return string
+        string += " from"
+        for key, val in self.source_block.items():
+            string += " {0}: {1};".format(key, val)
+        return string
+
+
+    @public_process
+    def rename(self, name=None):
+        if name is None:
+            p("Give this {0} a name".format(self.reltype))
+            name = inpt("obj")
+        else:
+            name = inpt_validate(name, 'obj')
+
+        # validate
+        try:
+            self.parent.validate_child_name(self)
+            self.name = name
+        except AttributeError:
+            self.name = name
+        
+        info_block("Named '{0}'".format(name))
+
+
+
+    def get_path(self, filename=None, extension="obj"):
+        """
+        get path of this object's files, or path in same dir of 'filename'.
+        extension: "obj" for obj, anything else for .wav
+        """
+        if filename is None:
+            filename = self.name
+        path = parse_path(filename, self.directory)
+        if extension == "obj":
+            return path + self._rel_obj_extension
+        else:
+            return path + ".wav"
 
 
     def save_metadata(self, filename, directory):
@@ -55,13 +108,14 @@ class RelativismObject():
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
         attrs = {k:v for k,v in vars(self).items()}
+        del attrs["method_data_by_category"]
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
         try:
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        path = parse_path(filename, directory) + self.rel_obj_extension
+        path = parse_path(filename, directory) + self._rel_obj_extension
         with open(path, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
 
@@ -83,7 +137,7 @@ class RelativismObject():
         """
         load and return object from a file
         """
-        path = parse_path(filename, directory) + RelativismObject.rel_obj_extension
+        path = parse_path(filename, directory) + RelativismObject._rel_obj_extension
         with open(path, "r") as f:
             attrs = json.load(f, object_hook=RelTypeDecoder)
         mod = importlib.import_module(attrs.pop("__module__"))
@@ -319,5 +373,35 @@ class RelativismPublicObject(RelativismObject):
                 num = rd.random()
                 arg = (self.defaults_low * (1 - num)) + (self.defaults_high * (num))
                 return arg
+
+
+
+
+
+class SourceInfo(RelativismObject):
+    """
+    class for saving source info
+    """
+
+    def __init__(self, s_type, s_name, s_info=None):
+        self.s_type = s_type
+        self.s_name = s_name
+        self.s_info = {} if s_info is None else s_info
+    
+
+    def show(self):
+        """
+        like repr but prints directly
+        """
+        info_line("Sourced from {0} '{1}':".format(self.s_type, self.s_name))
+        for k,v in self.s_info.items():
+            info_list("{0}: {1}".format(k,v))
+
+    def set_info(self, info):
+        """
+        set info from dict
+        """
+        self.s_info.update(info)
+
 
 

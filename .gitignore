@@ -16,6 +16,7 @@ __pycache__
 
 # include testcase audio files
 !testcases/*.wav
+testcases/*test-out.wav
 
 # extensions
 ext/

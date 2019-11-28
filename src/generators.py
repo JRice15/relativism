@@ -49,7 +49,8 @@ class Generator:
             dur = RelTime.valid_beatsec(dur).samps()
             amp = inpt_validate(amp, 'flt', allowed=[0, 2])
             arr = BaseGenerator.wave(dur, freq.get_period(rate), shift=0, amp=amp)
-            source_block = {"generator": sys._getframe().f_code.co_name,
+            source_block = {"type": "generator"
+                            "name": sys._getframe().f_code.co_name,
                             "note": freq,
                             "duration": dur,
                             "amplitude": amp}

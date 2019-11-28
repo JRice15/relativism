@@ -100,7 +100,7 @@ def inpt_validate(val, mode, allowed=None):
         arg: for process arg entry
     """
     if mode is None:
-        raise ValueError("Must supply a mode to inpt, but recieved None")
+        raise ValueError("Must supply a mode to inpt_validate, but recieved None")
 
     elif mode == "none":
         return val
