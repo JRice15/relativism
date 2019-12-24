@@ -13,11 +13,12 @@ class Relativism():
     _debug = True
     _autosave = False
 
-
     _bpm = 120
     _rate = 44100
 
     _relativism_file_path = "relativism.relativism-data"
+
+    _next_id = None
 
     def __init__(self):
         # set default output
@@ -73,6 +74,17 @@ class Relativism():
         return Relativism.autosave
 
     #TODO: get/set autosave
+
+
+    @staticmethod
+    def get_next_id():
+        if Relativism._next_id is None:
+            #TODO: open rel file
+            pass
+        temp = Relativism._next_id
+        Relativism._next_id += 1
+        return temp
+        
 
     @staticmethod
     def bpm():

@@ -1,14 +1,33 @@
+"""
+
+Misc utility functions
+
+"""
+
 from contextlib import contextmanager
 import sys
 import os
 import time
-import timeit
-import functools
 import numpy as np
 import pylab
 import matplotlib.pyplot as plt
 import re
+import numba
 
+
+
+def jitcomp(func):
+    """
+    decorator to compile arr[:,2]->arr[:,2] func using numba.jit
+    """
+    return numba.jit("float64[:,:](float64[:,:])",  nopython=True, cache=True)(func)
+
+
+def jitcompg(func):
+    """
+    decorator to compile general np func using numba.jit
+    """
+    return numba.jit(nopython=True, cache=True,)(func)
 
 
 
@@ -16,7 +35,7 @@ import re
 def suppress_output(err_log_name="relativism_errors.log"):
     """
     usage:
-    with suppress_output():
+    with suppress_output([log_file]):
         <suppressed zone>
     errors written to err log
     """
@@ -33,25 +52,10 @@ def suppress_output(err_log_name="relativism_errors.log"):
                 sys.stderr = old_stderr
 
 
-@contextmanager
-def time_this(process=''):
-    """
-    debugging timer contextmanager
-    """
-    t1 = time.time()
-    try:
-        yield
-    finally:
-        t2 = time.time()
-        print("{0} Took {1:.4f} seconds".format(process, t2-t1))
 
 
-def timeit_(func, args, reps=1000, times=7):
-    """
-    debugging timer for very fast operations
-    """
-    time = min(timeit.Timer(functools.partial(func, *args)).repeat(times, reps))
-    print("{0} took {1}".format(func.__name__, time))
+
+
 
 
 def decimal_format(val):
@@ -61,48 +65,7 @@ def decimal_format(val):
     return val
 
 
-class Colors:
-    """ ANSI color codes """
-    BLACK = "\033[0;30m"
-    RED = "\033[0;31m"
-    GREEN = "\033[0;32m"
-    BROWN = "\033[0;33m"
-    BLUE = "\033[0;34m"
-    PURPLE = "\033[0;35m"
-    CYAN = "\033[0;36m"
-    LIGHT_GRAY = "\033[0;37m"
-    DARK_GRAY = "\033[1;30m"
-    LIGHT_RED = "\033[1;31m"
-    LIGHT_GREEN = "\033[1;32m"
-    YELLOW = "\033[1;33m"
-    LIGHT_BLUE = "\033[1;34m"
-    LIGHT_PURPLE = "\033[1;35m"
-    LIGHT_CYAN = "\033[1;36m"
-    LIGHT_WHITE = "\033[1;37m"
-    BOLD = "\033[1m"
-    FAINT = "\033[2m"
-    ITALIC = "\033[3m"
-    UNDERLINE = "\033[4m"
-    BLINK = "\033[5m"
-    NEGATIVE = "\033[7m"
-    CROSSED = "\033[9m"
-    END = "\033[0m"
 
-
-@contextmanager
-def style(*styles):
-    try:
-        if len(styles) == 1:
-            styles = styles[0].split(',')
-        for s in styles:
-            s = s.upper().strip()
-            try:
-                print(getattr(Colors, s), end='')
-            except:
-                err_mess("No style {0} exists".format(s))
-        yield
-    finally:
-        print(Colors.END, end='')
 
 
 class NpOps:
@@ -113,25 +76,37 @@ class NpOps:
     @staticmethod
     def stereoify(arr):
         """
-        turn [0, 1, 2] into [ [0, 0], [1, 1], [2, 2] ]
+        creates stereo arr where left and right channels are both the input arr
         """
         transpose = arr.reshape(-1, 1)
         return np.hstack((transpose, transpose))
 
     @staticmethod
     def monoify(arr):
+        """
+        average channels to single channel
+        """
         return np.mean(arr, axis=1)
 
     @staticmethod
     def get_channels(arr):
+        """
+        get left and right channels
+        """
         return arr[:,0], arr[:1]
 
     @staticmethod
     def join_channels(left, right):
+        """
+        join left and right channels into one stereo track
+        """
         return np.vstack((left, right)).T
 
     @staticmethod
     def swap_channels(arr):
+        """
+        swap left and right
+        """
         arr[:,[0, 1]] = arr[:,[1, 0]]
         return arr
 
@@ -148,10 +123,16 @@ class NpOps:
 
     @staticmethod
     def column_min(arr, column=0):
+        """
+        get min value in a column
+        """
         return arr[:,column].min()
 
     @staticmethod
     def column_max(arr, column=0):
+        """
+        get max value in a column
+        """
         return arr[:,column].max()
 
     @staticmethod

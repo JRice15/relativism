@@ -709,7 +709,7 @@ class RelTypeEncoder(json.JSONEncoder):
             return "<PINTQUANT>" + str(obj)
 
         elif isinstance(obj, RelativismObject):
-            return "<REL-{0}>".format(obj.reltype) + 
+            return "<REL-{0}>".format(obj.reltype) + ""
 
         else:
             return json.JSONEncoder.default(self, obj)

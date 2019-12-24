@@ -8,7 +8,8 @@ class BaseGenerator:
     @staticmethod
     def wave(dur, period, shift=0, amp=1):
         """
-        generate sine wave by period and dur, shift and amp
+        generate sine wave by period and dur, shift and amp.
+        dur, period, shift: samples
         """
         factor = 2 * np.pi / period
         return amp * np.sin(
@@ -18,7 +19,7 @@ class BaseGenerator:
     @staticmethod
     def wave_point(index_or_arr, period, shift=0, amp=1):
         """
-        pass index as single num or as np.array
+        pass sample index as single num or as np.array
         """
         factor = 2 * np.pi / period
         return amp * np.sin(
@@ -49,7 +50,7 @@ class Generator:
             dur = RelTime.valid_beatsec(dur).samps()
             amp = inpt_validate(amp, 'flt', allowed=[0, 2])
             arr = BaseGenerator.wave(dur, freq.get_period(rate), shift=0, amp=amp)
-            source_block = {"type": "generator"
+            source_block = {"type": "generator",
                             "name": sys._getframe().f_code.co_name,
                             "note": freq,
                             "duration": dur,
@@ -72,7 +73,7 @@ class Generator:
             arr = period_arr * int(freq * dur)
             arr = arr[:int(rate * dur)]
             arr = [[i, i] for i in arr]
-            source_block = {"generator": sys._getframe().f_code.co_name, 
+            source_block = {"generator": sys._getframe().f_code.co_name,
                             "frequency": note,
                             "duration": dur,
                             "amplitude": amp}
@@ -178,7 +179,7 @@ class Generator:
             for _ in range(300):
                 a = rd.random() * amp
                 array.append([a, a])
-            source_block = {"generator": sys._getframe().f_code.co_name, 
+            source_block = {"generator": sys._getframe().f_code.co_name,
                             "amplitude": amp}
             return Recording(
                 array=array,

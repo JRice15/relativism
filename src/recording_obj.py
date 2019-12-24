@@ -74,6 +74,7 @@ class Recording(RelativismPublicObject):
 
     # Initialization #
     def __init__(self, 
+            rel_id=None,
             mode=None,
             arr=None, 
             file=None,
@@ -87,7 +88,7 @@ class Recording(RelativismPublicObject):
             directory="out"
         ):
 
-        super().__init__()
+        super().__init__(rel_id)
 
         self.reltype = reltype
         self.name = name

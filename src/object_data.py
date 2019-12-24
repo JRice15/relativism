@@ -51,11 +51,12 @@ class RelativismObject():
 
     _rel_obj_extension = ".relativism-obj"
 
-    def __init__(self):
+    def __init__(self, rel_id):
         
         self.name = None
         self.directory = "out"
         self.reltype = None
+        self.rel_id = rel_id if rel_id is not None else Relativism.get_next_id()
 
 
     def __repr__(self):
@@ -155,8 +156,8 @@ class RelativismPublicObject(RelativismObject):
     """
 
 
-    def __init__(self, obj=None, include=None):
-        super().__init__()
+    def __init__(self, rel_id=None, obj=None, include=None):
+        super().__init__(rel_id)
         if obj is None:
             obj = self
         self.method_data_by_category = {}

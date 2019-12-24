@@ -327,6 +327,7 @@ class Sampler(RelativismPublicObject):
     """
 
     def __init__(self,
+        rel_id=None,
         name=None,
         reltype="Sampler",
         smps=None,
@@ -336,7 +337,7 @@ class Sampler(RelativismPublicObject):
         hidden=False,
         directory="out",
     ):
-        super().__init__()
+        super().__init__(rel_id)
         self.reltype = reltype
         self.name = name
         if name is None:
