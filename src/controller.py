@@ -53,10 +53,6 @@ from src.object_data import *
 
 
 
-
-
-
-
 class ControllerMarker(RelativismObject):
 
     def __init__(self, beatsec, value, change_type):

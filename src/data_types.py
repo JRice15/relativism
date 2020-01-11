@@ -696,34 +696,6 @@ class RelNote(PitchUnits):
 
 
 
-"""
-how to have multiple loaded objects point to same instance,
-not create conflicting copies of child?
-"""
-
-
-class RelTypeEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, Units._reg.Quantity):
-            return "<PINTQUANT>" + str(obj)
-
-        elif isinstance(obj, RelativismObject):
-            return "<REL-{0}>".format(obj.reltype) + ""
-
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-def RelTypeDecoder(dct):
-
-    for k,v in dct.items():
-
-        if "<PINTQUANT>" in str(v):
-            v = re.sub("<PINTQUANT>", "", v)
-            dct[k] = Units.new(v)
-
-    return dct
 
 
 

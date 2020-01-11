@@ -13,6 +13,66 @@ from src.sampler import *
 """
 
 
+class RelTypeEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, Units._reg.Quantity):
+            return "<PINTQUANT>" + str(obj)
+
+        elif isinstance(obj, RelativismObject):
+            return "<REL-{0}>".format(obj.reltype) + ""
+
+        else:
+            return json.JSONEncoder.default(self, obj)
+
+
+def RelTypeDecoder(dct):
+
+    for k,v in dct.items():
+
+        if "<PINTQUANT>" in str(v):
+            v = re.sub("<PINTQUANT>", "", v)
+            dct[k] = Units.new(v)
+
+    return dct
+
+
+
+
+
+
+class ProjectLoader:
+
+    _obj_map = {}
+
+    def __init__(self, proj_filename):
+        
+
+
+    def load(filename, directory=None):
+        """
+        load and return object from a file
+        """
+        path = parse_path(filename, directory) + RelativismObject._rel_obj_extension
+        with open(path, "r") as f:
+            attrs = json.load(f, object_hook=RelTypeDecoder)
+        mod = importlib.import_module(attrs.pop("__module__"))
+        obj_class = getattr(mod, attrs.pop("__class__"))
+        return obj_class(**attrs)
+
+    @staticmethod
+    def is_obj_present(self, obj_id):
+        return (obj_id in ProjectLoader._obj_map) and (ProjectLoader._obj_map[obj_id] != None)
+    
+    @staticmethod
+    def get_obj(self, obj_id):
+        return ProjectLoader._obj_map[obj_id]
+    
+    @staticmethod
+    def set_obj(self, obj_id, obj):
+        if self.is_obj_present(obj_id):
+            raise KeyError("ProjectDirectory already has object with id '{0}'".format(obj_id))
+        ProjectLoader._obj_map[obj_id] = obj
 
 
 
@@ -22,12 +82,12 @@ class Project(RelativismPublicObject):
     """
 
     # global access for the current instance
-    _current = None
+    _instance = None
 
     TESTRATE = Units.rate(44100)
     TESTBPM = Units.bpm(120)
 
-    def __init__(self, name, directory, rate):
+    def __init__(self, name, directory, rate, obj_map):
         """
         """
         Project._instance = self
@@ -37,17 +97,20 @@ class Project(RelativismPublicObject):
         self.recs = {}
         self.rate = rate
         self.bpm_controller = "______" #TODO
+        self.obj_map = obj_map
+
+
 
 
     @staticmethod
     def get_rate():
         return Project.TESTRATE
-        return Project._current.rate
+        return Project._instance.rate
 
     @staticmethod
     def get_bpm(context=None):
         return Project.TESTBPM
-        return Project._current.bpm_controller.get_bpm(context)
+        return Project._instance.bpm_controller.get_bpm(context)
 
 
 

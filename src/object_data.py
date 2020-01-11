@@ -133,20 +133,6 @@ class RelativismObject():
         sf.write(outfile, arr, rate)
 
 
-    @staticmethod
-    def load(filename, directory=None):
-        """
-        load and return object from a file
-        """
-        path = parse_path(filename, directory) + RelativismObject._rel_obj_extension
-        with open(path, "r") as f:
-            attrs = json.load(f, object_hook=RelTypeDecoder)
-        mod = importlib.import_module(attrs.pop("__module__"))
-        obj_class = getattr(mod, attrs.pop("__class__"))
-        return obj_class(**attrs)
-
-
-
 
 class RelativismPublicObject(RelativismObject):
     """
