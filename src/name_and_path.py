@@ -52,14 +52,6 @@ class ObjectFactory():
 
 
 
-    def read_metadata(self, filename_or_fullpath, directory="."):
-        """
-        no dir arg means filename is full path. do not include extension
-        """
-        fullpath = parse_path(filename_or_fullpath, directory)
-        with open(fullpath, 'r') as f:
-            data = json.load(f)
-        return data
 
 
 def namepath_init(open_type):

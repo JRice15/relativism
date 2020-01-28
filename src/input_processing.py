@@ -3,7 +3,6 @@ cleaning input
     importer must import relativism
 """
 
-
 import re
 import time
 import tkinter as tk
@@ -13,7 +12,6 @@ from src.data_types import *
 from src.errors import *
 from src.output_and_prompting import *
 from src.utility import *
-
 
 
 def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
@@ -279,3 +277,5 @@ def input_dir():
     if directory == "":
         raise Cancel
     return directory
+
+

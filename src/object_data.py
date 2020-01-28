@@ -1,12 +1,16 @@
+
 import re
 import random as rd
 import json
+import os
 
 from src.output_and_prompting import *
 from src.input_processing import *
 from src.data_types import *
+from src.relativism import *
+from src.paths import *
+
 import soundfile as sf
-import importlib
 
 
 
@@ -26,21 +30,18 @@ def is_public_process(func):
         return False
 
 
-def parse_path(filename_or_fullpath, directory):
+def parse_path(filename_or_fullpath, prefix_path):
     """
     parse path for reading and writing metadata. Scraps extension
     """
     filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
-    if directory is None or len(directory) == 0:
-        directory = ""
-    elif directory[-1] != '/':
-        directory += '/'
-    fullpath = directory + filename_or_fullpath
+    if prefix_path is None or len(prefix_path) == 0:
+        prefix_path = ""
+    elif prefix_path[-1] != '/':
+        prefix_path += '/'
+    fullpath = prefix_path + filename_or_fullpath
+    fullpath = re.sub(r"//", "/", fullpath)
     return fullpath
-
-
-
-
 
 
 
@@ -49,12 +50,10 @@ class RelativismObject():
     base class for objects that are saved and loaded
     """
 
-    _rel_obj_extension = ".relativism-obj"
-
-    def __init__(self, rel_id):
+    def __init__(self, rel_id, name, path):
         
-        self.name = None
-        self.directory = "out"
+        self.name = name
+        self.path = path
         self.reltype = None
         self.rel_id = rel_id if rel_id is not None else Relativism.get_next_id()
 
@@ -69,6 +68,15 @@ class RelativismObject():
         for key, val in self.source_block.items():
             string += " {0}: {1};".format(key, val)
         return string
+
+    def get_dirname(self):
+        return self.name + "." + self.reltype
+    
+    def get_extension(self):
+        return "." + self.reltype + ".relativism-obj"
+
+    def get_filename(self):
+        return self.name + self.get_extension()
 
 
     @public_process
@@ -97,14 +105,15 @@ class RelativismObject():
         """
         if filename is None:
             filename = self.name
-        path = parse_path(filename, self.directory)
+        path = Path(self.path, filename)
         if extension == "obj":
-            return path + self._rel_obj_extension
+            path.ext = ".relativism-obj"
         else:
-            return path + ".wav"
+            path.ext = ".wav"
+        return path
 
 
-    def save_metadata(self, filename, directory):
+    def save_metadata(self, filename, path):
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
@@ -116,21 +125,24 @@ class RelativismObject():
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        path = parse_path(filename, directory) + self._rel_obj_extension
-        with open(path, 'w') as f:
+        os.makedirs(path, exist_ok=True)
+        fullpath = Path(path, filename, self.get_extension())
+        # RelTypeEncoder found in object_loading
+        with open(fullpath, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
 
 
-    def save_audio(self, arr, rate, filename, directory):
+    def save_audio(self, arr, rate, filename, path):
         """
         base wav audio saving
         """
-        outfile = parse_path(filename, directory) + ".wav"
+        os.makedirs(path, exist_ok=True)
+        outfile = Path(path, filename + "." + self.reltype + ".wav")
         try:
             rate = int(rate.to_rate().magnitude)
         except AttributeError:
             rate = int(rate)
-        sf.write(outfile, arr, rate)
+        sf.write(outfile.fullpath(), arr, rate)
 
 
 
@@ -142,8 +154,8 @@ class RelativismPublicObject(RelativismObject):
     """
 
 
-    def __init__(self, rel_id=None, obj=None, include=None):
-        super().__init__(rel_id)
+    def __init__(self, rel_id, name, path, obj=None):
+        super().__init__(rel_id, name, path)
         if obj is None:
             obj = self
         self.method_data_by_category = {}
@@ -389,6 +401,5 @@ class SourceInfo(RelativismObject):
         set info from dict
         """
         self.s_info.update(info)
-
 
 

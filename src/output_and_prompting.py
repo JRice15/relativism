@@ -4,11 +4,9 @@ output and prompting
 
 """
 
+from contextlib import contextmanager
 
 from src.utility import *
-
-
-
 
 
 @contextmanager
@@ -200,7 +198,6 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
 
 def main_output():
     p('Choose sample rate to record at, in samples per second. Hit enter to use default 44100')
-
 
 
 

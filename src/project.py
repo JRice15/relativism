@@ -1,3 +1,7 @@
+"""
+project class
+"""
+
 
 from src.data_types import *
 from src.recording_obj import *
@@ -5,74 +9,8 @@ from src.generators import *
 from src.recording_obj import *
 from src.integraters import *
 from src.sampler import *
+from src.object_loading import *
 
-
-
-"""
-
-"""
-
-
-class RelTypeEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, Units._reg.Quantity):
-            return "<PINTQUANT>" + str(obj)
-
-        elif isinstance(obj, RelativismObject):
-            return "<REL-{0}>".format(obj.reltype) + ""
-
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-def RelTypeDecoder(dct):
-
-    for k,v in dct.items():
-
-        if "<PINTQUANT>" in str(v):
-            v = re.sub("<PINTQUANT>", "", v)
-            dct[k] = Units.new(v)
-
-    return dct
-
-
-
-
-
-
-class ProjectLoader:
-
-    _obj_map = {}
-
-    def __init__(self, proj_filename):
-        
-
-
-    def load(filename, directory=None):
-        """
-        load and return object from a file
-        """
-        path = parse_path(filename, directory) + RelativismObject._rel_obj_extension
-        with open(path, "r") as f:
-            attrs = json.load(f, object_hook=RelTypeDecoder)
-        mod = importlib.import_module(attrs.pop("__module__"))
-        obj_class = getattr(mod, attrs.pop("__class__"))
-        return obj_class(**attrs)
-
-    @staticmethod
-    def is_obj_present(self, obj_id):
-        return (obj_id in ProjectLoader._obj_map) and (ProjectLoader._obj_map[obj_id] != None)
-    
-    @staticmethod
-    def get_obj(self, obj_id):
-        return ProjectLoader._obj_map[obj_id]
-    
-    @staticmethod
-    def set_obj(self, obj_id, obj):
-        if self.is_obj_present(obj_id):
-            raise KeyError("ProjectDirectory already has object with id '{0}'".format(obj_id))
-        ProjectLoader._obj_map[obj_id] = obj
 
 
 
@@ -87,20 +25,26 @@ class Project(RelativismPublicObject):
     TESTRATE = Units.rate(44100)
     TESTBPM = Units.bpm(120)
 
-    def __init__(self, name, directory, rate, obj_map):
+    def __init__(self, name=None, rel_id=None, path=None, rate=None):
         """
         """
+        super().__init__(rel_id, name, path)
         Project._instance = self
         self.name = name
         self.reltype = 'Project'
-        self.directory = directory
+        self.path = path
         self.recs = {}
         self.rate = rate
-        self.bpm_controller = "______" #TODO
-        self.obj_map = obj_map
+        # self.bpm_controller = "______" #TODO
 
 
+    @staticmethod
+    def get_instance():
+        return Project._instance
 
+    @staticmethod
+    def get_proj_path():
+        return Project._instance.path
 
     @staticmethod
     def get_rate():
@@ -127,11 +71,17 @@ class Project(RelativismPublicObject):
             pass
 
 
-    def update_name(self, obj, old_name, new_name):
+    @public_process
+    def save(self, silent=False):
         """
+        cat: save
+        desc: save data
         """
-        pass
-
+        if not isinstance(silent, bool):
+            silent = False
+        self.save_metadata(self.name, self.path)
+        for i,rec in self.recs.items():
+            rec.save()
 
 
 
@@ -171,6 +121,7 @@ def help_desk():
     """
     welcome to the help desk, how may we be of service?
     """
+
 
 
 

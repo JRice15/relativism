@@ -23,6 +23,7 @@ from src.data_types import *
 from src.input_processing import *
 from src.relativism import *
 from src.project import *
+from src.path import *
 
 
 
@@ -121,7 +122,13 @@ class TestCases(unittest.TestCase):
                 args = m.get_random_defaults()
                 m.method_func(*args)
 
+    def test_path(self):
 
+        a = Path("Long/test/path.that/is/.pretty/crazy.file.extension")
+        self.assertEqual(a.dir, "Long/test/path.that/is/.pretty/")
+        self.assertEqual(a.ext, "extension")
+        self.assertEqual(a.filename, "crazy.file")
+        self.assertEqual(a.fullpath(), "Long/test/path.that/is/.pretty/crazy.file.extension")
 
 
 if __name__ == "__main__":

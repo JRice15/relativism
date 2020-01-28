@@ -12,12 +12,14 @@ in Project.get_bpm()
 
 
 import pint
+
 import math
 import re
 import json
 
 from src.errors import *
 from src.utility import *
+
 
 
 def RelUnit(number, type_):
@@ -692,9 +694,6 @@ class RelNote(PitchUnits):
             return shifted.to_whole_note()
         else:
             return shifted.to_note()
-
-
-
 
 
 

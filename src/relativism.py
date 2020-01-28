@@ -8,17 +8,18 @@ from src.input_processing import *
 from src.output_and_prompting import *
 
 
+
 class Relativism():
+
+    TEST_OUT_DIR = "/Users/user1/Desktop/CS/music/out-test"
 
     _debug = True
     _autosave = False
-
     _bpm = 120
     _rate = 44100
+    _next_id = 0
 
     _relativism_file_path = "relativism.relativism-data"
-
-    _next_id = None
 
     def __init__(self):
         # set default output
@@ -112,8 +113,5 @@ class BPM:
 
     def __init__(self, initial_BPM):
         self.bpm_markers = [0, initial_BPM] # 
-
-
-
 
 

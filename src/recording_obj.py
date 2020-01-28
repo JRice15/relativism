@@ -1,27 +1,6 @@
-import math
-import os
-import random as rd
-import re
-import sys
-import time
-import numpy as np
-
-import sounddevice as sd
-import soundfile as sf
-from pydub import AudioSegment as pd
-
-from src.errors import *
-from src.object_data import *
-from src.process import *
-from src.utility import *
-from src.input_processing import *
-from src.output_and_prompting import *
-from src.object_data import *
-from src.relativism import *
-from src.analysis import *
-
-
 """
+Recording Object
+
 
 add start/end capability
 
@@ -43,7 +22,28 @@ add_to_sampler
 """
 
 
+from src.object_data import *
 
+import math
+import os
+import random as rd
+import re
+import sys
+import time
+import numpy as np
+
+import sounddevice as sd
+import soundfile as sf
+from pydub import AudioSegment as pd
+
+from src.errors import *
+from src.object_data import *
+from src.process import *
+from src.utility import *
+from src.input_processing import *
+from src.output_and_prompting import *
+from src.relativism import *
+from src.analysis import *
 
 
 
@@ -74,7 +74,6 @@ class Recording(RelativismPublicObject):
 
     # Initialization #
     def __init__(self, 
-            rel_id=None,
             mode=None,
             arr=None, 
             file=None,
@@ -85,14 +84,15 @@ class Recording(RelativismPublicObject):
             hidden=False, 
             reltype='Recording', 
             pan_val=0,
-            directory="out"
+            path=Path(),
+            rel_id=None,
         ):
 
-        super().__init__(rel_id)
+        super().__init__(rel_id, name, path)
 
         self.reltype = reltype
         self.name = name
-        self.directory = directory
+        self.path = path
         if name is None:
             self.rename()
 
@@ -103,6 +103,9 @@ class Recording(RelativismPublicObject):
         self.arr = np.asarray(arr)
         self.parent = parent
         self.pan_val = pan_val
+
+        if (path.is_empty()) and (parent is not None):
+            self.path = self.parent.path.append(self.get_dirname())
 
         # self.command_line_init()
         if mode in ('read', 'file', 'read_file'):
@@ -117,7 +120,7 @@ class Recording(RelativismPublicObject):
 
         # recents for undoing
         try:
-            os.mkdir(parse_path("recents", self.directory))
+            os.makedirs(parse_path("recents", self.path))
         except FileExistsError:
             pass
         
@@ -248,18 +251,18 @@ class Recording(RelativismPublicObject):
         """
         if Relativism.autosave():
             if self.get_method(process).is_edit_rec():
-                self.save_audio(self.arr, self.rate, self.name, self.directory)
+                self.save_audio(self.arr, self.rate, self.name, self.path)
             elif self.get_method(process).is_edit_meta():
-                self.save_metadata(self.name, self.directory)
+                self.save_metadata(self.name, self.path)
 
 
     def update_recents(self):
         """
         update recents arr to include last arr
         """
-        recents_dir = parse_path("recents", self.directory)
+        recents_dir = parse_path("recents", self.path)
         os.rename(
-            self.directory + "/" + self.name + self.rel_obj_extension,
+            self.path + "/" + self.name + self.rel_obj_extension,
             recents_dir + "/" + str(time.time_ns()) + self.rel_obj_extension
         )
 
@@ -270,7 +273,7 @@ class Recording(RelativismPublicObject):
         """
         del attrs['arr']
         attrs["mode"] = "file"
-        attrs["file"] = self.directory + "/" + self.name + ".wav"
+        attrs["file"] = self.path + "/" + self.name + ".wav"
         return attrs
 
 
@@ -295,8 +298,8 @@ class Recording(RelativismPublicObject):
         """
         if not isinstance(silent, bool):
             silent = False
-        self.save_audio(self.arr, self.rate, self.name, self.directory)
-        self.save_metadata(self.name, self.directory)
+        self.save_audio(self.arr, self.rate, self.name, self.path)
+        self.save_metadata(self.name, self.path)
 
 
     @public_process
@@ -750,6 +753,9 @@ def main_rec_obj():
     a = Recording(source='sources/t.wav', name='test')
 
     process(a)
+
+
+
 
 
 if __name__ == "__main__":
