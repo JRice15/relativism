@@ -8,7 +8,7 @@ from src.output_and_prompting import *
 from src.input_processing import *
 from src.data_types import *
 from src.relativism import *
-from src.paths import *
+from src.path import *
 
 import soundfile as sf
 

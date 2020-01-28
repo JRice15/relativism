@@ -1,6 +1,6 @@
 from src.data_types import *
 import importlib
-from src.paths import *
+from src.path import *
 
 
 

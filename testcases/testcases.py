@@ -9,7 +9,7 @@ set FULLREC to true to test all Recording public processes
 import unittest
 from unittest.mock import patch
 
-import os, sys
+import os, sys, re
 
 global relativism_dir
 relativism_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -113,22 +113,30 @@ class TestCases(unittest.TestCase):
     def test_recording(self):
 
         if FULLREC:
-            # with suppress_output():
-            obj = Recording(mode="file", file="soundvision.wav", name="soundvision-test-out", directory="")
-            self.assertEqual(obj.rate, Units.rate("44100"))
-            methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
+            with suppress_output():
+                obj = Recording(mode="file", 
+                    file="/Users/user1/Desktop/CS/music/relativism/testcases/soundvision.wav", 
+                    name="soundvision-test-out")
+                self.assertEqual(obj.rate, Units.rate("44100"))
+                methods = [i[1] for i in obj.method_data_by_category['Edits'].items()]
 
-            for m in methods:
-                args = m.get_random_defaults()
-                m.method_func(*args)
+                for m in methods:
+                    args = m.get_random_defaults()
+                    m.method_func(*args)
 
     def test_path(self):
 
-        a = Path("Long/test/path.that/is/.pretty/crazy.file.extension")
-        self.assertEqual(a.dir, "Long/test/path.that/is/.pretty/")
+        a = Path(fullpath="Long/test/path.that/is/.pretty/crazy.file.extension")
+        self.assertEqual(a.dir, "Long/test/path.that/is/.pretty")
         self.assertEqual(a.ext, "extension")
         self.assertEqual(a.filename, "crazy.file")
         self.assertEqual(a.fullpath(), "Long/test/path.that/is/.pretty/crazy.file.extension")
+
+        for i in ["s/s/s/s/", "./../path.tp/", "path", "path.", "path./", "/path/", "path.path"]:
+            self.assertTrue(re.match(i + r"/{0,1}", Path(fullpath=i).fullpath()))
+            
+
+        a = Path("/the/directory///", "strange.filename", ".extension")
 
 
 if __name__ == "__main__":
