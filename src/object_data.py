@@ -30,19 +30,6 @@ def is_public_process(func):
         return False
 
 
-def parse_path(filename_or_fullpath, prefix_path):
-    """
-    parse path for reading and writing metadata. Scraps extension
-    """
-    filename_or_fullpath = re.sub(r"\..*", "", filename_or_fullpath)
-    if prefix_path is None or len(prefix_path) == 0:
-        prefix_path = ""
-    elif prefix_path[-1] != '/':
-        prefix_path += '/'
-    fullpath = prefix_path + filename_or_fullpath
-    fullpath = re.sub(r"//", "/", fullpath)
-    return fullpath
-
 
 
 class RelativismObject():
@@ -70,17 +57,19 @@ class RelativismObject():
         return string
 
     def get_dirname(self):
-        return self.name + "." + self.reltype
+        return Path(self.name + "." + self.reltype)
     
     def get_extension(self):
-        return "." + self.reltype + ".relativism-obj"
+        return Path(ext="relativism-obj")
 
     def get_filename(self):
-        return self.name + self.get_extension()
+        return Path("", self.name + self.reltype, self.get_extension())
 
 
-    @public_process
     def rename(self, name=None):
+        """
+        should call this method via super, and implement any file saving as needed
+        """
         if name is None:
             p("Give this {0} a name".format(self.reltype))
             name = inpt("obj")

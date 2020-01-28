@@ -7,8 +7,7 @@ path object for handling paths
 import re
 import os
 
-class PathError(Exception):
-    pass
+from src.errors import *
 
 
 class Path(os.PathLike):
@@ -44,7 +43,12 @@ class Path(os.PathLike):
                     self.dir = fullpath
 
             else:
-                self.dir = fullpath
+                # possible filename with directory given
+                if fullpath.count(".") == 1 and fullpath[0] == ".":
+                    self.dir = fullpath
+                elif fullpath.count(".") > 0:
+                    self.filename = ".".join(fullpath.split(".")[:-1])
+                    self.ext = fullpath.split(".")[-1]
         
         # dir, fname, extension given directly
         else:
@@ -53,8 +57,19 @@ class Path(os.PathLike):
             self.ext = ext
         
         # formatting
-        self.filename = re.sub(r"/", "", self.filename)
-        self.ext = re.sub(r"\.", "", self.ext)
+        if isinstance(directory, Path):
+            self.dir = directory.dir
+        else:
+            self.dir = "/" + self.dir
+        self.dir = self._clean(self.dir)
+        if isinstance(name, Path):
+            self.filename = name.filename
+        else:
+            self.filename = re.sub(r"/", "", self.filename)
+        if isinstance(ext, Path):
+            self.ext = ext.ext
+        else:
+            self.ext = re.sub(r"\.", "", self.ext)
 
 
     def _parse_filename_and_ext(self, filename):
@@ -76,9 +91,24 @@ class Path(os.PathLike):
     
     def __eq__(self, other):
         try:
-            return self.fullpath == other.fullpath
+            return self.fullpath() == other.fullpath()
         except:
             return False
+
+    def __add__(self, other):
+        if isinstance(other, Path):
+            if (not (self.dir != "" and other.dir != "")) and \
+                (not (self.filename != "" and other.filename != "")) and \
+                (not (self.ext != "" and other.ext != "")):
+                if (self.filename != "" or other.filename != ""):
+                    dirc = other.dir if self.dir == "" else self.dir
+                    fname = other.filename if self.filename == "" else self.filename
+                    ext = other.ext if self.ext == "" else self.ext
+                    return Path(dirc, fname, ext)
+            if self.is_dir():
+                return self.append(other)
+        raise PathError("These paths cannot be added")
+        
 
     def _clean(self, string):
         return re.sub(r"//+", "/", string)
@@ -100,11 +130,11 @@ class Path(os.PathLike):
             (self.ext == "")
 
     def append(self, other):
-        if self.is_dir():
+        if not self.is_dir():
             raise PathError("Appending to non-directory")
         if not isinstance(other, Path):
             other = Path(fullpath=other)
-        return Path(self._clean(self.fullpath + "/" + other))
+        return Path(self._clean(self.fullpath() + "/" + other.fullpath()))
 
     def remove_ext(self):
         return Path(self.dir, self.filename)

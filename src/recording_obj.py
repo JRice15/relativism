@@ -120,7 +120,7 @@ class Recording(RelativismPublicObject):
 
         # recents for undoing
         try:
-            os.makedirs(parse_path("recents", self.path))
+            os.makedirs(self.path.append("recents"))
         except FileExistsError:
             pass
         
@@ -260,10 +260,10 @@ class Recording(RelativismPublicObject):
         """
         update recents arr to include last arr
         """
-        recents_dir = parse_path("recents", self.path)
+        recents_dir = self.path.append("recents")
         os.rename(
-            self.path + "/" + self.name + self.rel_obj_extension,
-            recents_dir + "/" + str(time.time_ns()) + self.rel_obj_extension
+            Path(self.path, self.name, self.rel_obj_extension),
+            Path(recents_dir, str(time.time_ns()), self.rel_obj_extension)
         )
 
 

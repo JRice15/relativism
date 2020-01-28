@@ -1,20 +1,9 @@
 
 
-class NameExistsError(Exception):
-    """
-    chosen name already exists
-    """
-    pass
 
-class NameDoesntExistError(Exception):
+class PathError(Exception):
     """
-    chosen name cannot be found
-    """
-    pass
-
-class NoPathError(Exception):
-    """
-    no path was chosen
+    Something wrong with path
     """
     pass
 
