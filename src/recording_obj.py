@@ -84,28 +84,29 @@ class Recording(RelativismPublicObject):
             hidden=False, 
             reltype='Recording', 
             pan_val=0,
-            path=Path(),
+            path=None,
             rel_id=None,
         ):
 
+        # super sets rel_id, name, path
         super().__init__(rel_id, name, path)
 
         self.reltype = reltype
-        self.name = name
-        self.path = path
         if name is None:
             self.rename()
+
+        self.parent = parent
+        if (path is None) and (parent is not None):
+            self.path = self.parent.path.append(self.get_data_dirname())
+            makepath(self.path)
 
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.reltype, self.name))
         self.rate = Units.rate(rate)
         self.source_block = {} if source_block is None else source_block
         self.arr = np.asarray(arr)
-        self.parent = parent
         self.pan_val = pan_val
 
-        if (path.is_empty()) and (parent is not None):
-            self.path = self.parent.path.append(self.get_dirname())
 
         # self.command_line_init()
         if mode in ('read', 'file', 'read_file'):
@@ -120,7 +121,7 @@ class Recording(RelativismPublicObject):
 
         # recents for undoing
         try:
-            os.makedirs(self.path.append("recents"))
+            makepath(self.path.append("recents"))
         except FileExistsError:
             pass
         
@@ -299,7 +300,7 @@ class Recording(RelativismPublicObject):
         if not isinstance(silent, bool):
             silent = False
         self.save_audio(self.arr, self.rate, self.name, self.path)
-        self.save_metadata(self.name, self.path)
+        self.save_metadata()
 
 
     @public_process

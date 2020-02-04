@@ -40,7 +40,7 @@ class RelativismObject():
     def __init__(self, rel_id, name, path):
         
         self.name = name
-        self.path = path
+        self.path = path # path including object's own directory
         self.reltype = None
         self.rel_id = rel_id if rel_id is not None else Relativism.get_next_id()
 
@@ -56,14 +56,27 @@ class RelativismObject():
             string += " {0}: {1};".format(key, val)
         return string
 
-    def get_dirname(self):
-        return Path(self.name + "." + self.reltype)
+    def get_data_dirname(self):
+        """
+        name.reltype : name of directory and of datafile, wav, any other data.
+        this part of the path is included in self.path
+        """
+        return Path(directory=self.name + "." + self.reltype)
     
+    def get_data_filename(self):
+        return Path(name=self.name + "." + self.reltype)
+
     def get_extension(self):
+        """
+        datafile extension
+        """
         return Path(ext="relativism-obj")
 
-    def get_filename(self):
-        return Path("", self.name + self.reltype, self.get_extension())
+    def get_datafile_fullpath(self):
+        """
+        fullpath of datafile
+        """
+        return Path(self.path, self.get_data_filename(), self.get_extension())
 
 
     def rename(self, name=None):
@@ -102,7 +115,7 @@ class RelativismObject():
         return path
 
 
-    def save_metadata(self, filename, path):
+    def save_metadata(self):
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
@@ -114,8 +127,8 @@ class RelativismObject():
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        os.makedirs(path, exist_ok=True)
-        fullpath = Path(path, filename, self.get_extension())
+        os.makedirs(self.path, exist_ok=True)
+        fullpath = Path(self.path, self.name, self.get_extension())
         # RelTypeEncoder found in object_loading
         with open(fullpath, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)

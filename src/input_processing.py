@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 from src.data_types import *
+from src.path import *
 from src.errors import *
 from src.output_and_prompting import *
 from src.utility import *
@@ -250,6 +251,7 @@ def input_file():
     """
     dialog box to choose a file. Raises Cancel on no selection
     """
+    sys.stdout.flush()
     with suppress_output():
         root = tk.Tk()
         root.withdraw()
@@ -259,7 +261,7 @@ def input_file():
         root.destroy()
     if file == "":
         raise Cancel
-    return file
+    return Path(fullpath=file)
 
 
 
@@ -267,6 +269,7 @@ def input_dir():
     """
     dialog box to choose a directory. Raises Cancel on no selection
     """
+    sys.stdout.flush()
     with suppress_output():
         root = tk.Tk()
         root.withdraw()
@@ -276,6 +279,6 @@ def input_dir():
         root.destroy()
     if directory == "":
         raise Cancel
-    return directory
+    return Path(directory)
 
 

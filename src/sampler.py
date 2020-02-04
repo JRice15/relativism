@@ -327,26 +327,31 @@ class Sampler(RelativismPublicObject):
     """
 
     def __init__(self,
-        rel_id=None,
         name=None,
-        reltype="Sampler",
+        parent=None,
+        hidden=False,
         smps=None,
         active=None,
         rhythms=None,
         bpm=None,
-        hidden=False,
-        directory="out",
+        reltype="Sampler",
+        rel_id=None,
+        path=None,
     ):
-        super().__init__(rel_id)
+        super().__init__(rel_id, name, path)
         self.reltype = reltype
         self.name = name
         if name is None:
             self.rename()
 
+        self.parent = parent
+        if (path is None) and (parent is not None):
+            self.path = self.parent.path.append(self.get_data_dirname())
+            makepath(self.path)
+        
         if not hidden:
             print("\n* Initializing {0} '{1}'".format(self.reltype, self.name))
 
-        self.directory = directory
         self.smps = [] if smps is None else smps
         self.rhythms = [] if rhythms is None else rhythms
         self.active = [] if active is None else active

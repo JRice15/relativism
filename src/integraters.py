@@ -35,7 +35,7 @@ def mix(rec1, rec2, mix_level=None, offset=0, name=None):
 
 
 
-def mix_multiple(*args, mix_level=None, name=None):
+def mix_multiple(*args, mix_level=1.0, name=None):
     """
     Mix multiple recording objected together
         *args: Rec objects to mix, or list of lists as [rec obj, offset (beat/sec)]
@@ -51,9 +51,9 @@ def mix_multiple(*args, mix_level=None, name=None):
             offset2 = rec2[1]
             rec2 = rec2[0]
         rec1 = mix(rec1, rec2, offset=offset2, name="mix multiple")
-    if mix_level is not None:
+    if mix_level != 1.0:
         rec1.amplify(mix_level)
-    rec1.rename()
+    rec1.rename(name)
     return rec1
 
 

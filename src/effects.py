@@ -148,6 +148,21 @@ def angle_to_pan(a):
 
 
 
+"""
+REVERB NOTES/THOUGHTS
+
+* pass single 1.0 amplitude sample (pulse) through the reverb, use what comes out as a 
+function then applied to the rest
+* have lots of nodes
+* have master map, that maps sample to any pulse's arrival at nodes
+* for each pulse's expected path from node to node, calculate time in samples it should
+take, add to master map (can have multiple events per sample)
+* while-loop i++ through, handling items in sample map as they are reached, until 
+all pulses are too quiet
+
+"""
+
+
 
 
 class Reverb1():

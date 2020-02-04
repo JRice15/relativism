@@ -6,6 +6,7 @@ path object for handling paths
 
 import re
 import os
+import stat
 
 from src.errors import *
 
@@ -17,6 +18,9 @@ class Path(os.PathLike):
         give either fullpath arg or a combo of the other three
         """
         self.dir = self.filename = self.ext = ""
+
+        if isinstance(fullpath, Path):
+            fullpath = fullpath.fullpath()
 
         # parse from whole string
         if fullpath != "":
@@ -95,20 +99,40 @@ class Path(os.PathLike):
         except:
             return False
 
-    def __add__(self, other):
-        if isinstance(other, Path):
-            if (not (self.dir != "" and other.dir != "")) and \
-                (not (self.filename != "" and other.filename != "")) and \
-                (not (self.ext != "" and other.ext != "")):
-                if (self.filename != "" or other.filename != ""):
-                    dirc = other.dir if self.dir == "" else self.dir
-                    fname = other.filename if self.filename == "" else self.filename
-                    ext = other.ext if self.ext == "" else self.ext
-                    return Path(dirc, fname, ext)
-            if self.is_dir():
-                return self.append(other)
-        raise PathError("These paths cannot be added")
-        
+    def _dont_share_path_element(self, other):
+        """
+        makes sure two paths dont both have a dir, a filename, or an extension
+        """
+        return (not (self.dir != "" and other.dir != "")) and \
+            (not (self.filename != "" and other.filename != "")) and \
+            (not (self.ext != "" and other.ext != ""))
+
+
+    def merge(self, other):
+        if not isinstance(other, Path):
+            other = Path(fullpath=other)
+
+        if self._dont_share_path_element(other):
+
+            if (self.filename != "" or other.filename != ""):
+
+                dirc = other.dir if self.dir == "" else self.dir
+                fname = other.filename if self.filename == "" else self.filename
+                ext = other.ext if self.ext == "" else self.ext
+                return Path(dirc, fname, ext)
+
+        if self.is_dir():
+            self.append(other)
+
+        raise PathError("Paths '{0}' and '{1}' cannot be merged", self, other)
+
+    def append(self, other):
+        if not isinstance(other, Path):
+            other = Path(fullpath=other)
+        if self.is_dir():
+            return Path(fullpath=self.fullpath() + "/" + other.fullpath())
+        raise PathError("Paths '{0}' and '{1}' cannot be appended", self, other)
+
 
     def _clean(self, string):
         return re.sub(r"//+", "/", string)
@@ -129,14 +153,22 @@ class Path(os.PathLike):
         return (self.dir == "") and (self.filename == "") and \
             (self.ext == "")
 
-    def append(self, other):
-        if not self.is_dir():
-            raise PathError("Appending to non-directory")
-        if not isinstance(other, Path):
-            other = Path(fullpath=other)
-        return Path(self._clean(self.fullpath() + "/" + other.fullpath()))
 
     def remove_ext(self):
         return Path(self.dir, self.filename)
 
 
+def makepath(path):
+    os.makedirs(path, exist_ok=True)
+    os.makedirs(path.append("/test1/"), exist_ok=True)
+    os.makedirs(path.append("/test2/"), exist_ok=True)
+    see_path(path)
+
+
+
+def see_path(path):
+    for root, dirs, files in os.walk(path):
+        path = root.split(os.sep)
+        print((len(path) - 1) * '-', os.path.basename(root))
+        for file in files:
+            print(len(path) * '-', file)
