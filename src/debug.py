@@ -7,7 +7,7 @@ from contextlib import contextmanager
 import time
 import timeit
 import functools
-
+import os
 
 
 class _TimerAssistant:
@@ -36,4 +36,11 @@ def timeit_(func, args, reps=1000, times=7):
     print("{0} took {1}".format(func.__name__, time))
 
 
+
+def see_path(path):
+    for root, dirs, files in os.walk(path):
+        path = root.split(os.sep)
+        print((len(path) - 1) * '-', os.path.basename(root))
+        for file in files:
+            print(len(path) * '-', file)
 

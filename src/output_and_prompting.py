@@ -5,7 +5,7 @@ output and prompting
 """
 
 from contextlib import contextmanager
-
+from src.errors import *
 from src.utility import *
 
 
@@ -84,6 +84,14 @@ def err_mess(message, indent=4, trailing_newline=False):
     info_block("> " + str(message), indent=indent, trailing_newline=trailing_newline)
 
 
+def show_error(e, force=False):
+    if not isinstance(e, Cancel) or force:
+        critical_err_mess(e.__class__.__name__ + ": " + str(e))
+        if Relativism.debug():
+            p("Raise error? [y/n]")
+            if input().lower().strip() == 'y':
+                raise e
+
 def critical_err_mess(message):
     """
     """
@@ -102,8 +110,11 @@ def info_list(message, indent=4, hang=2):
     print messages with '-' list. message as str or list
     """
     if isinstance(message, list) or isinstance(message, tuple):
-        for m in message:
-            info_block("- " + str(m), indent=indent, newlines=False, hang=hang)
+        if len(message) == 0:
+            info_block("- (empty)", indent=indent, newlines=False, hang=hang)
+        else:
+            for m in message:
+                info_block("- " + str(m), indent=indent, newlines=False, hang=hang)
     else:
         info_block("- " + str(message), indent=indent, newlines=False, hang=hang)
 

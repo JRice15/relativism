@@ -6,10 +6,11 @@ import re
 
 from src.input_processing import *
 from src.output_and_prompting import *
-
+from object_loading import *
 
 
 class Relativism():
+    global RELATIVISM_DIR
 
     TEST_OUT_DIR = "/Users/user1/Desktop/CS/music/out-test"
 
@@ -19,7 +20,7 @@ class Relativism():
     _rate = 44100
     _next_id = 0
 
-    _relativism_file_path = "relativism.relativism-data"
+    _relativism_file_path = Path(dir=RELATIVISM_DIR, name="relativism", ext="relativism-data")
 
     def __init__(self):
         # set default output
@@ -32,14 +33,14 @@ class Relativism():
             data_file.close()
             paths = [re.sub(r"    ", "\t", i) for i in paths]
             paths = [i.strip().split("\t") for i in paths]
-            paths = [i for i in paths if len(i) > 1]
+            paths = {i[0]:Path(i[1]) for i in paths if len(i) > 1}
         except FileNotFoundError:
             path_f = open(self._relativism_file_path, "w")
             path_f.close()
-            paths = []
-        self.names_and_paths = {}
-        for i in paths:
-            self.names_and_paths[i[0]] = i[1]
+            paths = {}
+        # maps name to Path, which is path to that proj's datafile
+        self.projects = paths
+        self.open_proj = None
         
         # init
         p("Open existing project (O) or Create new (C)?")
@@ -47,15 +48,25 @@ class Relativism():
 
         if open_or_create == 'c':
             # create
-            print("  Enter a unique name for your {0}: ".format(open_type), end="")
-            proj_name = inpt("obj")
-            verify_create_name(open_type, proj_name)
-            print("  name: '{0}'".format(proj_name))
-            print("  Choose a path where your {0} will be stored. Launching...".format(open_type))
-            time.sleep(1)
-            proj_path = input_dir()
-            print("  '" + proj_name + "': " + proj_path)
-            return proj_name, proj_path
+            self.open_proj = Project()
+            self.projects[proj.name] = proj.path.fullpath()
+        else:
+            info_title("Existing projects:")
+            info_list(self.projects.keys())
+            nl()
+            p("")
+            try:
+                proj_path = self.projects[proj_name]
+            except KeyError:
+                proj_name = autofill(proj_name, self.projects.keys(), "name")
+                proj_path = self.projects[proj_name]
+            self.open_proj = ProjectLoader(
+                Path(name="{0}.Project.relativism-obj".format(proj_name)), 
+                proj_path
+            )
+
+
+    def validate_child_name(name):
 
 
     @staticmethod
@@ -76,7 +87,6 @@ class Relativism():
 
     #TODO: get/set autosave
 
-
     @staticmethod
     def get_next_id():
         if Relativism._next_id is None:
@@ -86,7 +96,6 @@ class Relativism():
         Relativism._next_id += 1
         return temp
         
-
     @staticmethod
     def bpm():
         return Relativism._bpm
@@ -101,10 +110,30 @@ class Relativism():
     def set_rate(self, rate):
         Relativism._rate = rate
 
-
-
     def set_output(self):
         pass
+
+
+
+def autofill(partial, possibles, inpt_mode="name"):
+    """
+    matches partial word to one or more of the possible options
+    """
+    matches = []
+    for pos in possibles:
+        if pos[:len(partial)] == partial:
+            matche.append(pos)
+    if len(matches) == 0:
+        raise AutofillError("No matches for '{0}'".format(partial))
+    elif len(matches) == 1:
+        return matches[0]
+    else:
+        info_title("Multiple matches:")
+        info_list(matches)
+        p("Complete the word", start=partial)
+        rest = inpt(inpt_mode)
+        return autofill(partial + rest, matches, inpt_mode=inpt_mode)
+    
 
 
 

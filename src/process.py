@@ -150,14 +150,6 @@ def process_error_handling(e, command, obj):
 
 
 
-def show_error(e):
-    if not isinstance(e, Cancel):
-        critical_err_mess(e.__class__.__name__ + ": " + str(e))
-        if Relativism.debug():
-            p("Raise error? [y/n]")
-            if input().lower().strip() == 'y':
-                raise e
-
 
 def get_similar_methods(obj, partial):
     obj_class = type(obj)

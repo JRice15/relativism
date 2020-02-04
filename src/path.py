@@ -160,15 +160,4 @@ class Path(os.PathLike):
 
 def makepath(path):
     os.makedirs(path, exist_ok=True)
-    os.makedirs(path.append("/test1/"), exist_ok=True)
-    os.makedirs(path.append("/test2/"), exist_ok=True)
-    see_path(path)
 
-
-
-def see_path(path):
-    for root, dirs, files in os.walk(path):
-        path = root.split(os.sep)
-        print((len(path) - 1) * '-', os.path.basename(root))
-        for file in files:
-            print(len(path) * '-', file)

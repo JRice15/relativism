@@ -25,6 +25,7 @@ class Project(RelativismPublicObject):
     TESTBPM = Units.bpm(120)
 
     def __init__(self,
+            parent=None,
             name=None,
             rel_id=None,
             path=None,
@@ -38,6 +39,7 @@ class Project(RelativismPublicObject):
         if name is None:
             self.rename()
 
+        self.parent = parent
         self.path = path
         if path is None:
             p("Select a location for this project (folder will " + \

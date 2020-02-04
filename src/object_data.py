@@ -91,9 +91,11 @@ class RelativismObject():
 
         # validate
         try:
-            self.parent.validate_child_name(self)
-            self.name = name
+            if self.parent.validate_child_name(self):
+                self.name = name
         except AttributeError:
+            if Relativism.debug():
+                show_error(NameError("parent obj '{0}' does not have validate_child_name"))
             self.name = name
         
         info_block("Named '{0}'".format(name))

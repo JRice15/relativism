@@ -29,7 +29,7 @@ class RelTypeEncoder(json.JSONEncoder):
 class ProjectLoader:
 
     def __init__(self, filename, path):
-        self.proj_file_path = path
+        self.proj_file_dir = path
         self.current_path = path
         self.project = self.load(filename, path)
 

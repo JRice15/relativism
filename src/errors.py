@@ -1,5 +1,10 @@
 
 
+class AutofillError(Exception):
+    """
+    autofill couldnt find a suitable match
+    """
+    pass
 
 class PathError(Exception):
     """
