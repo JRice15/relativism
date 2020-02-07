@@ -20,12 +20,10 @@ access any projects recs
 
 
 
-
-
 class SampleGroup(RelativismPublicObject):
 
-    def __init__(self, name=None):
-        super().__init__(self)
+    def __init__(self, name=None, rel_id=None, reltype=None, path=None, parent=None):
+        super().__init__(rel_id, reltype, name, path, parent)
         self.reltype = "Sample Group"
         self.rename()
         self.samples = {}
@@ -74,14 +72,12 @@ class SampleGroup(RelativismPublicObject):
 
 class Rhythm(RelativismPublicObject):
 
-    def __init__(self, parent=None, name=None, sample=None):
-        super().__init__()
+    def __init__(self, parent=None, reltype=None, name=None, path=None, rel_id=None, sample=None):
+        super().__init__(rel_id, reltype, name, path, parent)
         print("\n* Initializing Rhythm")
         self.done_init = False
-        self.parent = parent
         self.sample = sample
-        self.reltype = 'Rhythm'
-        self.name = name
+        self.reltype = "Rhythm"
         if name is None:
             self.rename()
         self.period = None
@@ -221,15 +217,18 @@ class Rhythm(RelativismPublicObject):
 
 class Active(RelativismPublicObject):
 
-    def __init__(self, parent, act_rhythm, act_sample, muted=None):
-        super().__init__()
+    def __init__(self, parent, path, act_rhythm, act_sample, reltype=None, 
+            name=None, rel_id=None, muted=None):
+
+        super().__init__(rel_id, reltype, name, path, parent)
         print("\n* Initializing active pair")
+        self.reltype = "ActivePair"
         self.rhythm = act_rhythm
         self.sample = act_sample
         self.muted = muted
-        self.name = None
         self.variability = Active.Variability()
-        self.rename()
+        if name is None:
+            self.rename()
         if muted is None:
             p("Should this active pair begin muted?", o='y/n')
             self.muted = inpt('y-n')
@@ -338,13 +337,12 @@ class Sampler(RelativismPublicObject):
         rel_id=None,
         path=None,
     ):
-        super().__init__(rel_id, name, path)
+        super().__init__(rel_id, reltype, name, path, parent)
+
         self.reltype = reltype
-        self.name = name
         if name is None:
             self.rename()
 
-        self.parent = parent
         if (path is None) and (parent is not None):
             self.path = self.parent.path.append(self.get_data_dirname())
             makepath(self.path)

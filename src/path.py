@@ -122,9 +122,9 @@ class Path(os.PathLike):
                 return Path(dirc, fname, ext)
 
         if self.is_dir():
-            self.append(other)
+            return self.append(other)
 
-        raise PathError("Paths '{0}' and '{1}' cannot be merged", self, other)
+        raise PathError("Paths '{0}' and '{1}' cannot be merged".format(self, other))
 
     def append(self, other):
         if not isinstance(other, Path):
@@ -148,6 +148,9 @@ class Path(os.PathLike):
     def is_dir(self):
         return (self.dir != "") and (self.filename == "") and \
             (self.ext == "")
+
+    def get_dir(self):
+        return Path(directory=self.dir)
 
     def is_empty(self):
         return (self.dir == "") and (self.filename == "") and \

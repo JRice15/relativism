@@ -14,15 +14,13 @@ class RelTypeEncoder(json.JSONEncoder):
             return "<PINTQUANT>" + str(obj)
 
         elif isinstance(obj, RelativismObject):
-            return "<RELOBJ>" + obj.get_dirname()
+            return "<RELOBJ>" + re.sub(r"/", "", obj.get_data_dirname().fullpath())
         
         elif isinstance(obj, Path):
             return "<PATH>" + str(obj)
 
         else:
             return json.JSONEncoder.default(self, obj)
-
-
 
 
 
@@ -51,7 +49,7 @@ class ProjectLoader:
             
             elif "<PATH>" in str(val):
                 val = re.sub("<PATH>", "", val)
-                dct[key] = Path(val)
+                dct[key] = Path(fullpath=val)
 
         return dct
 

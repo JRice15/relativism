@@ -12,7 +12,7 @@ from src.utility import *
 @contextmanager
 def style(*styles):
     """
-    color and stylize text. pass styles one or multiple strings
+    color and stylize text. pass styles one comma seperated str or multiple strings
     """
     class Colors:
         """ ANSI color codes """
@@ -57,7 +57,7 @@ def style(*styles):
 
 
 
-def p(message, indent=2, o="", h=False, start=""):
+def p(message, indent=2, o="", h=False, start="", hang=2):
     """
     prompting.
     Args:
@@ -73,7 +73,7 @@ def p(message, indent=2, o="", h=False, start=""):
     if h:
         notices += ", 'h' for help/info"
     notices += "):"
-    info_block(message_body + notices, indent=indent, for_prompt=True, start=start)
+    info_block(message_body + notices, indent=indent, for_prompt=True, start=start, hang=hang)
 
 
 def err_mess(message, indent=4, trailing_newline=False):
@@ -151,7 +151,6 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
     # configuration
     end = "\n"
     if for_prompt:
-        hang = 2
         if indent is None:
             indent = 2
         trailing_newline = False

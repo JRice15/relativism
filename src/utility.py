@@ -40,7 +40,7 @@ def suppress_output(err_log_name="relativism_errors.log"):
     errors written to err log
     """
     with open(os.devnull, "w") as devnull:
-        with open(err_log_name, "w") as errlog:
+        with open(err_log_name, "a") as errlog:
             old_stdout = sys.stdout
             old_stderr = sys.stderr
             sys.stdout = devnull

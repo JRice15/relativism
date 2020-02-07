@@ -12,9 +12,10 @@ def process(obj):
     process an object
     'self.name()', 'self.reltype' required
     """
-    section_head("Processing object '{0}' of type '{1}'".format(obj.name, obj.reltype))
+    section_head("Processing {0} '{1}'".format(obj.reltype, obj.name))
     while True:
-        p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), h=True, o="'o' to view process options")
+        p("{0} What process to run on {1} '{2}'?".format(Relativism.get_process_num(), 
+            obj.reltype, obj.name), h=True, o="'o' to view process options", indent=0, hang=4)
         command = inpt('split', 'arg', help_callback=processes_help)
         if command == []:
             err_mess("No command entered")

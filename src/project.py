@@ -30,17 +30,16 @@ class Project(RelativismPublicObject):
             rel_id=None,
             path=None,
             rate=None,
+            reltype=None,
             children=None):
         
         # super sets rel_id, name, path
-        super().__init__(rel_id, name, path)
+        super().__init__(rel_id, reltype, name, path, parent)
         Project._instance = self
         self.reltype = "Project"
         if name is None:
             self.rename()
 
-        self.parent = parent
-        self.path = path
         if path is None:
             p("Select a location for this project (folder will " + \
                 "be created within selected location to house project files)")
@@ -57,7 +56,7 @@ class Project(RelativismPublicObject):
         raise NotImplementedError
 
     @staticmethod
-    def get_instance():
+    def get_proj():
         return Project._instance
 
     @staticmethod
@@ -73,6 +72,14 @@ class Project(RelativismPublicObject):
     def get_bpm(context=None):
         return Project.TESTBPM
         return Project._instance.bpm_controller.get_bpm(context)
+
+    @public_process
+    def set_bpm(self, bpm):
+        self._bpm = bpm
+
+    #TODO: set rate
+    #TODO: set input, output
+    #TODO: autosave
 
 
 

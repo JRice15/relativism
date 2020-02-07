@@ -120,7 +120,7 @@ def inpt_validate(val, mode, allowed=None):
             val = False
 
     elif mode == "letter":
-        if (len(val) != 1) or (allowed is not None and val not in allowed):
+        if (allowed is not None) and (len(val) != 1 or val not in allowed):
             p("> Select one of " + ", ".join(allowed.upper()))
             val = inpt(mode, allowed=allowed)
 
@@ -261,6 +261,7 @@ def input_file():
         root.destroy()
     if file == "":
         raise Cancel
+    nl()
     return Path(fullpath=file)
 
 
@@ -279,6 +280,7 @@ def input_dir():
         root.destroy()
     if directory == "":
         raise Cancel
+    nl()
     return Path(directory)
 
 

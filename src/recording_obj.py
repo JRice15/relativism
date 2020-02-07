@@ -88,14 +88,12 @@ class Recording(RelativismPublicObject):
             rel_id=None,
         ):
 
-        # super sets rel_id, name, path
-        super().__init__(rel_id, name, path)
+        super().__init__(rel_id, reltype, name, path, parent)
 
         self.reltype = reltype
         if name is None:
             self.rename()
 
-        self.parent = parent
         if (path is None) and (parent is not None):
             self.path = self.parent.path.append(self.get_data_dirname())
             makepath(self.path)
@@ -252,9 +250,9 @@ class Recording(RelativismPublicObject):
         """
         if Relativism.autosave():
             if self.get_method(process).is_edit_rec():
-                self.save_audio(self.arr, self.rate, self.name, self.path)
+                self.save_audio()
             elif self.get_method(process).is_edit_meta():
-                self.save_metadata(self.name, self.path)
+                self.save_metadata()
 
 
     def update_recents(self):
@@ -299,7 +297,7 @@ class Recording(RelativismPublicObject):
         """
         if not isinstance(silent, bool):
             silent = False
-        self.save_audio(self.arr, self.rate, self.name, self.path)
+        self.save_audio()
         self.save_metadata()
 
 
