@@ -6,9 +6,9 @@
 
 {% block body %}
 
-<div class="content">
+<div id="all-content" class="container">
 
-    <div class="content-box">
+    <div id="content-head" class="content-box">
         <table class="menu">
             <tr>
                 <td>
@@ -26,8 +26,38 @@
         </table>
     </div>
 
+    <div id="content-body" class="container">
 
-    <p>{{ var }}</p>
+        <div id="left-sidebar" class="column sidebar">
+
+            <div class="content-box">
+
+                <table class="menu">
+                    <tr>
+                        <td>
+                            <h3>Menu</h3>
+
+                        </td>
+                    </tr>
+
+                </table>
+                
+            </div>
+
+        </div>
+
+        <div id="main-panel" class="column">
+
+            <div class="content-box">
+
+                <h3>{{obj.name}}</h3>
+
+            </div>
+
+        </div>
+
+
+    </div>
 
 
 </div>

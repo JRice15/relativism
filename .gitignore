@@ -24,9 +24,9 @@ ext/
 # error logs
 *.log
 
-# object save files
+# program data files
 *.relativism-obj
-out/
+data/
 
 # misc personal files
 TODO
