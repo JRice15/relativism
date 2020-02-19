@@ -4,13 +4,15 @@ project class
 
 
 from src.data_types import *
-from src.recording_obj import *
-from src.generators import *
-from src.recording_obj import *
-from src.integraters import *
-from src.sampler import *
-from src.object_loading import *
-
+from src.recording_obj import Recording
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.integraters import mix, mix_multiple, concatenate
+from src.sampler import Sampler
+from src.project_loader import ProjectLoader
+from src.object_data import (public_process, is_public_process, 
+    RelativismObject, RelativismPublicObject)
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
 
 
 
@@ -31,9 +33,9 @@ class Project(RelativismPublicObject):
             path=None,
             rate=None,
             reltype=None,
-            children=None):
+            children=None
+        ):
         
-        # super sets rel_id, name, path
         super().__init__(rel_id, reltype, name, path, parent)
         Project._instance = self
         self.reltype = "Project"
@@ -53,7 +55,16 @@ class Project(RelativismPublicObject):
 
 
     def __repr__(self):
-        raise NotImplementedError
+        return "{0} '{1}', stored at: {2}. {3} direct children objects".format(
+            self.reltype, self.name, self.path, len(self.children)
+        )
+
+    def validate_child_name(self, name):
+        for c in self.children:
+            if c.name == name:
+                err_mess("Child with name '{0}' already exists!".format(name))
+                return False
+        return True
 
     @staticmethod
     def get_proj():
@@ -153,7 +164,7 @@ class Project(RelativismPublicObject):
                 if child is not None:
                     raise UnexpectedIssue("Multiple children with name {0}".format(child_name))
                 child = i
-        process(i)
+        process(child)
     
 
     @public_process

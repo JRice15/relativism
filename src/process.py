@@ -2,20 +2,25 @@
 
 import random as rd
 
-from src.object_data  import *
-from src.name_and_path import *
-from src.relativism import *
-
+from src.object_data import (public_process, is_public_process, 
+    RelativismObject, RelativismPublicObject)
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error, style)
+from src.rel_global import RelGlobal
 
 def process(obj):
     """
-    process an object
-    'self.name()', 'self.reltype' required
+    process an object.
+    'self.name', 'self.reltype' required.
+    caller must try/except handle Cancel error
     """
     section_head("Processing {0} '{1}'".format(obj.reltype, obj.name))
     while True:
-        p("{0} What process to run on {1} '{2}'?".format(Relativism.get_process_num(), 
-            obj.reltype, obj.name), h=True, o="'o' to view process options", indent=0, hang=4)
+        with style("cyan, bold"):
+            print("{0} ".format(RelGlobal.get_process_num()), end="")
+        p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), 
+            h=True, o="'o' to view process options", indent=0, hang=4, leading_newline=False)
         command = inpt('split', 'arg', help_callback=processes_help)
         if command == []:
             err_mess("No command entered")
@@ -144,6 +149,9 @@ def process_error_handling(e, command, obj):
         err_mess(message)
 
     elif isinstance(e, Cancel):
+        p("save this object before canceling?", o="y/n")
+        if inpt("y-n"):
+            obj.save()
         print("\n exiting processing...\n")
 
     else:

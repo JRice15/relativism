@@ -4,23 +4,24 @@ highest-level parent. One instance of Relativism() per program
 
 import re
 
-from src.input_processing import *
-from src.output_and_prompting import *
-from src.object_loading import *
-from src.object_data import *
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.project_loader import ProjectLoader
+from src.object_data import (public_process, is_public_process, 
+    RelativismObject, RelativismPublicObject)
+from src.process import process
+from src.path import Path, makepath
+
 
 class Relativism(RelativismPublicObject):
 
-    _debug = True
-    _autosave = False
-    _bpm = 120
-    _rate = 44100
-    _next_id = 0
-    _process_num = 1
 
     def __init__(self, rel_dir, relfile_path):
         section_head("* Initializing program")
         super().__init__(-1, "Program", "Relativism", rel_dir, None)
+        self._instance = self
+
         # set default output
         self.output = 'Built-in Output'
         self.reltype = "Program"
@@ -42,7 +43,9 @@ class Relativism(RelativismPublicObject):
         # maps name to Path, which is path to that proj's datafile
         self.projects = paths
         self.current_open_proj = None
-        
+        self.choose_open_type()
+
+    def choose_open_type(self):
         # if projects is empty, create, otherwise prompt for create or open existing
         if bool(self.projects):
             p("Open existing project (O) or Create new (C)?")
@@ -76,9 +79,18 @@ class Relativism(RelativismPublicObject):
             proj_name = autofill(proj_name, self.projects.keys(), "name")
             proj_path = self.projects[proj_name]
 
-        self.current_open_proj = ProjectLoader(
-            Path(name="{0}.Project".format(proj_name)), proj_path
-        )
+        try:
+            loader = ProjectLoader(
+                Path(name="{0}.Project".format(proj_name)), proj_path, self
+            )
+            self.current_open_proj = loader.get_proj()
+        except FileNotFoundError as e:
+            err_mess("File Not Found: '{0}'".format(e.filename))
+            p("Locate '{0}'?".format(proj_name), o="y/n")
+            if inpt("y-n"):
+                self.locate_proj(proj_name)
+            self.choose_open_type()
+            return
 
         p("Process this project?", o="[y/n]")
         if inpt("y-n"):
@@ -97,6 +109,16 @@ class Relativism(RelativismPublicObject):
         if inpt("y-n"):
             self.process_project()
 
+    def locate_proj(self, proj_name):
+        p("Select the project's folder/directory (should be named '{0}.Project'".format(
+            proj_name), start="\n")
+        try:
+            directory = input_dir()
+        except Cancel:
+            p("Remove this Project from known projects?", o="y/n")
+            if inpt("y-n"):
+                del self.projects[proj_name]
+
     @public_process
     def list_projects(self):
         info_title("Existing projects:")
@@ -109,32 +131,6 @@ class Relativism(RelativismPublicObject):
         except Cancel:
             pass
 
-    @staticmethod
-    def get_next_id():
-        if Relativism._next_id is None:
-            #TODO: open rel file
-            pass
-        temp = Relativism._next_id
-        Relativism._next_id += 1
-        return temp
-        
-
-    @staticmethod
-    def debug():
-        return Relativism._debug
-
-    def debug_on(self):
-        info_block("Debug On. Errors may propogate to top level and halt execution with no save")
-        self._debug = True
-    
-    def debug_off(self):
-        info_block("Debug Off")
-        self._debug = False
-
-    @staticmethod
-    def get_process_num():
-        Relativism._process_num += 1
-        return Relativism._process_num - 1
 
 
 

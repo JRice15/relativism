@@ -133,6 +133,12 @@ class Path(os.PathLike):
             return Path(fullpath=self.fullpath() + "/" + other.fullpath())
         raise PathError("Paths '{0}' and '{1}' cannot be appended", self, other)
 
+    def append_dir(self, other):
+        if not isinstance(other, Path):
+            other = Path(directory=other)
+        if self.is_dir():
+            return Path(self.dir + "/" + other.dir)
+        raise PathError("Paths '{0}' and '{1}' cannot be appended", self, other)
 
     def _clean(self, string):
         return re.sub(r"//+", "/", string)

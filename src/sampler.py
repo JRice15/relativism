@@ -1,10 +1,20 @@
-from src.recording_obj import *
-from src.integraters import *
-from src.generators import *
-from src.name_and_path import *
+"""
+chance-based generative Sampler object
+"""
+
+
+from src.data_types import *
+from src.recording_obj import Recording
+from src.integraters import mix, mix_multiple, concatenate
 from src.relativism import Relativism
-from src.object_data import *
-from src.controller import *
+from src.object_data import (public_process, is_public_process, 
+    RelativismObject, RelativismPublicObject)
+from src.controller import Controller
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.rel_global import RelGlobal
+
 
 """
 
@@ -149,9 +159,9 @@ class Rhythm(RelativismPublicObject):
     def set_length(self, length=None):
         if length is None:
             p("Enter a length in beats/seconds for this Rhythm")
-            self.length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
+            self.length = samps(inpt('beats'), RelGlobal.DEFAULT_SAMPLERATE)
         else:
-            self.length = samps(inpt_validate(length, 'beats'), Relativism.DEFAULT_SAMPLERATE)
+            self.length = samps(inpt_validate(length, 'beats'), RelGlobal.DEFAULT_SAMPLERATE)
 
     @public_process
     def set_period(self, period=None):
@@ -555,7 +565,7 @@ class Sampler(RelativismPublicObject):
             active name: name of active pair to generate
             reps: number of repetitions of active rhythm to generate
         """
-        length = samps(inpt('beats'), Relativism.DEFAULT_SAMPLERATE)
+        length = samps(inpt('beats'), RelGlobal.DEFAULT_SAMPLERATE)
         recs = []
         for a in self.active:
             if not a.muted:

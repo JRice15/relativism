@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from os.path import dirname
 import math
+import re
 
-from src.input_processing import *
-from src.output_and_prompting import *
-
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.errors import *
+from src.recording_obj import Recording
 
 class Analysis():
     """

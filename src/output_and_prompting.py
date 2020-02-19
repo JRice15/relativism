@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from src.errors import *
 from src.utility import *
 
-
 @contextmanager
 def style(*styles):
     """
@@ -56,8 +55,7 @@ def style(*styles):
 
 
 
-
-def p(message, indent=2, o="", h=False, start="", hang=2):
+def p(message, indent=2, o="", h=False, start="", hang=2, leading_newline=True):
     """
     prompting.
     Args:
@@ -73,7 +71,8 @@ def p(message, indent=2, o="", h=False, start="", hang=2):
     if h:
         notices += ", 'h' for help/info"
     notices += "):"
-    info_block(message_body + notices, indent=indent, for_prompt=True, start=start, hang=hang)
+    info_block(message_body + notices, indent=indent, for_prompt=True, start=start, 
+        hang=hang, leading_newline=leading_newline)
 
 
 def err_mess(message, indent=4, trailing_newline=False):
@@ -87,7 +86,9 @@ def err_mess(message, indent=4, trailing_newline=False):
 def show_error(e, force=False):
     if not isinstance(e, Cancel) or force:
         critical_err_mess(e.__class__.__name__ + ": " + str(e))
-        if Relativism.debug():
+
+        from src.rel_global import RelGlobal
+        if RelGlobal.is_debug():
             p("Raise error? [y/n]")
             if input().lower().strip() == 'y':
                 raise e
@@ -164,7 +165,7 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
         trailing_newline = False
     elif newlines is True:
         leading_newline = True
-        trailing_newline = True    
+        trailing_newline = True
 
     # splitting at spaces
     lines = [""]
@@ -206,11 +207,3 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
         print("")
 
 
-def main_output():
-    p('Choose sample rate to record at, in samples per second. Hit enter to use default 44100')
-
-
-
-
-if __name__ == "__main__":
-    main_output()

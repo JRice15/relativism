@@ -1,4 +1,4 @@
-from src.recording_obj import *
+from src.recording_obj import Recording
 from src.utility import *
 
 
@@ -6,8 +6,6 @@ from src.utility import *
 
 
 """
-
-
 
 
 def mix(rec1, rec2, mix_level=None, offset=0, name=None):

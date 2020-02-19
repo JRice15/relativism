@@ -12,12 +12,11 @@ ACTIVITY_LOG = RELATIVISM_DIR + "/data/activity.log"
 
 with suppress_output(ERROR_LOG):
 
-    # from src.recording_obj import *
-    # from src.project import *
-    # from src.relativism import *
-    # from src.debug import *
-    # from ext.autodrummer.autodrummer import *
-    from src_compithon import *
+    from src.project import *
+    from src.relativism import *
+    from src.debug import *
+
+    from ext.autodrummer.autodrummer import *
 
 with style("cyan, bold"):
     print("\n***** RELATIVISM *****\n")
@@ -43,17 +42,15 @@ with open(ACTIVITY_LOG, "a") as log:
     log.write("sess-start\t{0}\n".format(time.time()))
 
 
-
-
-try:
-    relfile_dir = Path(RELATIVISM_DIR).append("/data/")
-    relfile_path = relfile_dir.merge(Path(name="relativism", ext="relativism-data"))
-    rel = Relativism(relfile_dir, relfile_path)
-    process(rel)
-except Exception as e:
-    err_mess("EXCEPTION AT TOP LEVEL")
-    show_error(e, force=True)
-
+while True:
+    try:
+        relfile_dir = Path(RELATIVISM_DIR).append("/data/")
+        relfile_path = relfile_dir.merge(Path(name="relativism", ext="relativism-data"))
+        rel = Relativism(relfile_dir, relfile_path)
+        process(rel)
+    except Exception as e:
+        err_mess("EXCEPTION AT TOP LEVEL")
+        show_error(e, force=True)
 
 
 

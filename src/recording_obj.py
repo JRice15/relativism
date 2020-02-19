@@ -21,9 +21,6 @@ add_to_sampler
 
 """
 
-
-from src.object_data import *
-
 import math
 import os
 import random as rd
@@ -37,14 +34,18 @@ import soundfile as sf
 from pydub import AudioSegment as pd
 
 from src.errors import *
-from src.object_data import *
-from src.process import *
 from src.utility import *
-from src.input_processing import *
-from src.output_and_prompting import *
-from src.relativism import *
-from src.analysis import *
 
+from src.data_types import *
+from src.object_data import (public_process, is_public_process, 
+    RelativismObject, RelativismPublicObject)
+from src.process import process
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.relativism import Relativism
+from src.analysis import Analysis
+from src.path import Path, makepath
 
 
 class Recording(RelativismPublicObject):
@@ -104,7 +105,6 @@ class Recording(RelativismPublicObject):
         self.source_block = {} if source_block is None else source_block
         self.arr = np.asarray(arr)
         self.pan_val = pan_val
-
 
         # self.command_line_init()
         if mode in ('read', 'file', 'read_file'):
@@ -202,16 +202,15 @@ class Recording(RelativismPublicObject):
 
         info_block("reading...")
         t1 = time.time()
-        filename = file_path.split('/')[-1]
 
         # Handling file types
-        if file_path[-3:] != "wav":
+        if file_path.ext != "wav":
             try:
-                not_wav = pd.from_file(file_path, file_path[-3:])
+                not_wav = pd.from_file(file_path, file_path.ext)
                 not_wav.export(".temp_soundfile.wav", format="wav")
-                file_path = ".temp_soundfile.wav"
+                file_path = Path(name=".temp_soundfile", ext="wav")
             except FileNotFoundError:
-                print("  > unable to find file '{0}'".format(filename))
+                print("  > unable to find file '{0}'".format(file_path))
                 print("  > make sure to include .wav/.mp3/etc extension")
                 return self.read_file()
                 
@@ -221,7 +220,7 @@ class Recording(RelativismPublicObject):
             self.arr, rate = sf.read(file_path)
             self.rate = Units.rate(rate)
         except RuntimeError:
-            print("  > unable to find or read '{0}'. Is that the correct extension?".format(filename))
+            print("  > unable to find or read '{0}'. Is that the correct extension?".format(file_path))
             return self.read_file()
         try:
             os.remove(".temp_soundfile.wav")
@@ -231,7 +230,7 @@ class Recording(RelativismPublicObject):
             self.arr = NpOps.stereoify(self.arr)
         t2 = time.time()
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
-            filename, t2-t1))
+            file_path, t2-t1))
 
 
     # Saving #
@@ -246,13 +245,8 @@ class Recording(RelativismPublicObject):
     def post_process(self, process):
         """
         called after process calls method.
-        if autosave is on, saves data
         """
-        if Relativism.autosave():
-            if self.get_method(process).is_edit_rec():
-                self.save_audio()
-            elif self.get_method(process).is_edit_meta():
-                self.save_metadata()
+
 
 
     def update_recents(self):
@@ -272,7 +266,7 @@ class Recording(RelativismPublicObject):
         """
         del attrs['arr']
         attrs["mode"] = "file"
-        attrs["file"] = self.path + "/" + self.name + ".wav"
+        attrs["file"] = self.get_audiofile_fullpath()
         return attrs
 
 

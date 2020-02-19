@@ -29,7 +29,6 @@ def RelUnit(number, type_):
     return Units.new(number, type_)
 
 
-
 def proj_rate_wrapper():
     """
     get rate, for initializing units when project hasnt been yet, defaults to 44100hz
@@ -73,6 +72,8 @@ class Units:
         """
         initalize beat, samplerate, and percent units
         """
+
+        print("Calibrating units")
 
         # define beats
         for i in Units._get_beat_frac_tables():
@@ -248,8 +249,6 @@ class Units:
 
 
 
-
-
 class UnitOperations:
     """
     methods to be aliased onto Units._reg.Quantity, below
@@ -344,11 +343,8 @@ def ind(value):
 Units._reg.Quantity.__index__ = ind
 
 
-
 # init
 Units.setup()
-
-
 
 
 
@@ -618,8 +614,6 @@ class PitchUnits():
             "or as their musical notation note name and octave ('C4', 'Ab6', 'F#3', etc")
 
 
-
-
 class RelFreq(PitchUnits):
 
     def __init__(self, frequency):
@@ -650,9 +644,6 @@ class RelFreq(PitchUnits):
 
     def shift_semitones(self, n):
         return RelFreq(self.frequency * (2 ** ( float(n)/12) ) )
-
-
-
 
 
 class RelNote(PitchUnits):
@@ -694,7 +685,4 @@ class RelNote(PitchUnits):
             return shifted.to_whole_note()
         else:
             return shifted.to_note()
-
-
-
 

@@ -4,14 +4,14 @@ import random as rd
 import json
 import os
 
-from src.output_and_prompting import *
-from src.input_processing import *
+from src.output_and_prompting import (p, info_title, info_list, info_line, 
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.data_types import *
-from src.path import *
-from src.relativism import *
+from src.path import Path, makepath
+from src.rel_global import RelGlobal
 
 import soundfile as sf
-
 
 
 # decorator
@@ -43,8 +43,7 @@ class RelativismObject():
         self.path = path # path including object's own directory
         self.parent = parent
         self.reltype = reltype
-        self.rel_id = rel_id if rel_id is not None else Relativism.get_next_id()
-
+        self.rel_id = rel_id if rel_id is not None else RelGlobal.get_next_id()
 
     def __repr__(self):
         string = "'{0}'. {1} object".format(self.name, self.reltype)
@@ -82,6 +81,11 @@ class RelativismObject():
         """
         return Path(self.path, self.get_data_filename(), self.get_extension())
 
+    def get_audiofile_fullpath(self):
+        """
+        datafile path, but wav extension instead
+        """
+        return Path(self.path, self.get_data_dirname(), "wav")
 
     def rename(self, name=None):
         """
@@ -98,7 +102,7 @@ class RelativismObject():
             if self.parent.validate_child_name(self):
                 self.name = name
         except AttributeError:
-            if Relativism.debug():
+            if RelGlobal.is_debug():
                 show_error(
                     NameError("parent obj '{0}' does not have validate_child_name".format(self.parent))
                 )
