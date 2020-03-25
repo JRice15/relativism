@@ -7,7 +7,7 @@ from src.object_data import (public_process, is_public_process,
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error, style)
-from src.rel_global import RelGlobal
+from src.settings import Settings
 
 def process(obj):
     """
@@ -18,7 +18,7 @@ def process(obj):
     section_head("Processing {0} '{1}'".format(obj.reltype, obj.name))
     while True:
         with style("cyan, bold"):
-            print("{0} ".format(RelGlobal.get_process_num()), end="")
+            print("{0} ".format(Settings.get_process_num()), end="")
         p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), 
             h=True, o="'o' to view process options", indent=0, hang=4, leading_newline=False)
         command = inpt('split', 'arg', help_callback=processes_help)

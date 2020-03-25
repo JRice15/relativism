@@ -21,17 +21,10 @@ from src.errors import *
 from src.utility import *
 
 
-
-def RelUnit(number, type_):
-    """
-    shortcut function for creating data
-    """
-    return Units.new(number, type_)
-
-
 def proj_rate_wrapper():
     """
-    get rate, for initializing units when project hasnt been yet, defaults to 44100hz
+    get rate, for initializing units when project hasnt been yet, 
+    defaults to 44100hz
     """
     try:
         return Project.get_rate()
@@ -112,6 +105,9 @@ class Units:
 
     @staticmethod
     def new(*args):
+        """
+
+        """
         if len(args) == 0:
             raise TypeError("No args supplied to Units.new()")
         if isinstance(args[0], Units._reg.Quantity):
@@ -248,6 +244,12 @@ class Units:
         return Units.new(numerize(val), "percent")
 
 
+def RelUnit(*args):
+    """
+    shortcut function for creating data
+    """
+    return Units.new(*args)
+
 
 class UnitOperations:
     """
@@ -260,7 +262,7 @@ class UnitOperations:
         convert to samples, with optional bpm_context
         """
         with Units.bpm_convert_context(bpm_context):
-            return value.to('samples')
+            return value.to('samples').round()
 
     @staticmethod
     def to_invsamps(value, bpm_context=None):
@@ -295,9 +297,9 @@ class UnitOperations:
             return value.to("samples/sec")
 
     @staticmethod
-    def trunc(value):
+    def round(value):
         """
-        truncate value
+        truncate value to int
         """
         return Units.new(int(value.magnitude), value.units)
 
@@ -327,8 +329,8 @@ Units._reg.Quantity.beat_repr = UnitOperations.beat_repr
 # base units alias
 Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units
 
-# truncating and int()
-Units._reg.Quantity.trunc = UnitOperations.trunc
+# rounding
+Units._reg.Quantity.round = UnitOperations.round
 
 # indexing function and aliasing
 def ind(value):

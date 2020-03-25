@@ -3,11 +3,14 @@ import numpy as np
 import math
 import re
 
+from src.data_types import *
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error,
+    rel_plot)
 from src.errors import *
-from src.recording_obj import Recording
+from src.utility import *
+
 
 class Analysis():
     """
@@ -15,16 +18,17 @@ class Analysis():
     pass modified analysis arr to plot, not orig rec
     """
 
-    def __init__(self, rec=None, start=0, end=None):
-        if rec is None:
-            rec = Recording(parent=self)
+    def __init__(self, rec, start=0, end=None):
+        """
+        analysis of rec, with start and end as samps
+        """
         self.obj = rec
-        self.rate = rec.rate
+        self.rate = rec.rate.to_rate().magnitude
 
         self.start = start
         self.end = end
         if end is None:
-            self.end = self.obj.size_samps()
+            self.end = self.obj.size_samps().magnitude
         if self.end <= self.start:
             err_mess("End cannot be before or equal to start")
             raise Cancel
@@ -59,10 +63,10 @@ class Analysis():
         self.frame_length = max(int(length), 1)
         self.frame_step = max(int(step), 1)
 
+
     def maybe_playback(self):
         p("Playback before analyzing? [y/n]")
-        playback_yn = inpt()
-        if playback_yn:
+        if inpt("y-n"):
             self.obj.playback()
 
 
@@ -183,28 +187,6 @@ class Analysis():
 
 
 
-
-
-
-
-def decimal_precision_requires(float_val):
-    """
-    determine number of decimal places required to display
-    data fully
-    """
-    float_val = str(float_val)
-    # handle floating point rounding error
-    float_val = re.sub(r"0000000.$", "", float_val)
-    float_val = re.sub(r"9999999.$", "", float_val)
-    no_trailing = str(float(float_val))
-    decimal_ind = no_trailing.find(".")
-    if decimal_ind is not -1:
-        if no_trailing[0] != "0":
-            minim = 2
-        else:
-            minim = 6
-        return min(len(no_trailing) - decimal_ind - 1, minim)
-    return 0
 
 
 

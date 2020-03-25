@@ -1,8 +1,8 @@
 from src.data_types import *
 import importlib
-from src.path import Path, makepath
+from src.path import join_path, split_path
 from src.object_data import RelativismObject
-from src.rel_global import RelGlobal
+from src.settings import Settings
 
 
 class RelTypeEncoder(json.JSONEncoder):
@@ -19,10 +19,8 @@ class RelTypeEncoder(json.JSONEncoder):
             from src.relativism import Relativism
             if isinstance(obj, Relativism):
                 return "<RELATIVISM-PROGRAM>"
+                
             return "<RELOBJ>" + re.sub(r"/", "", obj.get_data_dirname().fullpath())
-        
-        elif isinstance(obj, Path):
-            return "<PATH>" + str(obj)
 
         else:
             return json.JSONEncoder.default(self, obj)
@@ -46,17 +44,15 @@ class ProjectLoader:
         self.project.parent = self.rel_instance
         return self.project
 
-    def load(self, filename, directory=None):
+    def load(self, filename, directory=""):
         """
         load and return object from a file
         """
-        if directory is None:
-            directory = Path()
         prev_path = self.current_path
         self.current_path = directory
-        path = Path(directory, filename, "relativism-obj")
+        path = join_path(directory, filename + "." + RelativismObject.datafile_extension)
 
-        with open(path.fullpath(), "r") as f:
+        with open(path, "r") as f:
             attrs = json.load(f, object_hook=self._decoder)
 
         mod = importlib.import_module(attrs.pop("__module__"))
@@ -76,7 +72,6 @@ class ProjectLoader:
         for loading objects from files. See object_data.RelTypeEncoder
         """
 
-        print(dct)
         for key, val in dct.items():
 
             if key != "parent":
@@ -100,17 +95,13 @@ class ProjectLoader:
                 return Units.new(val)
 
             elif "<RELATIVISM-PROGRAM>" in str(val):
-                return RelGlobal.get_instance()
+                return Settings.get_instance()
 
             elif "<RELOBJ>" in str(val):
                 val = re.sub("<RELOBJ>", "", val)
                 obj = self.load(val, self.current_path.append_dir(val))
                 self.need_parent.append(obj)
                 return obj
-            
-            elif "<PATH>" in str(val):
-                val = re.sub("<PATH>", "", val)
-                return Path(fullpath=val)
         
         return val
 

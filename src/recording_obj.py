@@ -45,7 +45,7 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.relativism import Relativism
 from src.analysis import Analysis
-from src.path import Path, makepath
+from src.path import join_path, split_path
 
 
 class Recording(RelativismPublicObject):
@@ -122,9 +122,7 @@ class Recording(RelativismPublicObject):
             makepath(self.path.append("recents"))
         except FileExistsError:
             pass
-        
-        if not hidden:
-            self.save(silent=True)
+
 
 
     def init_mode(self):
@@ -204,17 +202,18 @@ class Recording(RelativismPublicObject):
         t1 = time.time()
 
         # Handling file types
-        if file_path.ext != "wav":
+        _,_,ext = split_path(file_path)
+        if ext != "wav":
             try:
                 not_wav = pd.from_file(file_path, file_path.ext)
                 not_wav.export(".temp_soundfile.wav", format="wav")
-                file_path = Path(name=".temp_soundfile", ext="wav")
+                file_path = ".temp_soundfile.wav"
             except FileNotFoundError:
                 print("  > unable to find file '{0}'".format(file_path))
                 print("  > make sure to include .wav/.mp3/etc extension")
                 return self.read_file()
                 
-        self.source_block = {"file": file_path}
+        self.source_block["file"] = file_path
         # Reading and Processing File
         try:
             self.arr, rate = sf.read(file_path)
@@ -253,10 +252,10 @@ class Recording(RelativismPublicObject):
         """
         update recents arr to include last arr
         """
-        recents_dir = self.path.append("recents")
+        recents_dir = join_path(self.path, "recents")
         os.rename(
-            Path(self.path, self.name, self.rel_obj_extension),
-            Path(recents_dir, str(time.time_ns()), self.rel_obj_extension)
+            join_path(self.path, self.get_data_filename() + ".wav"),
+            join_path(recents_dir, str(time.time_ns()) + ".wav")
         )
 
 

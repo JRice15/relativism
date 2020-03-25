@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 from src.data_types import *
-from src.path import Path, makepath
+from src.path import join_path, split_path
 from src.errors import *
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
@@ -263,7 +263,7 @@ def input_file():
     if file == "":
         raise Cancel
     nl()
-    return Path(fullpath=file)
+    return file
 
 
 
@@ -282,6 +282,6 @@ def input_dir():
     if directory == "":
         raise Cancel
     nl()
-    return Path(directory)
+    return join_path(directory, is_dir=True)
 
 

@@ -13,7 +13,7 @@ from src.controller import Controller
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.rel_global import RelGlobal
+from src.settings import Settings
 
 
 """
@@ -159,9 +159,9 @@ class Rhythm(RelativismPublicObject):
     def set_length(self, length=None):
         if length is None:
             p("Enter a length in beats/seconds for this Rhythm")
-            self.length = samps(inpt('beats'), RelGlobal.DEFAULT_SAMPLERATE)
+            self.length = samps(inpt('beats'), Settings.DEFAULT_SAMPLERATE)
         else:
-            self.length = samps(inpt_validate(length, 'beats'), RelGlobal.DEFAULT_SAMPLERATE)
+            self.length = samps(inpt_validate(length, 'beats'), Settings.DEFAULT_SAMPLERATE)
 
     @public_process
     def set_period(self, period=None):
@@ -565,7 +565,7 @@ class Sampler(RelativismPublicObject):
             active name: name of active pair to generate
             reps: number of repetitions of active rhythm to generate
         """
-        length = samps(inpt('beats'), RelGlobal.DEFAULT_SAMPLERATE)
+        length = samps(inpt('beats'), Settings.DEFAULT_SAMPLERATE)
         recs = []
         for a in self.active:
             if not a.muted:

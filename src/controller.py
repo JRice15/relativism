@@ -2,7 +2,8 @@ import abc
 from scipy.interpolate import interp1d
 
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+    section_head, info_block, nl, err_mess, critical_err_mess, show_error,
+    rel_plot)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
 from src.object_data import (public_process, is_public_process, 

@@ -8,13 +8,12 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.data_types import *
-from src.path import Path, makepath
-from src.rel_global import RelGlobal
+from src.path import join_path, split_path
+from src.settings import Settings
 
 import soundfile as sf
 
 
-# decorator
 def public_process(func):
     """
     decorator: allow user access via 'process'
@@ -31,11 +30,12 @@ def is_public_process(func):
 
 
 
-
 class RelativismObject():
     """
     base class for objects that are saved and loaded
     """
+
+    datafile_extension = "relativism-obj"
 
     def __init__(self, rel_id, reltype, name, path, parent):
         
@@ -43,7 +43,7 @@ class RelativismObject():
         self.path = path # path including object's own directory
         self.parent = parent
         self.reltype = reltype
-        self.rel_id = rel_id if rel_id is not None else RelGlobal.get_next_id()
+        self.rel_id = rel_id if rel_id is not None else Settings.get_next_id()
 
     def __repr__(self):
         string = "'{0}'. {1} object".format(self.name, self.reltype)
@@ -56,36 +56,24 @@ class RelativismObject():
             string += " {0}: {1};".format(key, val)
         return string
 
-    def get_data_dirname(self):
-        """
-        name.reltype : name of directory and of datafile, wav, any other data.
-        this part of the path is included in self.path
-        """
-        return Path(directory=self.name + "." + self.reltype)
-    
     def get_data_filename(self):
         """
-        Path(name= self.name+"."+self.reltype)
+        name.reltype : name of directory and datafiles
+        this part of the path is included in self.path
         """
-        return Path(name=self.name + "." + self.reltype)
-
-    def get_extension(self):
-        """
-        datafile extension
-        """
-        return Path(ext="relativism-obj")
+        return self.name + "." + self.reltype
 
     def get_datafile_fullpath(self):
         """
         fullpath of datafile
         """
-        return Path(self.path, self.get_data_filename(), self.get_extension())
+        return join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
 
     def get_audiofile_fullpath(self):
         """
         datafile path, but wav extension instead
         """
-        return Path(self.path, self.get_data_dirname(), "wav")
+        return join_path(self.path, self.get_data_filename() + ".wav")
 
     def rename(self, name=None):
         """
@@ -102,7 +90,7 @@ class RelativismObject():
             if self.parent.validate_child_name(self):
                 self.name = name
         except AttributeError:
-            if RelGlobal.is_debug():
+            if Settings.is_debug():
                 show_error(
                     NameError("parent obj '{0}' does not have validate_child_name".format(self.parent))
                 )
@@ -119,11 +107,11 @@ class RelativismObject():
         """
         if filename is None:
             filename = self.name
-        path = Path(self.path, filename)
+        path = join_path(self.path, filename)
         if extension == "obj":
-            path.ext = ".relativism-obj"
+            path += "." + self.datafile_extension
         else:
-            path.ext = ".wav"
+            path += ".wav"
         return path
 
 
@@ -140,8 +128,7 @@ class RelativismObject():
             attrs = self.parse_write_meta(attrs)
         except AttributeError:
             pass
-        os.makedirs(self.path, exist_ok=True)
-        fullpath = Path(self.path, self.get_data_filename(), self.get_extension())
+        fullpath = join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
         # RelTypeEncoder found in object_loading
         with open(fullpath, 'w') as f:
             json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
@@ -153,12 +140,12 @@ class RelativismObject():
         """
         info_block("saving '{0}' audio...".format(self.name))
         os.makedirs(self.path, exist_ok=True)
-        outfile = Path(self.path, self.get_data_filename(), ".wav")
+        outfile = join_path(self.path, self.get_data_filename() + ".wav")
         try:
             rate = int(self.rate.to_rate().magnitude)
         except AttributeError:
             rate = int(rate)
-        sf.write(outfile.fullpath(), self.arr, rate)
+        sf.write(outfile, self.arr, rate)
 
 
 
@@ -170,9 +157,11 @@ class RelativismPublicObject(RelativismObject):
     """
 
 
-    def __init__(self, rel_id, reltype, name, path, parent, obj=None):
+    def __init__(self, 
+            rel_id=None, reltype=None, name=None, 
+            path=None, parent=None, obj=None):
         """
-        set reltype in the caller, otherwise RelativismObject will set the rest
+        set reltype in the caller for inheritance, otherwise RelativismObject will set the rest
         """
 
         super().__init__(rel_id, reltype, name, path, parent)

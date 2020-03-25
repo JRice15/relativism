@@ -13,7 +13,7 @@ from src.project_loader import ProjectLoader
 from src.object_data import (public_process, is_public_process, 
     RelativismObject, RelativismPublicObject)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
-
+from src.process import process
 
 
 class Project(RelativismPublicObject):

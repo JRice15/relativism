@@ -3,6 +3,7 @@ highest-level parent. One instance of Relativism() per program
 """
 
 import re
+import os
 
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
@@ -11,7 +12,7 @@ from src.project_loader import ProjectLoader
 from src.object_data import (public_process, is_public_process, 
     RelativismObject, RelativismPublicObject)
 from src.process import process
-from src.path import Path, makepath
+from src.path import join_path, split_path
 
 
 class Relativism(RelativismPublicObject):
@@ -34,13 +35,14 @@ class Relativism(RelativismPublicObject):
             data_file.close()
             paths = [re.sub(r"    ", "\t", i) for i in paths]
             paths = [i.strip().split("\t") for i in paths]
-            paths = {i[0]:Path(i[1]) for i in paths if len(i) > 1}
+            paths = {i[0]:i[1] for i in paths if len(i) > 1}
         except FileNotFoundError:
-            makepath(self.relfile_path.get_dir())
+            dirc,_,_ = split_path(self.relfile_path)
+            os.makedirs(dirc, exist_ok=True)
             path_f = open(self.relfile_path, "w")
             path_f.close()
             paths = {}
-        # maps name to Path, which is path to that proj's datafile
+        # maps name to path to that proj's datafile
         self.projects = paths
         self.current_open_proj = None
         self.choose_open_type()
@@ -80,9 +82,7 @@ class Relativism(RelativismPublicObject):
             proj_path = self.projects[proj_name]
 
         try:
-            loader = ProjectLoader(
-                Path(name="{0}.Project".format(proj_name)), proj_path, self
-            )
+            loader = ProjectLoader("{0}.Project".format(proj_name), proj_path, self)
             self.current_open_proj = loader.get_proj()
         except FileNotFoundError as e:
             err_mess("File Not Found: '{0}'".format(e.filename))
