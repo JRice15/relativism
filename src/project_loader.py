@@ -20,7 +20,7 @@ class RelTypeEncoder(json.JSONEncoder):
             if isinstance(obj, Relativism):
                 return "<RELATIVISM-PROGRAM>"
                 
-            return "<RELOBJ>" + re.sub(r"/", "", obj.get_data_dirname().fullpath())
+            return "<RELOBJ>" + obj.get_data_filename()
 
         else:
             return json.JSONEncoder.default(self, obj)

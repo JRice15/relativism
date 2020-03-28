@@ -13,6 +13,7 @@ from src.object_data import (public_process, is_public_process,
     RelativismObject, RelativismPublicObject)
 from src.process import process
 from src.path import join_path, split_path
+from src.errors import *
 
 
 class Relativism(RelativismPublicObject):
@@ -100,7 +101,7 @@ class Relativism(RelativismPublicObject):
     def create_proj(self):
         section_head("Creating New Project")
         self.current_open_proj = Project(parent=self)
-        self.projects[self.current_open_proj.name] = self.current_open_proj.path.fullpath()
+        self.projects[self.current_open_proj.name] = self.current_open_proj.path
 
         with open(self.relfile_path, "a") as relfile:
             relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.path))

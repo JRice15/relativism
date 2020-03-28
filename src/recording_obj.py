@@ -95,10 +95,16 @@ class Recording(RelativismPublicObject):
         if name is None:
             self.rename()
 
-        if (path is None) and (parent is not None):
-            self.path = self.parent.path.append(self.get_data_dirname())
-            makepath(self.path)
+        # path
+        if self.path is None:
+            if self.parent is not None:
+                self.path = join_path(self.parent.path, self.get_data_filename(), is_dir=True)
+            else:
+                self.path = join_path(".", self.get_data_filename(), is_dir=True)
+        os.makedirs(self.path, exist_ok=True)
+        os.makedirs(join_path(self.path, "recents", is_dir=True), exist_ok=True)
 
+        # audio data
         if not hidden:
             section_head("Initializing {0} '{1}'...".format(self.reltype, self.name))
         self.rate = Units.rate(rate)
@@ -106,7 +112,7 @@ class Recording(RelativismPublicObject):
         self.arr = np.asarray(arr)
         self.pan_val = pan_val
 
-        # self.command_line_init()
+        # mode
         if mode in ('read', 'file', 'read_file'):
             self.read_file(file)
         elif mode in ('record', 'record_live'):
@@ -117,11 +123,6 @@ class Recording(RelativismPublicObject):
         else:
             raise UnexpectedIssue("Unknown mode {0}".format(mode))
 
-        # recents for undoing
-        try:
-            makepath(self.path.append("recents"))
-        except FileExistsError:
-            pass
 
 
 

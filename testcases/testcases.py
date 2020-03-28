@@ -124,20 +124,6 @@ class TestCases(unittest.TestCase):
                     args = m.get_random_defaults()
                     m.method_func(*args)
 
-    def test_path(self):
-
-        a = Path(fullpath="Long/test/path.that/is/.pretty/crazy.file.extension")
-        self.assertEqual(a.dir, "Long/test/path.that/is/.pretty")
-        self.assertEqual(a.ext, "extension")
-        self.assertEqual(a.filename, "crazy.file")
-        self.assertEqual(a.fullpath(), "Long/test/path.that/is/.pretty/crazy.file.extension")
-
-        for i in ["s/s/s/s/", "./../path.tp/", "path", "path.", "path./", "/path/", "path.path"]:
-            self.assertTrue(re.match(i + r"/{0,1}", Path(fullpath=i).fullpath()))
-            
-
-        a = Path("/the/directory///", "strange.filename", ".extension")
-
 
 if __name__ == "__main__":
     unittest.main()

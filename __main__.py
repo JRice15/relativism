@@ -16,6 +16,7 @@ with suppress_output(ERROR_LOG):
     from src.relativism import *
     from src.debug import *
 
+    #TODO load extensions dynamically
     from ext.autodrummer.autodrummer import *
 
 with style("cyan, bold"):
@@ -44,8 +45,8 @@ with open(ACTIVITY_LOG, "a") as log:
 
 while True:
     try:
-        relfile_dir = Path(RELATIVISM_DIR).append("/data/")
-        relfile_path = relfile_dir.merge(Path(name="relativism", ext="relativism-data"))
+        relfile_dir = join_path(RELATIVISM_DIR, "data", is_dir=True)
+        relfile_path = join_path(relfile_dir, "relativism.relativism-data")
         rel = Relativism(relfile_dir, relfile_path)
         process(rel)
     except Exception as e:

@@ -106,7 +106,7 @@ class Units:
     @staticmethod
     def new(*args):
         """
-
+        Make a new Unit object
         """
         if len(args) == 0:
             raise TypeError("No args supplied to Units.new()")
@@ -123,7 +123,6 @@ class Units:
     @staticmethod
     def rate(val):
         try:
-            val.check("[sample_time]/[time]")
             return val.to_rate()
         except:
             return Units.new(numerize(val), "samples/second")
@@ -131,8 +130,7 @@ class Units:
     @staticmethod
     def bpm(val):
         try:
-            val.check("[beat_time]/[time]")
-            return val
+            return val.to("beat/minute")
         except:
             return Units.new(numerize(val), "beats/minute")
 
@@ -141,7 +139,6 @@ class Units:
     @staticmethod
     def samps(val):
         try:
-            val.check("[sample_time]")
             return val.to_samps()
         except:
             return Units.new(numerize(val), "samples")
@@ -149,7 +146,6 @@ class Units:
     @staticmethod
     def secs(val):
         try:
-            val.check("[beat_time]")
             return val.to_secs()
         except:
             return Units.new(numerize(val), "seconds")
@@ -159,34 +155,68 @@ class Units:
         """
         must pass beat-string (b, 2qn, 5 eb, etc)
         """
-        # already have beat-type in string
         try:
-            val.check("[beat_time]")
-            return val
+            return beat_str.to_beats(in_b=True)
         except:  
             val = Units.new(beat_str)
             if val.check("[beat_time]"):
                 return val
+            elif val.magnitude == 0:
+                return Units.beats("0b")
             else:
                 raise ValueError("Invalid beat string, dimension was '{}'".format(val.dimensionality))
 
     @staticmethod
     def _get_beat_frac_tables():
+        """
+        matrix of [abbrev, frac, full name]
+        """
         return [
-            ["sfn", 1/16, "sixtyfourth-note"],
-            ["tsn", 1/8, "thirtysecond-note"],
-            ["sn", 1/4, "sixteenth-note"],
-            ["en", 1/2, "eighth-note"],
-            ["qn", 1, "quarter-note"],
-            ["hn", 2, "half-note"],
-            ["wn", 4, "whole-note"],
+            ["sfn", 1/16, "sixtyfourth_note"],
+            ["tsn", 1/8, "thirtysecond_note"],
+            ["sn", 1/4, "sixteenth_note"],
+            ["en", 1/2, "eighth_note"],
+            ["qn", 1, "quarter_note"],
+            ["hn", 2, "half_note"],
+            ["wn", 4, "whole_note"],
 
-            ["sb", 1/16, "sixteenth-beat"],
-            ["eb", 1/8, "eighth-beat"],
-            ["qb", 1/4, "quarter-beat"],
-            ["hb", 1/2, "half-beat"],
+            ["sb", 1/16, "sixteenth_beat"],
+            ["eb", 1/8, "eighth_beat"],
+            ["qb", 1/4, "quarter_beat"],
+            ["hb", 1/2, "half_beat"],
             ["b", 1, "beat"],
         ]
+
+    @staticmethod
+    def get_next_smallest_beat(beat):
+        """
+        get next smallest beat unit str or None on failure
+        """
+        prev = None
+        for i in Units._get_beat_frac_tables():
+            if str(beat.units) in i:
+                return prev
+            if i[2] == "whole_note":
+                prev = None
+            else:
+                prev = i[2]
+
+    @staticmethod
+    def get_next_largest_beat(beat):
+        """
+        get next largest beat unit str or None on failure
+        """
+        prev = None
+        table = Units._get_beat_frac_tables()
+        table.reverse()
+        for i in table:
+            if str(beat.units) in i:
+                return prev
+            if i[2] == "sixteenth_beat":
+                prev = None
+            else:
+                prev = i[2]
+
 
     @staticmethod
     def beat_options():
@@ -281,12 +311,33 @@ class UnitOperations:
             return value.to('seconds')
 
     @staticmethod
-    def to_beats(value, bpm_context=None):
+    def to_beats(value, bpm_context=None, in_b=False):
         """
         convert to beats, with optional bpm_context
+        in_b: whether to convert hb, qb etc to b
         """
         with Units.bpm_convert_context(bpm_context):
-            return value.to('beats')
+            if "note" in str(value.units):
+                value = value.to("quarter_note")
+            else:
+                value = value.to('beats')
+        if in_b:
+            return value
+        else:
+            while value.magnitude < 1:
+                smaller = Units.get_next_smallest_beat(value)
+                if smaller is not None:
+                    value = value.to(smaller)
+                else:
+                    break
+            while value.magnitude % 2 == 0:
+                larger = Units.get_next_largest_beat(value)
+                if larger is not None:
+                    value = value.to(larger)
+                else:
+                    break
+            return value
+
 
     @staticmethod
     def to_rate(value, bpm_context=None):
