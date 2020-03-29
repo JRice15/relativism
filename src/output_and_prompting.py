@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from src.errors import *
 from src.utility import *
 from src.settings import Settings
-
+from src.data_types import *
 
 @contextmanager
 def style(*styles):
@@ -59,22 +59,30 @@ def style(*styles):
 
 
 
-def p(message, indent=2, o="", h=False, start="", hang=2, leading_newline=True):
+def p(message, indent=2, o="", h=False, q=True, start="", hang=2, leading_newline=True):
     """
     prompting.
     Args:
         o (str): description of additional options and their letter (remember to add callback to inpt)
         h (bool): if true display "'h' for help/info"
+        q (bool): show 'q for quit' message
         start (str): beginning of text for prompt (ie partial word to complete)
     """
     message_body = str(message)
-    notices = " ("
-    if o != "":
-        notices += o + ", "
-    notices += "'q' to quit/cancel"
-    if h:
-        notices += ", 'h' for help/info"
-    notices += "):"
+    notices = ""
+    if (o != "") or q or h:
+        notices = " ("
+        if o != "":
+            notices += o
+            if q or h:
+                notices += ", "
+        if q:
+            notices += "'q' to quit/cancel"
+            if h:
+                notices += ", "
+        if h:
+            notices += "'h' for help/info"
+        notices += "):"
     info_block(message_body + notices, indent=indent, for_prompt=True, start=start, 
         hang=hang, leading_newline=leading_newline)
 
@@ -133,7 +141,8 @@ def section_head(message, indent=0):
     """
     * at front, leading newline
     """
-    info_block("* " + str(message), indent=indent)
+    with style("bold, cyan"):
+        info_block("* " + str(message), indent=indent)
 
 
 def nl(num=1):
@@ -173,12 +182,12 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
     lines = [""]
     for char in str(message):
         # hard break if super long with no spaces (url, path, etc)
-        if len(lines[-1]) >= 65:
+        if len(lines[-1]) >= 80:
             if char != " ":
                 lines[-1] += "--"
                 lines.append("")
         # regular limit
-        if len(lines[-1]) >= 55:
+        if len(lines[-1]) >= 70:
             last_space = lines[-1].rfind(" ")
             if last_space != -1:
                 text = lines[-1][last_space + 1:]
@@ -238,7 +247,6 @@ def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None,
     left and right must be numpy arr with shape (x, 2) arrays of (index, value) to plot.
     if right is not given, assumed to be mono left
     """
-    from src.output_and_prompting import info_block
     info_block("Generating plot...")
     fig = plt.gcf() # or pylab.gcf() ?
     fig.canvas.set_window_title("{0} '{1}'".format(obj_type, obj_name))
@@ -278,16 +286,15 @@ def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None,
     axL.xaxis.set_label_position('top')
 
     rate = rate.to_rate().magnitude
-    start = start.to_samps().magnitude
-    end = end.to_samps().magnitude
 
     start_beats = start.to_beats().magnitude
-    end_beats = end.to_beats()
+    end_beats = end.to_beats().magnitude
+    start = start.to_samps().round().magnitude
+    end = end.to_samps().round().magnitude
+
     tick_size_beats = 1
     tick_number = end_beats - start_beats
     if tick_number < 2:
-        start_beats = int(start / rate)
-        end_beats = int(end / rate)
         tick_size_beats = end_beats - start_beats
         tick_number = 1
     while tick_number > 10:
@@ -328,7 +335,7 @@ def rel_plot(left_or_mono, start, end, rate, right=None, fill=None, title=None,
         indexesR, valuesR = zip(*right)
     indexesR = [i/rate for i in indexesR]
     for i in np.linspace(start_beats, end_beats, tick_number, endpoint=False):
-        ind = Units.beats(str(i) + "b").to_secs()
+        ind = Units.beats(str(i) + "b").to_secs().magnitude
         axR.axvline(ind, linestyle="--", linewidth=0.3, color='#545454', 
             clip_on=False, zorder=11)
     plot_func(indexesR, valuesR)

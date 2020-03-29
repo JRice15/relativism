@@ -14,6 +14,8 @@ from src.object_data import (public_process, is_public_process,
     RelativismObject, RelativismPublicObject)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.process import process
+from src.path import join_path, split_path
+from src.settings import Settings
 
 
 class Project(RelativismPublicObject):
@@ -30,23 +32,31 @@ class Project(RelativismPublicObject):
             parent=None,
             name=None,
             rel_id=None,
+            mode="load",
             path=None,
             rate=None,
-            reltype=None,
+            reltype="Project",
             children=None
         ):
         
-        super().__init__(rel_id, reltype, name, path, parent)
-        Project._instance = self
-        self.reltype = "Project"
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
+        
+        Settings.set_project_instance(self)
+
         if name is None:
             self.rename()
 
         if path is None:
             p("Select a location for this project (folder will " + \
                 "be created within selected location to house project files)")
-            self.path = input_dir().append(self.get_data_dirname())
-            makepath(self.path)
+            self.path = join_path(input_dir(), self.get_data_filename(), is_dir=True)
+        
+        if mode == "load":
+            os.makedirs(self.path, exist_ok=True)
+        elif mode == "create":
+            os.makedirs(self.path, exist_ok=False)
+        else:
+            raise ValueError("Unknown mode '{0}'".format(mode))
 
         self.children = []
         self.rate = rate

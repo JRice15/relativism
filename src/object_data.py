@@ -87,16 +87,22 @@ class RelativismObject():
 
         # validate
         try:
-            if self.parent.validate_child_name(self):
+            if self.parent.validate_child_name(name):
                 self.name = name
+                info_block("Named '{0}'".format(name))
+            else:
+                info_block("Invalid name")
+                self.rename()
         except AttributeError:
+            with open(Settings.error_log(), "a") as f:
+                f.write("Object type {0} has no 'validate_child_name' method\n".format(self.parent.reltype))
             if Settings.is_debug():
                 show_error(
                     NameError("parent obj '{0}' does not have validate_child_name".format(self.parent))
                 )
             self.name = name
+            info_block("Named '{0}'".format(name))
         
-        info_block("Named '{0}'".format(name))
 
 
 
@@ -119,6 +125,7 @@ class RelativismObject():
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
+        from src.project_loader import RelTypeEncoder
         info_block("saving '{0}' metadata...".format(self.name))
         attrs = {k:v for k,v in vars(self).items()}
         del attrs["method_data_by_category"]
@@ -160,11 +167,8 @@ class RelativismPublicObject(RelativismObject):
     def __init__(self, 
             rel_id=None, reltype=None, name=None, 
             path=None, parent=None, obj=None):
-        """
-        set reltype in the caller for inheritance, otherwise RelativismObject will set the rest
-        """
 
-        super().__init__(rel_id, reltype, name, path, parent)
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
 
         if obj is None:
             obj = self
@@ -211,11 +215,16 @@ class RelativismPublicObject(RelativismObject):
         info_block("# {Category} #", indent=2)
         info_line("- {Process}")
         info_line("{arguments in order, optional if in [square brackets]}", indent=8)
+        nl()
+        methods = {}
         for i in self.method_data_by_category.items():
-            info_title("# " + str(i[0]).upper() + " #", indent=2)
+            info_line(str(i[0]).upper(), indent=2)
             for j in i[1].items():
-                j[1].display()
-
+                methods[j[0]] = j[1]
+        meth_list = list(methods)
+        meth_list.sort()
+        for i in meth_list:
+            methods[i].display()
 
 
     class MethodData:

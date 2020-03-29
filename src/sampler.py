@@ -6,7 +6,6 @@ chance-based generative Sampler object
 from src.data_types import *
 from src.recording_obj import Recording
 from src.integraters import mix, mix_multiple, concatenate
-from src.relativism import Relativism
 from src.object_data import (public_process, is_public_process, 
     RelativismObject, RelativismPublicObject)
 from src.controller import Controller
@@ -14,6 +13,7 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.settings import Settings
+from src.path import join_path, split_path
 
 
 """
@@ -159,9 +159,9 @@ class Rhythm(RelativismPublicObject):
     def set_length(self, length=None):
         if length is None:
             p("Enter a length in beats/seconds for this Rhythm")
-            self.length = samps(inpt('beats'), Settings.DEFAULT_SAMPLERATE)
+            self.length = inpt('beats').to_samps()
         else:
-            self.length = samps(inpt_validate(length, 'beats'), Settings.DEFAULT_SAMPLERATE)
+            self.length = inpt_validate(length, 'beats').to_samps()
 
     @public_process
     def set_period(self, period=None):
@@ -354,8 +354,8 @@ class Sampler(RelativismPublicObject):
             self.rename()
 
         if (path is None) and (parent is not None):
-            self.path = self.parent.path.append(self.get_data_dirname())
-            makepath(self.path)
+            self.path = join_path(self.parent.path, self.get_data_filename(), is_dir=True)
+            os.makedirs(self.path, exist_ok=True)
         
         if not hidden:
             print("\n* Initializing {0} '{1}'".format(self.reltype, self.name))

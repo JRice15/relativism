@@ -43,7 +43,6 @@ from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
-from src.relativism import Relativism
 from src.analysis import Analysis
 from src.path import join_path, split_path
 
@@ -74,8 +73,8 @@ class Recording(RelativismPublicObject):
     """
 
     # Initialization #
-    def __init__(self, 
-            mode=None,
+    def __init__(self,
+            mode="load",
             arr=None, 
             file=None,
             source_block=None,
@@ -89,9 +88,8 @@ class Recording(RelativismPublicObject):
             rel_id=None,
         ):
 
-        super().__init__(rel_id, reltype, name, path, parent)
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
 
-        self.reltype = reltype
         if name is None:
             self.rename()
 
@@ -117,7 +115,7 @@ class Recording(RelativismPublicObject):
             self.read_file(file)
         elif mode in ('record', 'record_live'):
             self.record_live()
-        elif mode is None:
+        elif mode is "load":
             if arr is None:
                 self.init_mode()
         else:
@@ -248,7 +246,6 @@ class Recording(RelativismPublicObject):
         """
 
 
-
     def update_recents(self):
         """
         update recents arr to include last arr
@@ -284,13 +281,11 @@ class Recording(RelativismPublicObject):
 
 
     @public_process
-    def save(self, silent=False):
+    def save(self):
         """
         cat: save
         desc: save data
         """
-        if not isinstance(silent, bool):
-            silent = False
         self.save_audio()
         self.save_metadata()
 

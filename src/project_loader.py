@@ -1,13 +1,14 @@
-from src.data_types import *
 import importlib
-from src.path import join_path, split_path
+
+from src.data_types import *
 from src.object_data import RelativismObject
+from src.path import join_path, split_path
 from src.settings import Settings
 
 
 class RelTypeEncoder(json.JSONEncoder):
     """
-    for saving objects to files. See object_loading.ProjectLoader._decoder
+    for saving objects to files. project_loader.ProjectLoader._decoder is inverse
     """
 
     def default(self, obj):
@@ -19,7 +20,7 @@ class RelTypeEncoder(json.JSONEncoder):
             from src.relativism import Relativism
             if isinstance(obj, Relativism):
                 return "<RELATIVISM-PROGRAM>"
-                
+
             return "<RELOBJ>" + obj.get_data_filename()
 
         else:
@@ -95,7 +96,7 @@ class ProjectLoader:
                 return Units.new(val)
 
             elif "<RELATIVISM-PROGRAM>" in str(val):
-                return Settings.get_instance()
+                return Settings.get_rel_instance()
 
             elif "<RELOBJ>" in str(val):
                 val = re.sub("<RELOBJ>", "", val)

@@ -8,6 +8,8 @@ from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error, style)
 from src.settings import Settings
+from src.errors import *
+
 
 def process(obj):
     """
@@ -18,17 +20,17 @@ def process(obj):
     section_head("Processing {0} '{1}'".format(obj.reltype, obj.name))
     while True:
         with style("cyan, bold"):
-            print("{0} ".format(Settings.get_process_num()), end="")
+            print("\n{0} ".format(Settings.get_process_num()), end="")
         p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), 
             h=True, o="'o' to view process options", indent=0, hang=4, leading_newline=False)
+
         command = inpt('split', 'arg', help_callback=processes_help)
+
         if command == []:
             err_mess("No command entered")
             command = "None"
-            continue
         elif command == ['']:
             err_mess("Only alphanumeric characters, spaces, and underscores are allowed")
-            continue
         elif command[0] == "q":
             info_block("Exiting processing of {0} '{1}'...".format(obj.reltype, obj.name))
             raise Cancel(obj)
@@ -109,7 +111,7 @@ def process_complete_args(e, command, obj):
 
 def process_error_handling(e, command, obj):
     """
-    recursive calls with NotImplementedError are for redirecting to the end else
+    recursive calls with NoSuchProcess are for redirecting to the end else
     """
     process = command[0] if isinstance(command, list) else command
     message = str(e)
@@ -174,14 +176,15 @@ def get_similar_methods(obj, partial):
 def processes_help():
     info_block("To execute a process, enter its name followed by the " + \
         "desired values for its arguments. For example, if you wanted " + \
-        "to have a fade-in effect occur starting at 4 seconds and lasting " + \
-        "for 2, you would enter:")
-    info_block("fade_in 4 2", indent=8)
+        "to have a fade-in effect on a Recording occur starting at 4 seconds and lasting " + \
+        "for 2, you might enter:")
+    info_block("fade_in 4 2    (or)", indent=8)
+    info_block("fade-in 4 2    (the interpreter is not usually picky about underscores vs. dashes)", indent=8)
     info_block("Optional arguments are denoted by square brackets [], " +\
         "so fade-in's second argument could be omitted, in which case " +\
         "the default is used, like:")
     info_block("fade_in 4", indent=8)
     info_block("Which would use the default value 0, starting the fade-in " +\
         "at the beginning of the recording")
-    info_block("Enter 'o' (letter) to view processes")
+    info_block("Enter 'o' (the letter) to view processes")
 

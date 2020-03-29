@@ -7,14 +7,16 @@ class _SettingsContainer:
     private container for global settings
     """
 
-    _debug = True
-    _autosave = False
-    _bpm = 120
-    _rate = 44100
-    _next_id = 0 # next rel_obj id
-    _process_num = 1 # process counter
-    _rel_instance = None
-    _project_instance = None
+    debug = True
+    autosave = False
+    bpm = 120
+    rate = 44100
+    next_id = 0 # next rel_obj id
+    process_num = 1 # process counter
+    rel_instance = None
+    project_instance = None
+    error_log = None
+    activity_log = None
 
 
 class Settings:
@@ -29,47 +31,62 @@ class Settings:
 
     @staticmethod
     def get_next_id():
-        if _SettingsContainer._next_id is None:
+        if _SettingsContainer.next_id is None:
             #TODO: open rel file
             pass
-        val = _SettingsContainer._next_id
-        _SettingsContainer._next_id += 1
+        val = _SettingsContainer.next_id
+        _SettingsContainer.next_id += 1
         return val
         
     @staticmethod
     def get_process_num():
-        _SettingsContainer._process_num += 1
-        return _SettingsContainer._process_num - 1
+        _SettingsContainer.process_num += 1
+        return _SettingsContainer.process_num - 1
 
 
     @staticmethod
     def get_rel_instance():
-        return _SettingsContainer._rel_instance
+        return _SettingsContainer.rel_instance
 
     @staticmethod
     def set_rel_instance(rel):
-        _SettingsContainer._rel_instance = rel
+        _SettingsContainer.rel_instance = rel
 
     @staticmethod
     def get_project_instance():
-        return _SettingsContainer._project_instance
+        return _SettingsContainer.project_instance
     
     @staticmethod
     def set_project_instance(proj):
-        _SettingsContainer._project_instance = proj
-
+        _SettingsContainer.project_instance = proj
 
     @staticmethod
     def is_debug():
-        return _SettingsContainer._debug
+        return _SettingsContainer.debug
 
     @staticmethod
     def debug_on():
-        _SettingsContainer._debug = True
+        _SettingsContainer.debug = True
     
     @staticmethod
-    def debug_off(self):
-        _SettingsContainer._debug = False
+    def debug_off():
+        _SettingsContainer.debug = False
 
+    @staticmethod
+    def set_error_log(error_log):
+        _SettingsContainer.error_log = error_log
+    
+    @staticmethod
+    def error_log():
+        return _SettingsContainer.error_log
+    
+    @staticmethod
+    def set_activity_log(activity_log):
+        _SettingsContainer.activity_log = activity_log
+    
+    @staticmethod
+    def activity_log():
+        return _SettingsContainer.activity_log
 
     #TODO: get bpm, rate
+

@@ -11,27 +11,26 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import re
-import numba
 
 
+# import numba
 
-def jitcomp(func):
-    """
-    decorator to compile arr[:,2]->arr[:,2] func using numba.jit
-    """
-    return numba.jit("float64[:,:](float64[:,:])",  nopython=True, cache=True)(func)
+# def jitcomp(func):
+#     """
+#     decorator to compile arr[:,2]->arr[:,2] func using numba.jit
+#     """
+#     return numba.jit("float64[:,:](float64[:,:])",  nopython=True, cache=True)(func)
 
-
-def jitcompg(func):
-    """
-    decorator to compile general np func using numba.jit
-    """
-    return numba.jit(nopython=True, cache=True,)(func)
+# def jitcompg(func):
+#     """
+#     decorator to compile general np func using numba.jit
+#     """
+#     return numba.jit(nopython=True, cache=True,)(func)
 
 
 
 @contextmanager
-def suppress_output(err_log_name="relativism_errors.log"):
+def suppress_output(err_log_name="data/errors.log"):
     """
     usage:
     with suppress_output([log_file]):
@@ -49,7 +48,6 @@ def suppress_output(err_log_name="relativism_errors.log"):
             finally:
                 sys.stdout = old_stdout
                 sys.stderr = old_stderr
-
 
 
 
