@@ -2,30 +2,34 @@
 highest-level parent. One instance of Relativism() per program
 """
 
-import re
 import os
+import re
 
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
-from src.project_loader import ProjectLoader
-from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
-from src.process import process
-from src.path import join_path, split_path
 from src.errors import *
+from src.globals import RelGlobals, Settings
+from src.input_processing import (autofill, inpt, inpt_validate, input_dir,
+                                  input_file)
+from src.object_data import (RelativismObject, RelativismPublicObject,
+                             is_public_process, public_process)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
+from src.path import join_path, split_path
+from src.process import process
 from src.project import Project
+from src.project_loader import ProjectLoader
 
 
 class Relativism(RelativismPublicObject):
 
 
-    def __init__(self, reldata_dir):
+    def __init__(self, reldata_dir, proj_filename):
         section_head("Initializing program")
-        super().__init__(-1, "Program", "Relativism", reldata_dir, None)
-        self._instance = self
+        super().__init__(rel_id=-1, reltype="Program", name="Relativism", path=reldata_dir, parent=None)
 
-        self.relfile_path = join_path(reldata_dir, "projects.data")
+        RelGlobals.set_rel_instance(self)
+
+        self.relfile_path = join_path(reldata_dir, proj_filename)
 
         # set default output
         self.output = "Built-in Output"
@@ -34,20 +38,43 @@ class Relativism(RelativismPublicObject):
         # maps name : path to that proj's datafile
         self.projects = self.read_proj_file()
         self.current_open_proj = None
-        self.run()
 
-    def run(self):
+
+    def main_menu(self):
         section_head("Relativism Main Menu")
+        p("Would you like to edit Projects (P), Settings (S), or get Help (H)?")
+        choice = inpt("letter", allowed="psh")
+        if choice == "p":
+            self.do_projects()
+        elif choice == "s":
+            self.do_settings()
+        else:
+            self.do_help()
+    
+
+    def do_settings(self):
+        try:
+            Settings.process()
+        except Cancel:
+            pass
+
+    def do_projects(self):
+        """
+        top menu for opening or creating projects
+        """
         while True:
             while self.current_open_proj is None:
                 self.choose_open_type()
 
-            p("Process this project?", o="[y/n]")
+            p("Process project '{0}'? [y/n]".format(self.current_open_proj.name))
             if inpt("y-n"):
                 self.process_project()
             else:
                 self.current_open_proj.save()
                 self.current_open_proj = None
+
+    def do_help(self):
+        raise NotImplementedError
 
     def choose_open_type(self):
         """
@@ -74,7 +101,6 @@ class Relativism(RelativismPublicObject):
             return False
         return True
 
-    @public_process
     def open_proj(self):
         """
         desc: open a project
@@ -108,7 +134,6 @@ class Relativism(RelativismPublicObject):
             self.handle_missing_proj(proj_name)
             return
 
-    @public_process
     def create_proj(self):
         """
         desc: create a new project
@@ -127,7 +152,6 @@ class Relativism(RelativismPublicObject):
         with open(self.relfile_path, "a") as relfile:
             relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.path))
         
-    @public_process
     def list_projects(self):
         info_title("Existing projects:")
         for k,v in self.projects.items():
@@ -136,15 +160,20 @@ class Relativism(RelativismPublicObject):
             else:
                 info_list(k)
 
-    @public_process
     def process_project(self):
-        try:
-            process(self.current_open_proj)
-        except Cancel:
-            self.current_open_proj.save()
-            self.current_open_proj = None
+        if self.current_open_proj is None:
+            err_mess("No project is currently open! Open or create one")
+        else:
+            try:
+                process(self.current_open_proj)
+            except Cancel:
+                self.current_open_proj.save()
+                self.current_open_proj = None
 
     def read_proj_file(self):
+        """
+        read projects.data file
+        """
         # read project names
         try:
             data_file = open(self.relfile_path, "r")
@@ -161,9 +190,9 @@ class Relativism(RelativismPublicObject):
             paths = {}
         return paths
 
-    def write_proj_file(self, proj_name):
+    def write_proj_file(self):
         """
-        set self.proj path entry to "None"
+        write projects.data file
         """
         paths = [str(k) + "\t" + str(v) + "\n" for k,v in self.projects.items()]
         with open(self.relfile_path, "w") as f:
@@ -193,30 +222,15 @@ class Relativism(RelativismPublicObject):
             if inpt("y-n"):
                 del self.projects[proj_name]
 
-        self.write_proj_file(proj_name)
+        self.write_proj_file()
 
-
-
-def autofill(partial, possibles, inpt_mode="name"):
-    """
-    matches partial word to one or more of the possible options
-    """
-    matches = []
-    for pos in possibles:
-        if pos[:len(partial)] == partial:
-            matches.append(pos)
-    if len(matches) == 0:
-        raise AutofillError("No matches for '{0}'".format(partial))
-    elif len(matches) == 1:
-        return matches[0]
-    else:
-        info_title("Multiple matches:")
-        info_list(matches)
-        p("Complete the word", start=partial)
-        rest = inpt(inpt_mode)
-        return autofill(partial + rest, matches, inpt_mode=inpt_mode)
-    
-
+    def save(self):
+        """
+        cleanup actions for Relativism object
+        """
+        if self.current_open_proj is not None:
+            self.current_open_proj.save()
+        self.write_proj_file()
 
 
 
@@ -224,5 +238,3 @@ class BPM:
 
     def __init__(self, initial_BPM):
         self.bpm_markers = [0, initial_BPM] # 
-
-

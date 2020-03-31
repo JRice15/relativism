@@ -29,6 +29,22 @@ import re
 
 
 
+def public_process(func):
+    """
+    decorator: allow user access via 'process'
+    """
+    func.__rel_public__ = True
+    return func
+
+
+def is_public_process(func):
+    try:
+        return func.__rel_public__
+    except AttributeError:
+        return False
+
+
+
 @contextmanager
 def suppress_output(err_log_name="data/errors.log"):
     """
@@ -167,12 +183,3 @@ def selection_sort(unsorted, ind, top_n=None, func_on_val=int, func_args=None, l
 
 
 
-
-
-def util_main():
-    pass
-
-    
-
-if __name__ == "__main__":
-    util_main()

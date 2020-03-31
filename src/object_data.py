@@ -1,33 +1,18 @@
 
-import re
-import random as rd
 import json
 import os
-
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.data_types import *
-from src.path import join_path, split_path
-from src.settings import Settings
+import random as rd
+import re
 
 import soundfile as sf
 
-
-def public_process(func):
-    """
-    decorator: allow user access via 'process'
-    """
-    func.__rel_public__ = True
-    return func
-
-
-def is_public_process(func):
-    try:
-        return func.__rel_public__
-    except AttributeError:
-        return False
-
+from src.data_types import *
+from src.globals import RelGlobals, Settings
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
+from src.path import join_path, split_path
 
 
 class RelativismObject():
@@ -43,7 +28,7 @@ class RelativismObject():
         self.path = path # path including object's own directory
         self.parent = parent
         self.reltype = reltype
-        self.rel_id = rel_id if rel_id is not None else Settings.get_next_id()
+        self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
 
     def __repr__(self):
         string = "'{0}'. {1} object".format(self.name, self.reltype)
@@ -94,7 +79,7 @@ class RelativismObject():
                 info_block("Invalid name")
                 self.rename()
         except AttributeError:
-            with open(Settings.error_log(), "a") as f:
+            with open(RelGlobals.error_log(), "a") as f:
                 f.write("Object type {0} has no 'validate_child_name' method\n".format(self.parent.reltype))
             if Settings.is_debug():
                 show_error(
@@ -182,11 +167,8 @@ class RelativismPublicObject(RelativismObject):
         public_method_strs = []
         for m in method_strs:
             method = getattr(obj, m)
-            try:
-                if getattr(method, '__rel_public__') == True:
-                    public_method_strs.append(m)
-            except AttributeError:
-                pass
+            if is_public_process(method):
+                public_method_strs.append(m)
         for m in public_method_strs:
             m_data = RelativismPublicObject.MethodData(self, obj, m)
             try:
@@ -197,6 +179,9 @@ class RelativismPublicObject(RelativismObject):
 
 
     def get_method(self, arg):
+        """
+        get public_process method
+        """
         for i in self.method_data_by_category.items():
             try:
                 return i[1][arg]
@@ -206,10 +191,10 @@ class RelativismPublicObject(RelativismObject):
 
 
     @public_process
-    def show_processes(self):
+    def options(self):
         """
         cat: info
-        desc: list all processes that can be run on this object
+        desc: list all process options that can be run on this object (shortcut 'o')
         """
         print("")
         info_block("# {Category} #", indent=2)
@@ -225,6 +210,13 @@ class RelativismPublicObject(RelativismObject):
         meth_list.sort()
         for i in meth_list:
             methods[i].display()
+        
+    @public_process
+    def quit(self):
+        """
+        cat: save
+        desc: quit (shortcut 'q')
+        """
 
 
     class MethodData:
@@ -421,5 +413,3 @@ class SourceInfo(RelativismObject):
         set info from dict
         """
         self.s_info.update(info)
-
-

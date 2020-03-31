@@ -121,7 +121,7 @@ class Recording(RelativismPublicObject):
         else:
             raise UnexpectedIssue("Unknown mode {0}".format(mode))
 
-
+        self.save()
 
 
     def init_mode(self):

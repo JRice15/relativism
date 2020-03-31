@@ -4,18 +4,19 @@ project class
 
 
 from src.data_types import *
-from src.recording_obj import Recording
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
-from src.integraters import mix, mix_multiple, concatenate
-from src.sampler import Sampler
-from src.project_loader import ProjectLoader
-from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.process import process
+from src.globals import RelGlobals, Settings
+from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
+from src.integraters import concatenate, mix, mix_multiple
+from src.object_data import (RelativismObject, RelativismPublicObject,
+                             is_public_process, public_process)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
 from src.path import join_path, split_path
-from src.settings import Settings
+from src.process import process
+from src.project_loader import ProjectLoader
+from src.recording_obj import Recording
+from src.sampler import Sampler
 
 
 class Project(RelativismPublicObject):
@@ -40,8 +41,8 @@ class Project(RelativismPublicObject):
         ):
         
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
-        
-        Settings.set_project_instance(self)
+
+        RelGlobals.set_project_instance(self)
 
         if name is None:
             self.rename()
@@ -99,9 +100,6 @@ class Project(RelativismPublicObject):
         self._bpm = bpm
 
     #TODO: set rate
-    #TODO: set input, output
-    #TODO: autosave
-
 
 
     @public_process
@@ -115,7 +113,6 @@ class Project(RelativismPublicObject):
         self.save_metadata()
         for child in self.children:
             child.save()
-
 
     def parse_write_meta(self, dct):
         del dct['mix']
@@ -131,7 +128,6 @@ class Project(RelativismPublicObject):
         mixed = mix_multiple(recs, name=self.name + "-mix")
         self.mix = mixed
     
-
     @public_process
     def playback(self, duration=0, start=0):
         """
@@ -141,7 +137,6 @@ class Project(RelativismPublicObject):
         self.make()
         self.mix.playback(duration, start)
     
-
     @public_process
     def list_children(self):
         """
@@ -154,7 +149,6 @@ class Project(RelativismPublicObject):
         else:
             info_list(children)
 
-
     @public_process
     def process_child(self, child_name=None):
         """
@@ -165,18 +159,26 @@ class Project(RelativismPublicObject):
         """
         if child_name is None:
             self.list_children()
+            p("Enter the name of the child you wish to edit")
             child_name = inpt("name")
         else:
             child_name = inpt_validate(child_name, "name")
+        try:
+            child_name = autofill(child_name, [i.name for i in self.children])
+        except AutofillError:
+            self.process_child()
+            return
         child = None
         for i in self.children:
             if i.name == child_name:
                 if child is not None:
                     raise UnexpectedIssue("Multiple children with name {0}".format(child_name))
                 child = i
-        process(child)
+        try:
+            process(child)
+        except Cancel:
+            child.save()
     
-
     @public_process
     def add_sampler(self):
         """
@@ -185,38 +187,9 @@ class Project(RelativismPublicObject):
         sampler = Sampler(parent=self)
         self.children.append(sampler)
 
-
     @public_process
     def add_recording(self):
         self.children.append(Recording(parent=self))
-
-
-
-def create_project():
-    """
-    Main project interface
-    """
-    print("* Initializing Project")
-    proj_name, proj_dir, open_mode = namepath_init("project")
-    if open_mode == "c":
-        proj = Project(proj_name, proj_dir)
-    else:
-        # read data of project from file of some sort
-        pass
-
-
-
-
-
-
-
-def main_master():
-    """
-    """
-
-    create_project()
-
-    
 
 
 
@@ -229,9 +202,3 @@ def help_desk():
     """
 
 
-
-
-
-
-if __name__ == "__main__":
-    main_master()

@@ -9,7 +9,6 @@ output and prompting:
 from contextlib import contextmanager
 from src.errors import *
 from src.utility import *
-from src.settings import Settings
 from src.data_types import *
 
 @contextmanager
@@ -87,25 +86,33 @@ def p(message, indent=2, o="", h=False, q=True, start="", hang=2, leading_newlin
         hang=hang, leading_newline=leading_newline)
 
 
-def err_mess(message, indent=4, trailing_newline=False):
+def err_mess(message, indent=4, trailing_newline=False, extra_leading_nl=True):
     """
     print error message with leading >, no newlines
     """
-    print("")
+    if extra_leading_nl:
+        print("")
     info_block("> " + str(message), indent=indent, trailing_newline=trailing_newline)
 
 
 def show_error(e, force=False):
+    """
+    raise crit error message and give option to raise error if debug is on
+    """
+    from src.globals import Settings
     if not isinstance(e, Cancel) or force:
         critical_err_mess(e.__class__.__name__ + ": " + str(e))
         if Settings.is_debug():
-            p("Raise error? [y/n]")
-            if input().lower().strip() == 'y':
+            p("Debug mode is on. Raise error? [y/n]")
+            if input().lower().strip() == "y":
                 raise e
 
 def critical_err_mess(message):
     """
     """
+    from src.globals import RelGlobals
+    with open(RelGlobals.error_log(), "a") as log:
+        log.write("Critical Error: " + message)
     with style('red'):
         print("\nCritical Error, something appears to be broken:")
         print("   ", message)

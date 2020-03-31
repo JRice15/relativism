@@ -3,7 +3,7 @@ import importlib
 from src.data_types import *
 from src.object_data import RelativismObject
 from src.path import join_path, split_path
-from src.settings import Settings
+from src.globals import RelGlobals, Settings
 
 
 class RelTypeEncoder(json.JSONEncoder):
@@ -96,7 +96,7 @@ class ProjectLoader:
                 return Units.new(val)
 
             elif "<RELATIVISM-PROGRAM>" in str(val):
-                return Settings.get_rel_instance()
+                return RelGlobals.get_rel_instance()
 
             elif "<RELOBJ>" in str(val):
                 val = re.sub("<RELOBJ>", "", val)

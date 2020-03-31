@@ -12,7 +12,7 @@ from src.controller import Controller
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.settings import Settings
+from src.globals import RelGlobals, Settings
 from src.path import join_path, split_path
 
 
@@ -565,7 +565,7 @@ class Sampler(RelativismPublicObject):
             active name: name of active pair to generate
             reps: number of repetitions of active rhythm to generate
         """
-        length = samps(inpt('beats'), Settings.DEFAULT_SAMPLERATE)
+        length = samps(inpt('beats'), RelGlobals.DEFAULT_SAMPLERATE)
         recs = []
         for a in self.active:
             if not a.muted:

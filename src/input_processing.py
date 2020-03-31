@@ -9,10 +9,11 @@ import tkinter as tk
 from tkinter import filedialog
 
 from src.data_types import *
-from src.path import join_path, split_path
 from src.errors import *
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
+from src.path import join_path, split_path
 from src.utility import *
 
 
@@ -110,6 +111,7 @@ def inpt_validate(val, mode, allowed=None):
 
     elif mode == "arg":
         val = re.sub(r"[^-_.a-z0-9]", "", val)
+        val = re.sub(r"-", "_", val)
 
     elif mode in ("y-n", "y/n", "yn"):
         if len(val) == 0 or val[0] not in "yn":
@@ -285,3 +287,25 @@ def input_dir():
     return join_path(directory, is_dir=True)
 
 
+
+def autofill(partial, possibles, inpt_mode="name"):
+    """
+    matches partial word to one or more of the possible options.
+    Raises AutofillError on failure and no message (alert in caller)
+    """
+    matches = []
+    for pos in possibles:
+        if pos[:len(partial)] == partial:
+            matches.append(pos)
+    if len(matches) == 0:
+        raise AutofillError("No autofill matches for '{0}'".format(partial))
+    elif len(matches) == 1:
+        if matches[0] != partial: # only display on imperfect match
+            info_block("-> Autofilled '{0}'".format(matches[0]))
+        return matches[0]
+    else:
+        info_title("Multiple matches:")
+        info_list(matches)
+        p("Complete the word", start=partial)
+        rest = inpt(inpt_mode)
+        return autofill(partial + rest, matches, inpt_mode=inpt_mode)
