@@ -25,7 +25,10 @@ with suppress_output(ERROR_LOG):
     from src.globals import RelGlobals, Settings, init_globals, save_globals
 
     #TODO load extensions dynamically
-    from ext.autodrummer.autodrummer import *
+    try:
+        from ext.autodrummer.autodrummer import *
+    except:
+        pass
 
 with style("cyan, bold"):
     print("\n***** RELATIVISM *****\n")

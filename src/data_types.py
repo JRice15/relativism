@@ -21,7 +21,7 @@ from src.errors import *
 from src.utility import *
 
 
-def proj_rate_wrapper():
+def _proj_rate_wrapper():
     """
     get rate, for initializing units when project hasnt been yet, 
     defaults to 44100hz
@@ -31,14 +31,27 @@ def proj_rate_wrapper():
     except NameError:
         return Units.rate(44100)
 
-def proj_bpm_wrapper(bpm_context):
+
+def _proj_bps_wrapper(bpm_context):
     """
-    get bpm or 120 default
+    get beats-per-second
     """
     try:
-        return Project.get_bpm(bpm_context)
-    except NameError:
-        return Units.bpm(120)
+        bpm = Project.get_bpm(bpm_context)
+    except NameError: # if Project not imported yet
+        bpm = Units.bpm(120)
+    return bpm.to("beats/second")
+
+def _time_beat_convert(x, bpm_context, to="time"):
+    """
+    convert x beats to time or other way, using 'to' arg
+    """
+    bps = _proj_bps_wrapper(bpm_context)
+    if to == "time":
+        return x / bps
+    else:
+        return x * bps
+    
 
 
 def numerize(val):
@@ -85,18 +98,18 @@ class Units:
         # samplerate
         cont = pint.Context('samplerate')
         cont.add_transformation("[sample_time]", "[time]", 
-            lambda reg, x: x / proj_rate_wrapper())
+            lambda reg, x: x / _proj_rate_wrapper())
         cont.add_transformation("[time]", "[sample_time]",
-            lambda reg, x: x * proj_rate_wrapper())
+            lambda reg, x: x * _proj_rate_wrapper())
         Units._reg.add_context(cont)
         Units._reg.enable_contexts('samplerate')
 
         # bpm
         cont = pint.Context("bpm")
         cont.add_transformation("[beat_time]", "[time]", 
-            lambda reg, x, bpm_context: x / proj_bpm_wrapper(bpm_context).to("beats/second"))
+            lambda reg, x, bpm_context: _time_beat_convert(x, bpm_context, to="time"))
         cont.add_transformation("[time]", "[beat_time]", 
-            lambda reg, x, bpm_context: x * proj_bpm_wrapper(bpm_context).to("beats/second"))
+            lambda reg, x, bpm_context: _time_beat_convert(x, bpm_context, to="beats"))
         Units._reg.add_context(cont)
 
     @staticmethod
@@ -274,12 +287,6 @@ class Units:
         return Units.new(numerize(val), "percent")
 
 
-def RelUnit(*args):
-    """
-    shortcut function for creating data
-    """
-    return Units.new(*args)
-
 
 class UnitOperations:
     """
@@ -338,7 +345,6 @@ class UnitOperations:
                     break
             return value
 
-
     @staticmethod
     def to_rate(value, bpm_context=None):
         """
@@ -354,6 +360,24 @@ class UnitOperations:
         """
         return Units.new(int(value.magnitude), value.units)
 
+    @staticmethod
+    def reduce(value, bpm_context=None):
+        """
+        cancel out beats and seconds
+        """
+        with Units.bpm_convert_context(bpm_context):
+            value = value.to_reduced_units().to_base_units()
+            try:
+                while value.units._units["beat"] > 0 and value.units._units["second"] < 0:
+                    value = value * Units.secs(1) / Units.secs(1).to_beats()
+            except KeyError:
+                pass
+            try:
+                while value.units._units["second"] > 0 and value.units._units["beat"] < 0:
+                    value = value * Units.secs(1).to_beats() / Units.secs(1)
+            except KeyError:
+                pass
+        return value
 
     @staticmethod
     def beat_repr(value):
@@ -363,6 +387,7 @@ class UnitOperations:
                     return "{0}{1}".format(value.magnitude, i[0])
         else:
             raise TypeError("Non-beat argument for beat_repr")
+
 
 
 """
@@ -376,6 +401,7 @@ Units._reg.Quantity.to_beats = UnitOperations.to_beats
 Units._reg.Quantity.to_invsamps = UnitOperations.to_invsamps
 Units._reg.Quantity.to_rate = UnitOperations.to_rate
 Units._reg.Quantity.beat_repr = UnitOperations.beat_repr
+Units._reg.Quantity.reduce = UnitOperations.reduce
 
 # base units alias
 Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units
@@ -389,7 +415,7 @@ def ind(value):
     get magnitude of sample value for indexing
     """
     try:
-        return int(value.to_samps().magnitude)
+        return int(value.reduce().to_samps().magnitude)
     except:
         raise TypeError("Value to be used as an index could not converted to samples")
 

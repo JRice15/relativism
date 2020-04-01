@@ -109,7 +109,7 @@ def inpt_validate(val, mode, allowed=None):
     elif mode in ("standard", 'stnd'):
         val = re.sub(r"[^-_a-z0-9. ]", "", val)
 
-    elif mode == "arg":
+    elif mode in ("arg", "args"):
         val = re.sub(r"[^-_.a-z0-9]", "", val)
         val = re.sub(r"-", "_", val)
 
@@ -170,7 +170,7 @@ def inpt_validate(val, mode, allowed=None):
     elif mode in ("beatsec", "beat/sec"):
         try:
             val = Units.beats(val)
-        except:
+        except ValueError:
             try:
                 val = Units.secs(val)
                 if not val.check('[time]'):

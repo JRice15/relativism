@@ -41,15 +41,19 @@ class Relativism(RelativismPublicObject):
 
 
     def main_menu(self):
-        section_head("Relativism Main Menu")
-        p("Would you like to edit Projects (P), Settings (S), or get Help (H)?")
-        choice = inpt("letter", allowed="psh")
-        if choice == "p":
-            self.do_projects()
-        elif choice == "s":
-            self.do_settings()
-        else:
-            self.do_help()
+        while True:
+            section_head("Relativism Main Menu")
+            p("Would you like to edit Projects (P), Settings (S), or get Help (H)?")
+            choice = inpt("letter", allowed="psh")
+            try:
+                if choice == "p":
+                    self.do_projects()
+                elif choice == "s":
+                    self.do_settings()
+                else:
+                    self.do_help()
+            except Cancel:
+                pass
     
 
     def do_settings(self):
@@ -62,6 +66,7 @@ class Relativism(RelativismPublicObject):
         """
         top menu for opening or creating projects
         """
+        section_head("Projects Menu")
         while True:
             while self.current_open_proj is None:
                 self.choose_open_type()

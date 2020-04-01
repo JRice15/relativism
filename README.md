@@ -8,7 +8,8 @@ Relativism is a project to edit, analyze,
 and synthesize music.
 
 ## Can I try it?
-Yes, download the repo and run demo.py (if it doesn't work go back a few commits and try it)
+Yes, download the repo and run `python3 __main__.py` (and if it doesn't work go back a few commits and try again).
+Most stable currently is creating Projects and editing Recordings
 
 ## What can it do?
 With an easy command-line interface, you can:

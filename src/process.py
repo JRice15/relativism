@@ -72,7 +72,7 @@ def do_command(command, obj):
 
         # call process
         try:
-            print("")
+            nl()
             method(*args)
         except TypeError as e:
             if 'positional argument' in str(e):
@@ -147,12 +147,12 @@ def process_error_handling(e, command, obj):
         elif 'positional argument' in message:
             process_complete_args(e, command, obj)
         else:
-            process_error_handling(UnknownError(message), process, obj)
+            show_error(e)
 
     elif isinstance(e, ValueError):
         err_mess("Argument entered incorrectly: {0}".format(message))
 
-    elif isinstance(e, (AttributeError, AutofillError, NoSuchProcess)):
+    elif isinstance(e, (KeyError, AutofillError, NoSuchProcess)):
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
 
     else:

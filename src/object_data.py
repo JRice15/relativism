@@ -11,7 +11,7 @@ from src.globals import RelGlobals, Settings
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
-                                      section_head, show_error)
+                                      section_head, show_error, style)
 from src.path import join_path, split_path
 
 
@@ -196,26 +196,26 @@ class RelativismPublicObject(RelativismObject):
         cat: info
         desc: list all process options that can be run on this object (shortcut 'o')
         """
-        print("")
-        info_block("# {Category} #", indent=2)
+        nl()
+        with style("cyan"):
+            info_block("{CATEGORY}", indent=2)
         info_line("- {Process}")
         info_line("{arguments in order, optional if in [square brackets]}", indent=8)
         nl()
-        methods = {}
-        for i in self.method_data_by_category.items():
-            info_line(str(i[0]).upper(), indent=2)
-            for j in i[1].items():
-                methods[j[0]] = j[1]
-        meth_list = list(methods)
-        meth_list.sort()
-        for i in meth_list:
-            methods[i].display()
+        categories = list(self.method_data_by_category.keys())
+        categories.sort()
+        for cat in categories:
+            with style("cyan"):
+                info_line(str(cat).upper(), indent=2)
+            for name,method in self.method_data_by_category[cat].items():
+                method.display()
+
         
     @public_process
     def quit(self):
         """
         cat: save
-        desc: quit (shortcut 'q')
+        desc: exit to parent process (shortcut 'q')
         """
 
 

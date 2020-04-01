@@ -26,7 +26,6 @@ class Project(RelativismPublicObject):
     # global access for the current instance
     _instance = None
 
-    TESTRATE = Units.rate(44100)
     TESTBPM = Units.bpm(120)
 
     def __init__(self,
@@ -59,11 +58,12 @@ class Project(RelativismPublicObject):
         else:
             raise ValueError("Unknown mode '{0}'".format(mode))
 
-        self.children = []
+        if children is None:
+            children = []
+        self.children = children
         self.rate = rate
         # self.bpm_controller = "______" #TODO
         self.mix = None
-
 
     def __repr__(self):
         return "{0} '{1}', stored at: {2}. {3} direct children objects".format(
@@ -78,17 +78,12 @@ class Project(RelativismPublicObject):
         return True
 
     @staticmethod
-    def get_proj():
-        return Project._instance
-
-    @staticmethod
     def get_proj_path():
-        return Project._instance.path
+        return RelGlobals.get_project_instance().path
 
     @staticmethod
     def get_rate():
-        return Project.TESTRATE
-        return Project._instance.rate
+        return RelGlobals.get_project_instance().rate
 
     @staticmethod
     def get_bpm(context=None):
@@ -97,19 +92,15 @@ class Project(RelativismPublicObject):
 
     @public_process
     def set_bpm(self, bpm):
-        self._bpm = bpm
-
-    #TODO: set rate
-
+        #TODO
+        raise NotImplementedError
 
     @public_process
-    def save(self, silent=False):
+    def save(self):
         """
         cat: save
         desc: save data
         """
-        if not isinstance(silent, bool):
-            silent = False
         self.save_metadata()
         for child in self.children:
             child.save()
@@ -121,10 +112,12 @@ class Project(RelativismPublicObject):
     def make(self):
         recs = []
         for i in self.children:
-            if issubclass(i, Recording):
+            if isinstance(i, Recording):
                 recs.append(i)
-            elif issubclass(i, Sampler):
+            elif isinstance(i, Sampler):
                 recs.append(i.generate())
+            else:
+                raise UnexpectedIssue("Unknown child type '{0}'".format(type(i)))
         mixed = mix_multiple(recs, name=self.name + "-mix")
         self.mix = mixed
     
@@ -157,6 +150,8 @@ class Project(RelativismPublicObject):
         args:
             [child_name: name of child to edit, omit to list children]
         """
+        if len(self.children) == 0:
+            err_mess("This Project has no children to process!")
         if child_name is None:
             self.list_children()
             p("Enter the name of the child you wish to edit")
@@ -166,6 +161,7 @@ class Project(RelativismPublicObject):
         try:
             child_name = autofill(child_name, [i.name for i in self.children])
         except AutofillError:
+            err_mess("Child name '{0}' not found".format(child_name))
             self.process_child()
             return
         child = None
@@ -189,7 +185,15 @@ class Project(RelativismPublicObject):
 
     @public_process
     def add_recording(self):
-        self.children.append(Recording(parent=self))
+        """
+        desc: create a new Recording from an audio file or live recording
+        """
+        rec = Recording(parent=self, mode="create")
+        self.children.append(rec)
+        self.save_metadata()
+        p("Process new Recording '{0}'?".format(rec.name))
+        if inpt("y-n"):
+            self.process_child(rec.name)
 
 
 

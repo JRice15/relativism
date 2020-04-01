@@ -4,6 +4,7 @@ from src.data_types import *
 from src.object_data import RelativismObject
 from src.path import join_path, split_path
 from src.globals import RelGlobals, Settings
+from src.output_and_prompting import section_head
 
 
 class RelTypeEncoder(json.JSONEncoder):
@@ -31,6 +32,7 @@ class RelTypeEncoder(json.JSONEncoder):
 class ProjectLoader:
 
     def __init__(self, filename, path, rel_instance):
+        section_head("Loading '{0}'".format(filename))
         self.proj_file_dir = path
         self.current_path = path
         self.filename = filename
@@ -61,6 +63,7 @@ class ProjectLoader:
         self.current_path = prev_path
 
         obj = obj_class(**attrs)
+        print("attrs:", attrs)
         for i in self.need_parent:
             i.parent = obj
         self.need_parent = []
@@ -85,7 +88,7 @@ class ProjectLoader:
         if isinstance(val, (list, tuple)):
             for i in range(len(val)):
                 val[i] = self._decode_one(val[i])
-                return val
+            return val
 
         elif isinstance(val, dict):
             return self._decoder(val)
@@ -100,7 +103,7 @@ class ProjectLoader:
 
             elif "<RELOBJ>" in str(val):
                 val = re.sub("<RELOBJ>", "", val)
-                obj = self.load(val, self.current_path.append_dir(val))
+                obj = self.load(val, join_path(self.current_path, val, is_dir=True))
                 self.need_parent.append(obj)
                 return obj
         

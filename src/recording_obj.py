@@ -50,7 +50,7 @@ from src.path import join_path, split_path
 class Recording(RelativismPublicObject):
     """
     Args:
-        mode: "read", "record", or leave as None to use data passed in array
+        mode: "create" or "load". load requires file arg
         arr: np.array for arr data, if mode is None
         file: file to read from, for readfile mode
         source_block: info dict if rec is generated
@@ -111,17 +111,16 @@ class Recording(RelativismPublicObject):
         self.pan_val = pan_val
 
         # mode
-        if mode in ('read', 'file', 'read_file'):
-            self.read_file(file)
-        elif mode in ('record', 'record_live'):
-            self.record_live()
-        elif mode is "load":
+        if mode == "create":
             if arr is None:
                 self.init_mode()
+            self.save()
+        elif mode == "load":
+            if file is None:
+                raise UnexpectedIssue("File cannot be None on Recording mode 'load'")
+            self.read_file(file)
         else:
             raise UnexpectedIssue("Unknown mode {0}".format(mode))
-
-        self.save()
 
 
     def init_mode(self):
@@ -131,11 +130,15 @@ class Recording(RelativismPublicObject):
         call get_help/playback if asked
         returns rec array
         """
-        valid_modes = ("live Record (R)", "read from File (F)", 
-            "relativism project or sampler Object (O)", "Help (H)")
+        valid_modes = (
+            "live Record (R)", 
+            "read from File (F)", 
+            "relativism project or sampler Object (O)", 
+            "Help (H)"
+        )
         info_title("Available modes:")
         info_list(valid_modes)
-        p("Select mode")
+        p("Enter desired mode's letter")
         mode = inpt('letter', allowed='rfh')
 
         # Record Mode
@@ -191,13 +194,12 @@ class Recording(RelativismPublicObject):
         takes multiple formats (via PyDub and Soundfile)
         updates self.source, self.arr, self.rate
         """
-        section_head("Reading file")
         if file_path is None:
             print("  Choose an input sound file...")
             time.sleep(1)
             file_path = input_file()
 
-        info_block("reading...")
+        info_block("Reading audio file...")
         t1 = time.time()
 
         # Handling file types
@@ -262,7 +264,7 @@ class Recording(RelativismPublicObject):
         for parsing attribute data for writing
         """
         del attrs['arr']
-        attrs["mode"] = "file"
+        attrs["mode"] = "load"
         attrs["file"] = self.get_audiofile_fullpath()
         return attrs
 
@@ -348,7 +350,7 @@ class Recording(RelativismPublicObject):
     def playback(self, duration=5, start=0, first_time=True):
         """
         cat: info
-        desc:
+        desc: playback this recording's audio
         args:
             [duration: beats/seconds. default 5]
             [start: beat/seconds to start at. defualts to beginning]
@@ -358,7 +360,7 @@ class Recording(RelativismPublicObject):
         section_head("Playback of '{0}'".format(self.name))
 
         print("  preparing...")
-        start_ind = ind(start * self.rate)
+        start_ind = ind(start)
         if duration <= 0:
             end_ind = self.size_samps()
         else:
@@ -367,8 +369,9 @@ class Recording(RelativismPublicObject):
         arr = self.get_panned_rec(arr)
 
         print("  playing...")
+        rate = self.rate.to_rate().round().magnitude
         try:
-            sd.play(arr, self.rate)
+            sd.play(arr, rate)
             sd.wait()
         except TypeError as e:
             if first_time:
