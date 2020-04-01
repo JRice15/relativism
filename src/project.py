@@ -191,7 +191,7 @@ class Project(RelativismPublicObject):
         rec = Recording(parent=self, mode="create")
         self.children.append(rec)
         self.save_metadata()
-        p("Process new Recording '{0}'?".format(rec.name))
+        p("Process new Recording '{0}'? [y/n]".format(rec.name))
         if inpt("y-n"):
             self.process_child(rec.name)
 

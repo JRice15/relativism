@@ -63,7 +63,6 @@ class ProjectLoader:
         self.current_path = prev_path
 
         obj = obj_class(**attrs)
-        print("attrs:", attrs)
         for i in self.need_parent:
             i.parent = obj
         self.need_parent = []

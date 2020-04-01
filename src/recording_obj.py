@@ -246,7 +246,8 @@ class Recording(RelativismPublicObject):
         """
         called after process calls method.
         """
-
+        if self.get_method(process).is_edit_rec():
+            self.save_audio()
 
     def update_recents(self):
         """
