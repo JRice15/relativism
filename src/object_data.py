@@ -11,8 +11,9 @@ from src.globals import RelGlobals, Settings
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
-                                      section_head, show_error, style)
+                                      section_head, show_error, style, log_err)
 from src.path import join_path, split_path
+from src.errors import *
 
 
 class RelativismObject():
@@ -22,8 +23,17 @@ class RelativismObject():
 
     datafile_extension = "relativism-obj"
 
-    def __init__(self, rel_id, reltype, name, path, parent):
-        
+    def __init__(self, rel_id, reltype, name, path, parent, mode):
+        if mode == "create":
+            section_head("Initializing {0}".format(reltype))
+            if path is not None and reltype != "Program":
+                os.makedirs(self.path, exist_ok=False)
+        elif mode == "load":
+            info_line("Loading {0} '{1}'".format(reltype, name))
+            os.makedirs(self.path, exist_ok=True)
+        else:
+            raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
+
         self.name = name
         self.path = path # path including object's own directory
         self.parent = parent
@@ -62,8 +72,11 @@ class RelativismObject():
 
     def rename(self, name=None):
         """
-        should call this method via super, and implement any file saving as needed
+        call this method via super, and implement renaming of files other than 
+        datafile and its self.path directory
         """
+        old_name = self.name
+
         if name is None:
             p("Give this {0} a name".format(self.reltype))
             name = inpt("obj")
@@ -79,30 +92,41 @@ class RelativismObject():
                 info_block("Invalid name")
                 self.rename()
         except AttributeError:
-            with open(RelGlobals.error_log(), "a") as f:
-                f.write("Object type {0} has no 'validate_child_name' method\n".format(self.parent.reltype))
             if Settings.is_debug():
                 show_error(
-                    NameError("parent obj '{0}' does not have validate_child_name".format(self.parent))
+                    AttributeError("Parent obj '{0}' does not have validate_child_name".format(self.parent))
                 )
+            else:
+                log_err("Parent object type {0} has no 'validate_child_name' method".format(self.parent.reltype))
             self.name = name
             info_block("Named '{0}'".format(name))
         
+        # if actual renaming and not an initial naming
+        if old_name is not None:
+            new_path = join_path(self.parent.path, self.get_data_filename())
+            # rename datafile
+            os.rename(self.get_path(old_name), self.get_path())
+            # rename dir
+            os.rename(self.path, new_path)
+            self.path = new_path
 
 
 
     def get_path(self, filename=None, extension="obj"):
         """
         get path of this object's files, or path in same dir of 'filename'.
-        extension: "obj" for obj, anything else for .wav
+        extension: "obj" for datafile_extension, anything else used as extension 
+        with a dot
         """
         if filename is None:
             filename = self.name
         path = join_path(self.path, filename)
         if extension == "obj":
             path += "." + self.datafile_extension
-        else:
+        elif extension == "wav":
             path += ".wav"
+        else:
+            raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelativismObject.get_path".format(extension))
         return path
 
 
@@ -128,32 +152,30 @@ class RelativismObject():
 
     def save_audio(self):
         """
-        base wav audio saving
+        base wav audio saving. requires 'rate' and 'arr' attributes
         """
         info_block("saving '{0}' audio...".format(self.name))
-        os.makedirs(self.path, exist_ok=True)
         outfile = join_path(self.path, self.get_data_filename() + ".wav")
-        try:
-            rate = int(self.rate.to_rate().magnitude)
-        except AttributeError:
-            rate = int(rate)
+        rate = self.rate.to_rate().round().magnitude
         sf.write(outfile, self.arr, rate)
 
 
 
 class RelativismPublicObject(RelativismObject):
     """
-    implements methods for showing public process methods.
-    use getitem to get method by str.
-    inner classes: MethodData, ArgData
+    methods to implement on classes that inherit from this:
+        save (and optional parse_write_meta)
+        rename (that calls super, and only handles renaming files)
+        validate_child_name
+        pre_process and post_process
     """
-
 
     def __init__(self, 
             rel_id=None, reltype=None, name=None, 
-            path=None, parent=None, obj=None):
+            path=None, parent=None, obj=None, mode=None):
 
-        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
+                        path=path, parent=parent, mode=mode)
 
         if obj is None:
             obj = self

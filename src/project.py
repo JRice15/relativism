@@ -39,7 +39,8 @@ class Project(RelativismPublicObject):
             children=None
         ):
         
-        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
+            path=path, parent=parent, mode=mode)
 
         RelGlobals.set_project_instance(self)
 
@@ -50,20 +51,18 @@ class Project(RelativismPublicObject):
             p("Select a location for this project (folder will " + \
                 "be created within selected location to house project files)")
             self.path = join_path(input_dir(), self.get_data_filename(), is_dir=True)
-        
-        if mode == "load":
-            os.makedirs(self.path, exist_ok=True)
-        elif mode == "create":
             os.makedirs(self.path, exist_ok=False)
-        else:
-            raise ValueError("Unknown mode '{0}'".format(mode))
 
         if children is None:
             children = []
         self.children = children
         self.rate = rate
         # self.bpm_controller = "______" #TODO
-        self.mix = None
+        self.arr = None
+
+        if mode == "create":
+            self.save()
+
 
     def __repr__(self):
         return "{0} '{1}', stored at: {2}. {3} direct children objects".format(
@@ -89,6 +88,13 @@ class Project(RelativismPublicObject):
     def get_bpm(context=None):
         return Project.TESTBPM
         return Project._instance.bpm_controller.get_bpm(context)
+
+    @public_process
+    def info(self):
+        info_block("{0} '{1}'".format(self.reltype, self.name))
+        info_line("Stored at '{0}'".format(self.path))
+        info_line("Samplerate: {0}".format(self.rate))
+        self.list_children()
 
     @public_process
     def set_bpm(self, bpm):
@@ -119,7 +125,7 @@ class Project(RelativismPublicObject):
             else:
                 raise UnexpectedIssue("Unknown child type '{0}'".format(type(i)))
         mixed = mix_multiple(recs, name=self.name + "-mix")
-        self.mix = mixed
+        self.arr = mixed
     
     @public_process
     def playback(self, duration=0, start=0):
@@ -128,19 +134,16 @@ class Project(RelativismPublicObject):
         desc: mix and playback the whole project
         """
         self.make()
-        self.mix.playback(duration, start)
+        self.arr.playback(duration, start)
     
     @public_process
     def list_children(self):
         """
         cat: info
         """
-        info_title("Children in '{0}':".format(self.name))
+        info_block("Children in '{0}':".format(self.name))
         children = ["{0} ({1})".format(i.name, i.reltype) for i in self.children]
-        if len(children) == 0:
-            info_list("(empty)")
-        else:
-            info_list(children)
+        info_list(children)
 
     @public_process
     def process_child(self, child_name=None):
@@ -174,26 +177,35 @@ class Project(RelativismPublicObject):
             process(child)
         except Cancel:
             child.save()
-    
+
+    def add_child(self, child):
+        """
+        backend of add_x processes
+        """
+        self.children.append(child)
+        self.save_metadata()
+        p("Process new {0} '{1}'? [y/n]".format(child.reltype, child.name))
+        if inpt("y-n"):
+            self.process_child(child.name)
+
     @public_process
     def add_sampler(self):
         """
         desc: add a new sampler object
         """
-        sampler = Sampler(parent=self)
-        self.children.append(sampler)
+        self.add_child(
+            Sampler(parent=self, mode="create")
+        )
 
     @public_process
     def add_recording(self):
         """
         desc: create a new Recording from an audio file or live recording
         """
-        rec = Recording(parent=self, mode="create")
-        self.children.append(rec)
-        self.save_metadata()
-        p("Process new Recording '{0}'? [y/n]".format(rec.name))
-        if inpt("y-n"):
-            self.process_child(rec.name)
+        self.add_child(
+            Recording(parent=self, mode="create")
+        )
+
 
 
 

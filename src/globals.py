@@ -38,7 +38,6 @@ class _RelGlobalsContainer:
     rel_instance = None
     project_instance = None
     error_log = None
-    activity_log = None
     data_file = None
     settings_file = None
 
@@ -108,14 +107,6 @@ class RelGlobals:
     @staticmethod
     def error_log():
         return _RelGlobalsContainer.error_log
-    
-    @staticmethod
-    def set_activity_log(activity_log):
-        _RelGlobalsContainer.activity_log = activity_log
-
-    @staticmethod
-    def activity_log():
-        return _RelGlobalsContainer.activity_log
 
     @staticmethod
     def set_data_file(file):

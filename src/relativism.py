@@ -24,8 +24,8 @@ class Relativism(RelativismPublicObject):
 
 
     def __init__(self, reldata_dir, proj_filename):
-        section_head("Initializing program")
-        super().__init__(rel_id=-1, reltype="Program", name="Relativism", path=reldata_dir, parent=None)
+        super().__init__(rel_id=-1, reltype="Program", name="Relativism", 
+            path=None, parent=None, mode="create")
 
         RelGlobals.set_rel_instance(self)
 
@@ -47,29 +47,41 @@ class Relativism(RelativismPublicObject):
             choice = inpt("letter", allowed="psh")
             try:
                 if choice == "p":
-                    self.do_projects()
+                    self.projects_menu()
                 elif choice == "s":
-                    self.do_settings()
+                    self.settings_menu()
                 else:
-                    self.do_help()
+                    self.help_menu()
             except Cancel:
                 pass
     
 
-    def do_settings(self):
+    def settings_menu(self):
         try:
             Settings.process()
         except Cancel:
             pass
 
-    def do_projects(self):
+    def projects_menu(self):
         """
         top menu for opening or creating projects
         """
-        section_head("Projects Menu")
         while True:
+            section_head("Projects Menu")
+
+            # choose open type: open or create
             while self.current_open_proj is None:
-                self.choose_open_type()
+                if bool(self.projects):
+                    p("Open existing project (O) or Create new (C)?")
+                    open_or_create = inpt("letter", allowed="oc")
+
+                    if open_or_create == 'c':
+                        self.create_proj()
+                    else:
+                        self.open_proj()
+                else:
+                    info_block("No existing projects. Defaulting to create new")
+                    self.create_proj()
 
             p("Process project '{0}'? [y/n]".format(self.current_open_proj.name))
             if inpt("y-n"):
@@ -78,33 +90,18 @@ class Relativism(RelativismPublicObject):
                 self.current_open_proj.save()
                 self.current_open_proj = None
 
-    def do_help(self):
+    def help_menu(self):
+        #TODO
         raise NotImplementedError
-
-    def choose_open_type(self):
-        """
-        if projects is empty, create, otherwise prompt for create or open existing
-        """
-        if bool(self.projects):
-            p("Open existing project (O) or Create new (C)?")
-            open_or_create = inpt("letter", allowed="oc")
-
-            try:
-                if open_or_create == 'c':
-                    self.create_proj()
-                else:
-                    self.open_proj()
-            except Cancel:
-                return
-        else:
-            info_block("No existing projects. Defaulting to create new")
-            self.create_proj()
 
     def validate_child_name(self, name):
         if name in self.projects:
             err_mess("Project named '{0}' already exists!".format(name))
-            return False
-        return True
+        elif name == "see":
+            err_mess("'see' is a protected keyword. Choose another name")
+        else:
+            return True
+        return False
 
     def open_proj(self):
         """
@@ -113,8 +110,14 @@ class Relativism(RelativismPublicObject):
         section_head("Opening Project")
 
         self.list_projects()
-        p("Enter name of project you want to open")
-        proj_name = inpt("obj")
+        p("Enter name of project you want to open, or 'see <name>' to see info about that project")
+        name_input = inpt("split", "obj")
+        see = False
+        if name_input[0] == "see":
+            proj_name = name_input[1]
+            see = True
+        else:
+            proj_name = name_input[0]
 
         try:
             proj_path = self.projects[proj_name]
@@ -129,6 +132,11 @@ class Relativism(RelativismPublicObject):
         if proj_path == "None":
             err_mess("Project {0} is missing".format(proj_name))
             self.handle_missing_proj(proj_name)
+            return
+
+        if see:
+            self.see_proj(proj_name, proj_path)
+            self.open_proj()
             return
 
         try:
@@ -151,12 +159,28 @@ class Relativism(RelativismPublicObject):
             except FileExistsError:
                 err_mess("The directory already exists and cannot be overwritten. Choose another name or location")
 
-        self.current_open_proj.save()
-
         self.projects[self.current_open_proj.name] = self.current_open_proj.path
         with open(self.relfile_path, "a") as relfile:
             relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.path))
         
+    def see_proj(self, proj_name, proj_path):
+        info_block("Previewing Project '{0}'".format(proj_name))
+        info_block("Children:")
+        fullpath = join_path(proj_path, proj_name + ".Project." + RelativismPublicObject.datafile_extension)
+        with open(fullpath, "r") as f:
+            lines = f.readlines()
+            in_children = False
+            for i in lines:
+                if '"children":' in i:
+                    in_children = True
+                elif "]," in i:
+                    in_children = False
+                elif in_children:
+                    info = i.strip().strip('"')
+                    info = re.sub("<RELOBJ>", "", info)
+                    name, reltype = info.split(".")
+                    info_list("{0} '{1}'".format(reltype, name))
+
     def list_projects(self):
         info_title("Existing projects:")
         for k,v in self.projects.items():

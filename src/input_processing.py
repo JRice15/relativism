@@ -59,7 +59,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
     if val in ("h", "help"):
         try:
             help_callback()
-            val = ""
+            val = "h"
         except:
             err_mess("No help is configured for this action")
     if mode == "split":

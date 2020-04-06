@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from src.errors import *
 from src.utility import *
 from src.data_types import *
+import traceback
 
 @contextmanager
 def style(*styles):
@@ -50,7 +51,7 @@ def style(*styles):
             try:
                 print(getattr(Colors, s), end='')
             except:
-                critical_err_mess("No style {0} exists".format(s))
+                raise UnexpectedIssue("No style '{0}' exists".format(s))
         yield
     finally:
         print(Colors.END, end='')
@@ -101,31 +102,49 @@ def show_error(e, force=False):
     """
     from src.globals import Settings
     if not isinstance(e, Cancel) or force:
-        critical_err_mess(e.__class__.__name__ + ": " + str(e))
+        critical_err_mess(e)
         if Settings.is_debug():
             p("Debug mode is on. Raise error? [y/n]")
             if input().lower().strip() == "y":
                 raise e
 
-def critical_err_mess(message):
+def critical_err_mess(e):
     """
+    show 'something is broken' message and log error
     """
     from src.globals import RelGlobals
     with open(RelGlobals.error_log(), "a") as log:
-        log.write("Critical Error: " + message)
+        log.write("Critical Error {\n")
+        traceback.print_exc(file=log)
+        log.write("}\n")
     with style('red'):
-        print("\nCritical Error, something appears to be broken:")
-        print("   ", message)
-        print("Please contact the developer\n")
+        info_title("Critical Error, something appears to be broken:")
+        info_line(str(e), indent=8)
+        info_line("Please contact the developer")
+        nl()
+
+
+def log_err(message):
+    """
+    log err message string to RelGlobal.error_log
+    """
+    from src.globals import RelGlobals
+    with open(RelGlobals.error_log(), "a") as log:
+        if message[-1] != "\n":
+            message += "\n"
+        log.write(message)
 
 
 def info_title(message, indent=4):
+    """
+    line with leading newline
+    """
     info_block(str(message), indent=indent, leading_newline=True, trailing_newline=False)
 
 
 def info_list(message, indent=4, hang=2):
     """
-    print messages with '-' list. message as str or list
+    print messages with '-' list. message as str or list. prints (empty) on empty list
     """
     if isinstance(message, list) or isinstance(message, tuple):
         if len(message) == 0:
@@ -189,9 +208,9 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
     lines = [""]
     for char in str(message):
         # hard break if super long with no spaces (url, path, etc)
-        if len(lines[-1]) >= 80:
+        if len(lines[-1]) >= 78:
             if char != " ":
-                lines[-1] += "--"
+                lines[-1] += " -"
                 lines.append("")
         # regular limit
         if len(lines[-1]) >= 70:

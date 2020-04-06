@@ -81,14 +81,14 @@ class Recording(RelativismPublicObject):
             name=None, 
             rate=44100,
             parent=None, 
-            hidden=False, 
             reltype='Recording', 
             pan_val=0,
             path=None,
             rel_id=None,
         ):
 
-        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent)
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
+            path=path, parent=parent, mode=mode)
 
         if name is None:
             self.rename()
@@ -99,12 +99,10 @@ class Recording(RelativismPublicObject):
                 self.path = join_path(self.parent.path, self.get_data_filename(), is_dir=True)
             else:
                 self.path = join_path(".", self.get_data_filename(), is_dir=True)
-        os.makedirs(self.path, exist_ok=True)
+            os.makedirs(self.path, exist_ok=False)
         os.makedirs(join_path(self.path, "recents", is_dir=True), exist_ok=True)
 
         # audio data
-        if not hidden:
-            section_head("Initializing {0} '{1}'...".format(self.reltype, self.name))
         self.rate = Units.rate(rate)
         self.source_block = {} if source_block is None else source_block
         self.arr = np.asarray(arr)
@@ -119,9 +117,6 @@ class Recording(RelativismPublicObject):
             if file is None:
                 raise UnexpectedIssue("File cannot be None on Recording mode 'load'")
             self.read_file(file)
-        else:
-            raise UnexpectedIssue("Unknown mode {0}".format(mode))
-
 
     def init_mode(self):
         """
@@ -152,7 +147,6 @@ class Recording(RelativismPublicObject):
         # Help
         elif mode == "h":
             raise NotImplementedError
-
 
     def record_live(self):
         """
@@ -186,7 +180,6 @@ class Recording(RelativismPublicObject):
         self.source_block = {
             'live recording': "input '{0}'".format(device_name)
         }
-
 
     def read_file(self, file_path=None):
         """
@@ -232,7 +225,6 @@ class Recording(RelativismPublicObject):
         info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
             file_path, t2-t1))
 
-
     # Saving #
     def pre_process(self, process):
         """
@@ -240,7 +232,6 @@ class Recording(RelativismPublicObject):
         """
         if self.get_method(process).is_edit_rec():
             self.update_recents()
-
 
     def post_process(self, process):
         """
@@ -259,7 +250,6 @@ class Recording(RelativismPublicObject):
             join_path(recents_dir, str(time.time_ns()) + ".wav")
         )
 
-
     def parse_write_meta(self, attrs):
         """
         for parsing attribute data for writing
@@ -268,7 +258,6 @@ class Recording(RelativismPublicObject):
         attrs["mode"] = "load"
         attrs["file"] = self.get_audiofile_fullpath()
         return attrs
-
 
     @public_process
     def undo(self):
@@ -282,7 +271,6 @@ class Recording(RelativismPublicObject):
         else:
             err_mess("No history to revert to!")
 
-
     @public_process
     def save(self):
         """
@@ -291,7 +279,6 @@ class Recording(RelativismPublicObject):
         """
         self.save_audio()
         self.save_metadata()
-
 
     @public_process
     def export_to_wav(self, outfile=None):
@@ -314,7 +301,6 @@ class Recording(RelativismPublicObject):
         except TypeError as e:
             print("  > Failed to write to file '{0}': {1}".format(outfile, e))
 
-
     # Info #
     @public_process
     def info(self):
@@ -323,7 +309,7 @@ class Recording(RelativismPublicObject):
         cat: info
         dev: essentially just an expanded repr. repr is also defined in super()
         """
-        section_head("{0} '{1}'".format(self.reltype, self.name))
+        info_block("{0} '{1}'".format(self.reltype, self.name))
         info_line("sourced from {0}: {1}".format(self.source_block[0], self.source_block[1]))
         for ind in range(1, len(self.source_block) // 2):
             print("    {0}: {1}".format(self.source_block[2 * ind], self.source_block[2 * ind + 1]))
@@ -332,20 +318,17 @@ class Recording(RelativismPublicObject):
         info_line("size: {0:.4f}, {1:,}".format(self.size_secs(), self.size_samps()))
         info_line("pan: {0}".format(self.pan_val))
 
-
     def size_samps(self):
         """
         length of arr in samples
         """
         return Units.samps(self.arr.shape[0])
 
-
     def size_secs(self):
         """
         length of arr in secs
         """
         return (self.size_samps() / self.rate).to_secs()
-
 
     @public_process
     def playback(self, duration=5, start=0, first_time=True):
@@ -384,7 +367,6 @@ class Recording(RelativismPublicObject):
                 raise e
         print("  finished playback")
 
-
     @public_process
     def view_waveform(self, start=0, end=None, precision=50):
         """
@@ -418,7 +400,6 @@ class Recording(RelativismPublicObject):
 
         anlsys.plot(left, right, fill=True)
 
-
     # Metadata #
     @public_process
     def rename(self, name=None):
@@ -432,16 +413,12 @@ class Recording(RelativismPublicObject):
 
         super().rename(name)
 
-        # rename files
+        # rename audio file
         if old_name is not None:
-            try:
-                os.rename(self.get_path(old_name), self.get_path())
-                os.rename(self.get_path(old_name, extension="wav"),
-                    self.get_path(extension="wav")
-                )
-            except OSError:
-                pass
-
+            os.rename(
+                self.get_path(old_name, extension="wav"),
+                self.get_path(extension="wav")
+            )
 
     # Simple edit processes #
     @public_process
@@ -462,7 +439,6 @@ class Recording(RelativismPublicObject):
                 new_rec.append(i)
             factor_count -= int(factor_count)
         self.arr = np.asarray(new_rec)
-
 
     @public_process
     def sliding_stretch(self, i_factor, f_factor, start=0, end=None):
@@ -499,7 +475,6 @@ class Recording(RelativismPublicObject):
         end = self.arr[end:]
         self.arr = np.vstack((beginning, middle, end))
 
-
     @public_process
     def reverse(self):
         """
@@ -508,7 +483,6 @@ class Recording(RelativismPublicObject):
         """
         print("  reversing...")
         self.arr = self.arr[::-1]
-
 
     @public_process
     def amplify(self, factor):
@@ -522,7 +496,6 @@ class Recording(RelativismPublicObject):
         print("  amplifying by {0}x...".format(factor))
         self.arr *= factor
 
-
     @public_process
     def repeat(self, times):
         """
@@ -533,7 +506,6 @@ class Recording(RelativismPublicObject):
         times = inpt_validate(times, 'int', allowed=[1, None])
         print("  repeating {0} times...".format(times))
         self.arr = np.vstack([self.arr] * times)
-
 
     @public_process
     def extend(self, length, placement="a"):
@@ -557,7 +529,6 @@ class Recording(RelativismPublicObject):
         else:
             self.arr = np.vstack((self.arr, silence))
 
-
     @public_process
     def swap_channels(self):
         """
@@ -579,7 +550,6 @@ class Recording(RelativismPublicObject):
         print("  Setting pan to {0}...".format(amount))
         self.pan_val = amount
 
-
     def get_panned_rec(self, arr=None):
         """
         get panned version of self.arr, or arr if passed
@@ -598,7 +568,6 @@ class Recording(RelativismPublicObject):
             )
         else:
             return arr
-
 
     @public_process
     def trim(self, left, right=None):
@@ -625,7 +594,6 @@ class Recording(RelativismPublicObject):
         else:
             self.arr = self.arr[ind(left * self.rate) : ind(right * self.rate)]  
 
-
     @public_process
     def fade_in(self, dur, start=0):
         """
@@ -646,7 +614,6 @@ class Recording(RelativismPublicObject):
             except IndexError:
                 if i + start >= 0:
                     return
-
 
     @public_process
     def fade_out(self, dur, end=None):
@@ -671,11 +638,10 @@ class Recording(RelativismPublicObject):
             except IndexError:
                 pass
 
-
     @public_process
     def random_method(self):
         """
-        desc: implement random sound-editing on recording, with random args
+        desc: implement random sound-editing on recording, with random args. Introduce a little anarchy!
         cat: edit
         """
         methods = [i[1] for i in self.method_data_by_category['Edits'].items()]
