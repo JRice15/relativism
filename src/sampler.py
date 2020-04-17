@@ -7,14 +7,14 @@ from src.data_types import *
 from src.recording_obj import Recording
 from src.integraters import mix, mix_multiple, concatenate
 from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
+    RelativismSavedObj, RelativismPublicObj)
 from src.controller import Controller
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.globals import RelGlobals, Settings
 from src.path import join_path, split_path
-
+from src.process import process
 
 """
 
@@ -28,86 +28,107 @@ access any projects recs
 """
 
 
+class SampleGroup(RelativismPublicObj):
+    """
+    containing one or more audio samples
+    """
 
+    def __init__(self, 
+            name=None, 
+            mode="load",
+            rel_id=None, 
+            reltype="Sample Group", 
+            path=None, 
+            parent=None,
+            samples=None,
+        ):
 
-class SampleGroup(RelativismPublicObject):
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
+            path=path, parent=parent, mode=mode)
 
-    def __init__(self, name=None, rel_id=None, reltype=None, path=None, parent=None):
-        super().__init__(rel_id, reltype, name, path, parent)
-        self.reltype = "Sample Group"
-        self.rename()
-        self.samples = {}
-
-    @public_process
-    def rename(self, name=None):
         if name is None:
-            p("Enter a name for this {0}".format(self.reltype))
-            self.name = inpt('name')
-        else:
-            self.name = inpt_validate(name, 'name')
+            self.rename()
+        self.samples = {} if samples is None else samples
+
+        if mode == "create":
+            self.save()
 
     @public_process
     def list_samples(self):
-        info_title("Samples in Sample Group '{0}".format(self.name))
-        for s in self.samples:
-            info_line(str(s))
+        info_title("Samples in Sample Group '{0}':".format(self.name))
+        info_list(list(self.samples.keys()))
 
     @public_process
     def process_child_sample(self, name=None):
         """
         desc: process a sample contained in this group
         """
-        if name is None:
-            self.list_samples()
-            p("Choose the name of the sample to process")
-            name = inpt('name')
-        else:
-            name = inpt_validate(name, 'name')
-        try:
-            self.samples[name]
-        except KeyError:
-            err_mess("> Sample '{0}' does not exist!".format(name))
-            self.process_child_sample()
+        while True:
+            if name is None:
+                self.list_samples()
+                p("Enter the name of the Sample to process")
+                name = inpt('name')
+            else:
+                name = inpt_validate(name, 'name')
+            try:
+                self.samples[name]
+                break
+            except KeyError:
+                err_mess("> Sample '{0}' does not exist!".format(name))
         process(self.samples[name])
 
-    def add_sample(self, sample_obj):
-        try:
-            self.samples[sample_obj.name]
-            err_mess("Sample named '{0}' in Sample Group '{1}' overwritten".format(
-                sample_obj.name, self.name))
-        except KeyError:
-            pass
-        self.samples[sample_obj.name] = sample_obj
+    def validate_child_name(self, name):
+        return name not in self.samples
+
+    @add_sample
+    def add_sample(self, new_sample):
+        if isinstance(new_sample, Recording):
+            if not self.validate_child_name(new_sample.name):
+                err_mess("Sample with name '{0}' already exists in Sample Group '{1}'! You may rename it and add it again".format(
+                    new_sample.name, self.name))
+        else:
+            new_sample = Recording(mode="create", parent=self, reltype="Sample")
+        self.samples[new_sample.name] = new_sample
+
+    @public_process
+    def save(self):
+        self.save_metadata()
 
 
-class Rhythm(RelativismPublicObject):
+class Rhythm(RelativismPublicObj):
 
-    def __init__(self, parent=None, reltype=None, name=None, path=None, rel_id=None, sample=None):
-        super().__init__(rel_id, reltype, name, path, parent)
-        print("\n* Initializing Rhythm")
-        self.done_init = False
-        self.sample = sample
-        self.reltype = "Rhythm"
+    def __init__(self, 
+            name=None, 
+            mode="load",
+            rel_id=None,
+            reltype="Rhythm", 
+            path=None, 
+            parent=None,
+            period=None,
+            length=None,
+            beats=None
+        ):
+
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
+            path=path, parent=parent, mode=mode)
+
         if name is None:
             self.rename()
-        self.period = None
-        self.length = None
-        self.beats = [] # [place, length, start in sample]
 
-        print("\n  * Setting Rhythm attributes ('q' to cancel any time)")
-        self.set_length()
-        self.set_period()
-        self.done_init = True
+        self.beats = [] if beats is None else beats
+        self.length = None
+        self.period = None
+        self.set_length_and_period(length, period)
+
+        if mode == "create":
+            self.save()
 
     def __repr__(self):
-        return "'{0}', Rhythm object. Variability {1}, Length {2} beats. {3} children beats are loaded".format(self.get_name(), self.variability, self.length, len(self.beats))
+        return "'{0}', Rhythm object. Length {1} beats. {2} children beats are loaded".format(
+            self.name, self.length, len(self.beats))
 
     def beat_repr(self, beat):
         return "place: {0}, length: {1}, start: {2}".format(beat[0], beat[1], beat[2])
-
-    @public_process
-    def get_name(self):
-        return self.name
 
     @public_process
     def info(self):
@@ -146,29 +167,32 @@ class Rhythm(RelativismPublicObject):
             beat_options()
 
     @public_process
-    def rename(self, name=None):
-        if name is None:
-            print("  Enter a name for this Rhythm: ", end="")
-            name = inpt("obj")
+    def set_length_and_period(self, length=None, period=None):
+        """
+        cat: edit
+        desc: set the length and period of this rhythm. Give 0 for either argument to keep the current value
+        args:
+            length: length of the rhythm in beats
+            period: standard subdivision of this rhythm, in beats
+        """
+        if length == 0 and self.length is not None:
+            pass
+        elif length is None:
+            p("Enter a length in beats for this Rhythm")
+            length = inpt('beats')
+            if length != 0:
+                self.length = length
+            elif self.length is None:
+                err_mess("There is no current value for length, enter a valid value in beats")
+                return self.set_length_and_period(None, period)
         else:
-            name = inpt_validate(name, 'obj')
-        self.name = name
-        print("  named '" + name + "'")
+            self.length = inpt_validate(length, 'beats')
 
-    @public_process
-    def set_length(self, length=None):
-        if length is None:
-            p("Enter a length in beats/seconds for this Rhythm")
-            self.length = inpt('beats').to_samps()
-        else:
-            self.length = inpt_validate(length, 'beats').to_samps()
-
-    @public_process
-    def set_period(self, period=None):
-        if period is None:
-            p("Enter the period, or smallest beat/note that this Rhythm usually lands on, as " +\
-                "a beat", h=True)
-            self.period = inpt('beat', help_callback=beat_options)
+        if period == 0 and self.period is not None:
+            pass
+        elif period is None:
+            p("Enter the period, or smallest beat that this Rhythm usually lands on", h=True)
+            self.period = inpt('beat')
         else:
             self.period = inpt_validate(period, "beat")
 
@@ -177,10 +201,10 @@ class Rhythm(RelativismPublicObject):
         """
         create beats through prompts or pass 'beat' param to set
         """
-        print("  Creating new Rhythm '{0}'".format(self.name))
+        info_block("Creating new Rhythm '{0}'".format(self.name))
         while True:
             info_block(
-                "Enter a beat as <place in rhythm> <optional: length> <optional: start in sample> ('q' to finish, 'i' for more info)",
+                "Enter a beat as <place in rhythm> <optional: length> ('q' to finish, 'i' for more info)",
                 indent=2,
                 hang=2,
                 trailing_newline=False
@@ -189,13 +213,13 @@ class Rhythm(RelativismPublicObject):
             try:
                 new_beat = inpt("split", "beat", help_callback=self.rhythms_help)
             except Cancel:
-                print("\n  Done creating Rhythm '{0}'".format(self.name))
+                info_block("Finished creating Rhythm '{0}'".format(self.name))
                 return
-            if not (1 <= len(new_beat) <= 3):
-                print("  > Wrong number of arguments! From 1 to 3 are required, {0} were supplied".format(len(new_beat)))
+            if not (1 <= len(new_beat) <= 2):
+                err_mess("Wrong number of arguments! From 1 to 2 are required, {0} were supplied".format(len(new_beat)))
                 continue
             if secs(new_beat[0]) >= secs(str(self.length) + 'b'):
-                print("  > This beat begins after the end of the rhythm! Try again")
+                err_mess("This beat begins after the end of the rhythm! Try again")
                 continue
             
             self.beats.append(new_beat)
@@ -204,7 +228,7 @@ class Rhythm(RelativismPublicObject):
                 new_beat.append(0)
             if new_beat[1] == 0:
                 new_beat[1] = "all"
-            print("  Added beat - " + self.beat_repr(new_beat))
+            info_line("  Added beat - " + self.beat_repr(new_beat))
 
     @public_process
     def delete_beats(self):
@@ -216,16 +240,8 @@ class Rhythm(RelativismPublicObject):
         for i in sorted_beats:
             info_block("- " + self.beat_repr(i), newlines=False)
 
-    @public_process
-    def save(self):
-        try:
-            self.parent.save_child__(self)
-        except (AttributeError, NotImplementedError):
-            info_block("Parent {0} '{1}' has not implemented save feature".format(
-                self.parent.reltype, self.parent.get_name()))
 
-
-class Active(RelativismPublicObject):
+class Active(RelativismPublicObj):
 
     def __init__(self, parent, path, act_rhythm, act_sample, reltype=None, 
             name=None, rel_id=None, muted=None):
@@ -324,7 +340,7 @@ class Active(RelativismPublicObject):
 
 
 
-class Sampler(RelativismPublicObject):
+class Sampler(RelativismPublicObj):
     """
     Attr:
         dir: directory
@@ -405,7 +421,6 @@ class Sampler(RelativismPublicObject):
     def edit_bpm(self):
         raise NotImplementedError
 
-
     # Handling Samples #
     @public_process
     def add_sample(self, new_samp=None):
@@ -419,11 +434,10 @@ class Sampler(RelativismPublicObject):
             new_samp = Recording(reltype="Sample", parent=self)
         self.smps.append(new_samp)
         self.list_samples()
-        print("") #newline
+        nl()
         p("Process this sample? y/n")
         if inpt("yn"):
             process(new_samp)
-
 
     @public_process
     def add_sample_group(self):
@@ -476,16 +490,15 @@ class Sampler(RelativismPublicObject):
                 # load from sampler
                 raise NotImplementedError
 
-        if new_rhythm.done_init:
-            self.rhythms.append(new_rhythm)
-            self.list_rhythms()
-            p("Process this rhythm? y/n")
-            if inpt("yn"):
-                try:
-                    process(new_rhythm)
-                except Cancel:
-                    pass
-    
+        self.rhythms.append(new_rhythm)
+        self.list_rhythms()
+        p("Process this rhythm? y/n")
+        if inpt("yn"):
+            try:
+                process(new_rhythm)
+            except Cancel:
+                pass
+
     @public_process
     def edit_rhythm(self):
         rhythm = self.choose("rhythm")
@@ -624,28 +637,3 @@ class Sampler(RelativismPublicObject):
 
 
 
-
-
-
-
-def create_sampler():
-    """
-    """
-    print("* Initializing Sampler")
-    proj_name, proj_dir, open_mode = namepath_init("sampler")
-    if open_mode == "c":
-        smp = Sampler(proj_name, proj_dir)
-    else:
-        # read data of project from file of some sort
-        pass
-    return smp
-
-
-def quick_main():
-    s = create_sampler()
-    process(s)
-
-
-
-if __name__ == "__main__":
-    quick_main()

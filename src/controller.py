@@ -7,7 +7,7 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
 from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
+    RelativismSavedObj, RelativismPublicObj)
 
 
 
@@ -53,7 +53,7 @@ from src.object_data import (public_process, is_public_process,
 
 
 
-class ControllerMarker(RelativismObject):
+class ControllerMarker(RelativismSavedObj):
 
     def __init__(self, beatsec, value, change_type):
         self.beatsec = beatsec
@@ -63,12 +63,11 @@ class ControllerMarker(RelativismObject):
     def __repr__(self):
         return "{0}: {1} ({2} change)".format(self.beatsec, self.value, self.change_type)
 
-
     def samps(self):
         return self.beatsec.to_samps()
 
 
-class Controller(RelativismObject, abc.ABC):
+class Controller(RelativismSavedObj, abc.ABC):
     """
     for controlling an attribute (pan, volume, bpm, etc.) over time.
     abstract methods 'validate_value' and 'apply'. create convert method if value

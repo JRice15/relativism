@@ -38,7 +38,7 @@ from src.utility import *
 
 from src.data_types import *
 from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
+    RelativismSavedObj, RelativismPublicObj)
 from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
@@ -47,7 +47,7 @@ from src.analysis import Analysis
 from src.path import join_path, split_path
 
 
-class Recording(RelativismPublicObject):
+class Recording(RelativismPublicObj):
     """
     Args:
         mode: "create" or "load". load requires file arg

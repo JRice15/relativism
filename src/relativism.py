@@ -9,7 +9,7 @@ from src.errors import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import (autofill, inpt, inpt_validate, input_dir,
                                   input_file)
-from src.object_data import (RelativismObject, RelativismPublicObject,
+from src.object_data import (RelativismSavedObj, RelativismPublicObj,
                              is_public_process, public_process)
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
@@ -20,7 +20,7 @@ from src.project import Project
 from src.project_loader import ProjectLoader
 
 
-class Relativism(RelativismPublicObject):
+class Relativism(RelativismPublicObj):
 
 
     def __init__(self, reldata_dir, proj_filename):
@@ -55,7 +55,6 @@ class Relativism(RelativismPublicObject):
             except Cancel:
                 pass
     
-
     def settings_menu(self):
         try:
             Settings.process()
@@ -93,6 +92,7 @@ class Relativism(RelativismPublicObject):
     def help_menu(self):
         #TODO
         raise NotImplementedError
+
 
     def validate_child_name(self, name):
         if name in self.projects:
@@ -166,7 +166,7 @@ class Relativism(RelativismPublicObject):
     def see_proj(self, proj_name, proj_path):
         info_block("Previewing Project '{0}'".format(proj_name))
         info_block("Children:")
-        fullpath = join_path(proj_path, proj_name + ".Project." + RelativismPublicObject.datafile_extension)
+        fullpath = join_path(proj_path, proj_name + ".Project." + RelativismPublicObj.datafile_extension)
         with open(fullpath, "r") as f:
             lines = f.readlines()
             in_children = False
@@ -177,7 +177,7 @@ class Relativism(RelativismPublicObject):
                     in_children = False
                 elif in_children:
                     info = i.strip().strip('"')
-                    info = re.sub("<RELOBJ>", "", info)
+                    info = re.sub("<RELOBJFILE>", "", info)
                     name, reltype = info.split(".")
                     info_list("{0} '{1}'".format(reltype, name))
 
@@ -253,6 +253,7 @@ class Relativism(RelativismPublicObject):
 
         self.write_proj_file()
 
+
     def save(self):
         """
         cleanup actions for Relativism object
@@ -261,6 +262,8 @@ class Relativism(RelativismPublicObject):
             self.current_open_proj.save()
         self.write_proj_file()
 
+    def file_ref_repr(self):
+        return "<RELATIVISM-PROGRAM>"
 
 
 class BPM:

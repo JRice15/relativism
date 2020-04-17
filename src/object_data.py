@@ -3,6 +3,7 @@ import json
 import os
 import random as rd
 import re
+import abc
 
 import soundfile as sf
 
@@ -16,28 +17,89 @@ from src.path import join_path, split_path
 from src.errors import *
 
 
-class RelativismObject():
+
+class RelativismObject(abc.ABC):
     """
-    base class for objects that are saved and loaded
+    base rel object class
+    """
+
+    def __init__(self, parent):
+        self.parent = parent
+
+    @abc.abstractmethod
+    def file_ref_repr(self):
+        """
+        how obj is referenced in other object's files
+        """
+        ...
+
+
+
+class RelativismContainer(RelativismObject):
+    """
+    class for objects that are not saved to a file but directly as strings 
+    in other files
+    implement:
+        load
+        file_ref_data
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+    def class_data_repr(self):
+        mod = self.__class__.__module__
+        clss = self.__class__.__name__
+        return "{0},{1};".format(mod, clss) 
+
+    def file_ref_repr(self):
+        """
+        don't override. string repr for standalone file references, undone by load()
+        """
+        return self.class_data_repr() + self._file_ref_data_str()
+
+    def _file_ref_data_str(self):
+        return json.dumps(self.file_ref_data(), separators=(",",":"))
+
+    @abc.abstractmethod
+    def file_ref_data(self):
+        """
+        data in primitive types form needed to restore obj with load()
+        """
+        ...
+
+    @staticmethod
+    def _load_from_str(self_clss, string):
+        data = json.loads(string)
+        return self_clss.load(data)
+
+    @staticmethod
+    @abc.abstractmethod
+    def load(data):
+        """
+        load object from data returned by file_ref_data
+        """
+        ...
+
+
+class RelativismSavedObj(RelativismObject):
+    """
+    methods to implement on classes that inherit from this:
+        save (if any additional file saving needed beyond save_metadata)
+        parse_write_meta (for save_metadata)
+        rename (that calls super, and only handles renaming files)
+        file_ref_repr (if not the standard name.reltype)
+        validate_child_name
+        pre_process and post_process
     """
 
     datafile_extension = "relativism-obj"
 
-    def __init__(self, rel_id, reltype, name, path, parent, mode):
-        if mode == "create":
-            section_head("Initializing {0}".format(reltype))
-            if path is not None and reltype != "Program":
-                os.makedirs(self.path, exist_ok=False)
-        elif mode == "load":
-            info_line("Loading {0} '{1}'".format(reltype, name))
-            os.makedirs(self.path, exist_ok=True)
-        else:
-            raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
-
+    def __init__(self, rel_id, reltype, name, path, parent):
+        super().__init__(parent=parent)
+        self.reltype = reltype
         self.name = name
         self.path = path # path including object's own directory
-        self.parent = parent
-        self.reltype = reltype
         self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
 
     def __repr__(self):
@@ -70,6 +132,24 @@ class RelativismObject():
         """
         return join_path(self.path, self.get_data_filename() + ".wav")
 
+    def get_path(self, filename=None, extension="obj"):
+        """
+        get path of this object's files, or path in same dir of 'filename'.
+        extension: "obj" for datafile_extension, anything else used as extension 
+        with a dot
+        """
+        if filename is None:
+            filename = self.name
+        path = join_path(self.path, filename)
+        if extension == "obj":
+            path += "." + self.datafile_extension
+        elif extension == "wav":
+            path += ".wav"
+        else:
+            raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelativismObject.get_path".format(extension))
+        return path
+
+    @public_process
     def rename(self, name=None):
         """
         call this method via super, and implement renaming of files other than 
@@ -110,103 +190,136 @@ class RelativismObject():
             os.rename(self.path, new_path)
             self.path = new_path
 
-
-
-    def get_path(self, filename=None, extension="obj"):
+    @public_process
+    def save(self):
         """
-        get path of this object's files, or path in same dir of 'filename'.
-        extension: "obj" for datafile_extension, anything else used as extension 
-        with a dot
+        cat: save
+        dev: default save method, just calls save_metadata. override for additional saving
         """
-        if filename is None:
-            filename = self.name
-        path = join_path(self.path, filename)
-        if extension == "obj":
-            path += "." + self.datafile_extension
-        elif extension == "wav":
-            path += ".wav"
-        else:
-            raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelativismObject.get_path".format(extension))
-        return path
-
+        self.save_metadata()
 
     def save_metadata(self):
         """
         define parse_write_meta(dict: attrs) to define which attrs to write
         """
-        from src.project_loader import RelTypeEncoder
-        info_block("saving '{0}' metadata...".format(self.name))
-        attrs = {k:v for k,v in vars(self).items()}
+        info_block("saving {0} '{1}' metadata...".format(self.reltype, self.name))
+
+        attrs = vars(self)
         del attrs["method_data_by_category"]
+        attrs = self.parse_write_meta(attrs)
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
-        try:
-            attrs = self.parse_write_meta(attrs)
-        except AttributeError:
-            pass
-        fullpath = join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
-        # RelTypeEncoder found in object_loading
-        with open(fullpath, 'w') as f:
-            json.dump(attrs, f, cls=RelTypeEncoder, indent=2)
+        attrs = self.parse_container_obj_sets(attrs)
 
+        fullpath = join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
+
+        from src.project_loader import RelTypeEncoder
+        with open(fullpath, 'w') as f:
+            json.dump(attrs, fp=f, cls=RelTypeEncoder, indent=2)
+
+    def parse_write_meta(self, attrs):
+        """
+        remove attrs that shouldnt be json encoded to file (ex: audio data) by
+        overriding this method
+        """
+        return attrs
+
+    def parse_container_obj_sets(self, attrs):
+        """
+        parse sets of container objects into a more compact form
+        """
+        for name,attr in attrs.items():
+            first_val = None
+            new_attr = None
+
+            if isinstance(attr, dict) and len(attr) > 1:
+                first_val = list(attr.values())[0]
+                if isinstance(first_val, RelativismContainer) and \
+                    all([type(v) == type(first_val) for v in attr.values()]
+                ):
+                    new_attr = {k:v._file_ref_data_str() for k,v in attr.items()}
+
+            elif isinstance(attr, (list, tuple)) and len(attr) > 1:
+
+                first_val = attr[0]
+                if isinstance(first_val, RelativismContainer) and \
+                    all([type(v) == type(first_val) for v in attr]
+                ):
+                    new_attr = [v._file_ref_data_str() for v in attr]
+
+            if new_attr is not None:
+                new_attr_str = json.dumps(new_attr, separators=(',',':'))
+                set_str = "<RELSET>{0}{1}".format(first_val.class_data_repr(), new_attr_str)
+
+                attrs[name] = set_str
+        
+        return attrs
 
     def save_audio(self):
         """
         base wav audio saving. requires 'rate' and 'arr' attributes
         """
-        info_block("saving '{0}' audio...".format(self.name))
+        info_block("saving {0} '{1}' audio...".format(self.reltype, self.name))
         outfile = join_path(self.path, self.get_data_filename() + ".wav")
-        rate = self.rate.to_rate().round().magnitude
-        sf.write(outfile, self.arr, rate)
+        sf.write(outfile, self.arr, self.rate.magnitude)
+
+    def file_ref_repr(self):
+        """
+        how this object is referenced in other objects json data files
+        """
+        return self.get_data_filename()
 
 
 
-class RelativismPublicObject(RelativismObject):
+class RelativismPublicObj(RelativismSavedObj):
     """
     methods to implement on classes that inherit from this:
-        save (and optional parse_write_meta)
+        save (if any additional file saving needed beyond save_metadata)
+        parse_write_meta (for save_metadata)
         rename (that calls super, and only handles renaming files)
+        file_ref_repr (if not the standard name.reltype)
         validate_child_name
         pre_process and post_process
     """
 
-    def __init__(self, 
-            rel_id=None, reltype=None, name=None, 
-            path=None, parent=None, obj=None, mode=None):
+    def __init__(self, rel_id, reltype, name, path, parent, mode):
 
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
-                        path=path, parent=parent, mode=mode)
+                        path=path, parent=parent)
 
-        if obj is None:
-            obj = self
-        if isinstance(obj, type):
-            obj_class = obj
+        if mode == "create":
+            section_head("Initializing {0}".format(reltype))
+            if path is not None and reltype != "Program":
+                os.makedirs(self.path, exist_ok=False)
+        elif mode == "load":
+            info_line("Loading {0} '{1}'".format(reltype, name))
         else:
-            obj_class = obj.__class__
+            raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
+
+        clss = self.__class__
 
         self.method_data_by_category = {}
-        method_strs = [func for func in dir(obj_class) if callable(getattr(obj, func))]
+        method_strs = [func for func in dir(clss) if callable(getattr(self, func))]
         public_method_strs = []
         for m in method_strs:
-            method = getattr(obj, m)
+            method = getattr(self, m)
             if is_public_process(method):
                 public_method_strs.append(m)
         for m in public_method_strs:
-            m_data = RelativismPublicObject.MethodData(self, obj, m)
+            m_data = RelativismPublicObj.MethodData(self, m)
             try:
                 self.method_data_by_category[m_data.category][m_data.method_name] = m_data
             except KeyError:
                 self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
 
 
-
-    def get_method(self, arg):
+    def get_method(self, method_name):
         """
         get public_process method
         """
         for i in self.method_data_by_category.items():
             try:
-                return i[1][arg]
+                return i[1][method_name]
             except KeyError:
                 pass
         raise KeyError
@@ -229,7 +342,7 @@ class RelativismPublicObject(RelativismObject):
         for cat in categories:
             with style("cyan"):
                 info_line(str(cat).upper(), indent=2)
-            for name,method in self.method_data_by_category[cat].items():
+            for name, method in self.method_data_by_category[cat].items():
                 method.display()
 
         
@@ -243,14 +356,13 @@ class RelativismPublicObject(RelativismObject):
 
     class MethodData:
 
-        def __init__(self, parent, obj, method):
+        def __init__(self, parent, method):
             """
             method: str
             """
             self.parent = parent
-            self.obj = obj
             self.method_name = method
-            self.method_func = getattr(obj, method)
+            self.method_func = getattr(self, method)
 
             self.category = None
             self.raw_category = None
@@ -261,7 +373,7 @@ class RelativismPublicObject(RelativismObject):
         
 
         def analayze_doc(self):
-            doc = getattr(self.obj, self.method_name).__doc__
+            doc = getattr(self, self.method_name).__doc__
             if doc is not None:
                 doc = [
                     j for j in 
@@ -283,7 +395,7 @@ class RelativismPublicObject(RelativismObject):
                             elif title in ("args", "arguments"):
                                 args_now = True
                         else:
-                            arg_dt = RelativismPublicObject.ArgData(self, line)
+                            arg_dt = RelativismPublicObj.ArgData(self, line)
                             self.args.append(arg_dt)
                     except:
                         err_mess("Error getting object data from method " + self.method_name + ": " + str(line))
@@ -311,6 +423,9 @@ class RelativismPublicObject(RelativismObject):
 
 
         def display_category(self, category):
+            """
+            get the display version of the category
+            """
             if category in ("edit", "edits"):
                 category = "Edits"
             elif category in ("meta", "metadata"):
@@ -410,7 +525,6 @@ class RelativismPublicObject(RelativismObject):
 
 
 
-
 class SourceInfo(RelativismObject):
     """
     class for saving source info
@@ -435,3 +549,5 @@ class SourceInfo(RelativismObject):
         set info from dict
         """
         self.s_info.update(info)
+
+

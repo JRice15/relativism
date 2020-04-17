@@ -7,7 +7,7 @@ from src.data_types import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
 from src.integraters import concatenate, mix, mix_multiple
-from src.object_data import (RelativismObject, RelativismPublicObject,
+from src.object_data import (RelativismSavedObj, RelativismPublicObj,
                              is_public_process, public_process)
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
@@ -19,7 +19,7 @@ from src.recording_obj import Recording
 from src.sampler import Sampler
 
 
-class Project(RelativismPublicObject):
+class Project(RelativismPublicObj):
     """
     """
 

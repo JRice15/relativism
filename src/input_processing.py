@@ -61,7 +61,10 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
             help_callback()
             val = "h"
         except:
-            err_mess("No help is configured for this action")
+            if mode in ("beat", "beats", "b"):
+                Units.beat_options()
+            else:
+                err_mess("No help is configured for this action")
     if mode == "split":
         val = val.split()
         for i in range(len(val)):
@@ -113,7 +116,7 @@ def inpt_validate(val, mode, allowed=None):
         val = re.sub(r"[^-_.a-z0-9]", "", val)
         val = re.sub(r"-", "_", val)
 
-    elif mode in ("y-n", "y/n", "yn"):
+    elif mode in ("y-n", "y/n", "yn", "yesno", "yes/no"):
         if len(val) == 0 or val[0] not in "yn":
             print("  > Enter 'y' or 'n': ", end="")
             return inpt(mode)

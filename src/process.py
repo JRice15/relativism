@@ -3,7 +3,7 @@
 import random as rd
 
 from src.object_data import (public_process, is_public_process, 
-    RelativismObject, RelativismPublicObject)
+    RelativismSavedObj, RelativismPublicObj)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
     section_head, info_block, nl, err_mess, critical_err_mess, show_error, style)
