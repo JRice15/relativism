@@ -86,21 +86,21 @@ class ProjectLoader:
                 return obj
             
             elif val.startswith("<RELSET>"):
-                val = re.sub("<RELSET>", "", val)
-
-                ind = val.index(";")
-                class_data, val = val[:ind], val[ind+1:]
-                val = json.loads(val)
-
-                mod_name, clss_name = class_data.split(",")
+                filename = re.sub("<RELSET>", "", val)
+                with open(filename + "." + RelativismContainer.setfile_extension, "r") as f:
+                    data = f.readlines()
+                mod_name = data.pop(0).strip()
+                clss_name = data.pop(0).strip()
                 mod = importlib.import_module(mod_name)
                 clss = getattr(mod, clss_name)
+
+                val = json.loads("\n".join(data))
                 if isinstance(val, dict):
                     for k,v in val.items():
-                        val[k] = clss._load_from_str(clss, v)
+                        val[k] = clss.load(clss, v)
                 elif isinstance(val, (list, tuple)):
                     for i in range(len(val)):
-                        val[i] = clss._load_from_str(clss, val[i])
+                        val[i] = clss.load(clss, val[i])
                 else:
                     raise UnexpectedIssue("this really shouldnt happen")
 
@@ -111,7 +111,8 @@ class ProjectLoader:
                 mod_name, clss_name = class_data.split(",")
                 mod = importlib.import_module(mod_name)
                 clss = getattr(mod, clss_name)
-                return clss._load_from_str(clss, val)
+                val = json.loads(val)
+                return clss.load(clss, val)
 
         return val
 
@@ -132,11 +133,43 @@ class RelTypeEncoder(json.JSONEncoder):
 
             elif isinstance(obj, RelativismContainer):
                 return "<RELOBJ>" + obj.file_ref_repr()
-            
-            # <RELSET> handled in RelativismObject.save_metadata
+
+            # RELSET handled by parse_container_obj_sts below            
 
         return json.JSONEncoder.default(self, obj)
 
+    @staticmethod
+    def parse_container_obj_sets(attrs, save_dir):
+        """
+        parse sets of container objects into a more compact form
+        """
+        for name,attr in attrs.items():
+            first_val = None
+            new_attr = None
 
+            if isinstance(attr, dict) and len(attr) > 1:
+                first_val = list(attr.values())[0]
+                if isinstance(first_val, RelativismContainer) and \
+                    all([type(v) == type(first_val) for v in attr.values()]
+                ):
+                    new_attr = {k:v.file_ref_data() for k,v in attr.items()}
+
+            elif isinstance(attr, (list, tuple)) and len(attr) > 1:
+
+                first_val = attr[0]
+                if isinstance(first_val, RelativismContainer) and \
+                    all([type(v) == type(first_val) for v in attr]
+                ):
+                    new_attr = [v.file_ref_data() for v in attr]
+
+            if new_attr is not None:
+                filename = first_val.get_setfile_fullpath(name, save_dir)
+                with open(filename, "w") as fp:
+                    fp.write(first_val.__class__.__module__ + "\n")
+                    fp.write(first_val.__class__.__name__ + "\n")
+                    json.dump(new_attr, fp=fp)
+                attrs[name] = "<RELSET>{0}".format(first_val.get_set_filename(name))
+        
+        return attrs
 
 

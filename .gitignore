@@ -25,7 +25,8 @@ ext/
 *.log
 
 # program data files
-*.relativism-obj
+*.rel-obj
+*.rel-set
 data/
 
 # misc personal files

@@ -44,22 +44,28 @@ class RelativismContainer(RelativismObject):
         file_ref_data
     """
 
+    setfile_extension = "rel-set"
+
     def __init__(self, parent):
         super().__init__(parent=parent)
 
     def class_data_repr(self):
         mod = self.__class__.__module__
         clss = self.__class__.__name__
-        return "{0},{1};".format(mod, clss) 
+        return "{0},{1}".format(mod, clss)
 
     def file_ref_repr(self):
         """
-        don't override. string repr for standalone file references, undone by load()
+        don't override. string repr for standalone file references
         """
-        return self.class_data_repr() + self._file_ref_data_str()
+        data_str = json.dumps(self.file_ref_data(), separators=(",",":"))
+        return self.class_data_repr() + ";" + data_str
 
-    def _file_ref_data_str(self):
-        return json.dumps(self.file_ref_data(), separators=(",",":"))
+    def get_set_filename(self, attr_name):
+        return attr_name + "." + self.__class__.__name__
+
+    def get_setfile_fullpath(self, attr_name, path):
+        return join_path(path, self.get_set_filename(attr_name) + "." + self.setfile_extension)
 
     @abc.abstractmethod
     def file_ref_data(self):
@@ -69,13 +75,8 @@ class RelativismContainer(RelativismObject):
         ...
 
     @staticmethod
-    def _load_from_str(self_clss, string):
-        data = json.loads(string)
-        return self_clss.load(data)
-
-    @staticmethod
     @abc.abstractmethod
-    def load(data):
+    def load(self_clss, data):
         """
         load object from data returned by file_ref_data
         """
@@ -93,7 +94,7 @@ class RelativismSavedObj(RelativismObject):
         pre_process and post_process
     """
 
-    datafile_extension = "relativism-obj"
+    datafile_extension = "rel-obj"
 
     def __init__(self, rel_id, reltype, name, path, parent):
         super().__init__(parent=parent)
@@ -209,11 +210,12 @@ class RelativismSavedObj(RelativismObject):
         attrs = self.parse_write_meta(attrs)
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
-        attrs = self.parse_container_obj_sets(attrs)
+
+        from src.project_loader import RelTypeEncoder
+        attrs = RelTypeEncoder.parse_container_obj_sets(attrs, self.path)
 
         fullpath = join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
 
-        from src.project_loader import RelTypeEncoder
         with open(fullpath, 'w') as f:
             json.dump(attrs, fp=f, cls=RelTypeEncoder, indent=2)
 
@@ -222,37 +224,6 @@ class RelativismSavedObj(RelativismObject):
         remove attrs that shouldnt be json encoded to file (ex: audio data) by
         overriding this method
         """
-        return attrs
-
-    def parse_container_obj_sets(self, attrs):
-        """
-        parse sets of container objects into a more compact form
-        """
-        for name,attr in attrs.items():
-            first_val = None
-            new_attr = None
-
-            if isinstance(attr, dict) and len(attr) > 1:
-                first_val = list(attr.values())[0]
-                if isinstance(first_val, RelativismContainer) and \
-                    all([type(v) == type(first_val) for v in attr.values()]
-                ):
-                    new_attr = {k:v._file_ref_data_str() for k,v in attr.items()}
-
-            elif isinstance(attr, (list, tuple)) and len(attr) > 1:
-
-                first_val = attr[0]
-                if isinstance(first_val, RelativismContainer) and \
-                    all([type(v) == type(first_val) for v in attr]
-                ):
-                    new_attr = [v._file_ref_data_str() for v in attr]
-
-            if new_attr is not None:
-                new_attr_str = json.dumps(new_attr, separators=(',',':'))
-                set_str = "<RELSET>{0}{1}".format(first_val.class_data_repr(), new_attr_str)
-
-                attrs[name] = set_str
-        
         return attrs
 
     def save_audio(self):
