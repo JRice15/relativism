@@ -126,8 +126,7 @@ def process_complete_args(e, command, obj):
 
 
 def process_autofill(method_name, obj):
-    methods = [func for func in dir(obj.__class__) if callable(getattr(obj.__class__, \
-        func)) and is_public_process(getattr(obj.__class__, func))]
+    methods = obj.get_all_method_names()
     try:
         return autofill(method_name, methods, "arg")
     except AutofillError as e:

@@ -104,7 +104,7 @@ class ControllerCommand(abc.ABC):
         ...
 
 
-
+@allow_aliases
 class Controller(RelativismPublicObj, abc.ABC):
     """
     for controlling an attribute (pan, volume, bpm, etc.) over time.

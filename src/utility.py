@@ -34,7 +34,7 @@ def public_process(func):
     """
     decorator: allow user access via 'process'
     """
-    func.__rel_public__ = True
+    func.__rel_public = True
     return func
 
 def alias(*args):
@@ -44,33 +44,20 @@ def alias(*args):
     if len(args) == 0:
         raise UnexpectedIssue("No aliases provided to alias decorator")
     def wrapper(func):
-        func.__rel_aliases__ = args
+        print("aliasing " + func.__name__)
+        func.__rel_aliases = args
         return func
     return wrapper
 
-def allow_aliases(clss):
-    """
-    class decorator: to allow aliases for methods
-    """
-    # copy to prevent modifying what we iterate over
-    dct = {k:v for k,v in vars(clss).items()}
-    for name, method in dct.items():
-        if hasattr(method, "__rel_aliases__"):
-            for alias in method.__rel_aliases__:
-                if hasattr(clss, alias):
-                    raise NameError("Class '{0}' already has method/name '{1}' that cannot be aliases".format(clss.__name__, alias))
-                setattr(clss, alias, method)
-    return clss
-
 def is_public_process(method_obj):
     try:
-        return method_obj.__rel_public__
+        return method_obj.__rel_public
     except AttributeError:
         return False
 
 def is_alias(method_obj, name):
     try:
-        return name in method_obj.__rel_aliases__
+        return name in method_obj.__rel_aliases
     except AttributeError:
         return False
 

@@ -266,15 +266,10 @@ class RelativismPublicObj(RelativismSavedObj):
         else:
             raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
 
-        clss = self.__class__
+        self._do_aliases()
 
         self.method_data_by_category = {}
-        method_strs = [func for func in dir(clss) if callable(getattr(self, func))]
-        public_method_strs = []
-        for m in method_strs:
-            method = getattr(self, m)
-            if is_public_process(method):
-                public_method_strs.append(m)
+        public_method_strs = [func for func in dir(self) if is_public_process(getattr(self, func))]
         for m in public_method_strs:
             m_data = RelativismPublicObj.MethodData(self, m)
             try:
@@ -283,9 +278,29 @@ class RelativismPublicObj(RelativismSavedObj):
                 self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
 
 
+    def _do_aliases(self):
+        """
+        set aliases
+        """
+        # copy to prevent modifying what we iterate over
+        dct = {k:getattr(self, k) for k in dir(self)}
+        for name, method in dct.items():
+            if hasattr(method, "__rel_aliases"):
+                for alias in getattr(method, "__rel_aliases"):
+                    if hasattr(self, alias):
+                        raise NameError("Class '{0}' already has method/name '{1}' that cannot be aliases".format(
+                            self.__class__.__name__, alias))
+                    setattr(self, alias, method)
+
+    def get_all_method_names(self):
+        """
+        get all public methods
+        """
+        return [func for func in dir(self) if is_public_process(getattr(self, func))]
+
     def get_method(self, method_name):
         """
-        get public_process method
+        get a public method
         """
         for i in self.method_data_by_category.items():
             try:
@@ -342,8 +357,8 @@ class RelativismPublicObj(RelativismSavedObj):
             self.raw_category = None
             self.args = []
             self.desc = ""
-            if not self.is_alias and hasattr(self.method_func, "__rel_aliases__"):
-                self.aliases = self.method_func.__rel_aliases__
+            if not self.is_alias and hasattr(self.method_func, "__rel_aliases"):
+                self.aliases = getattr(self.method_func, "__rel_aliases")
             else:
                 self.aliases = None
 
