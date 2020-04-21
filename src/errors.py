@@ -24,12 +24,10 @@ class Cancel(Exception):
     the user cancelled out of whatever is going on.
     """
 
-
 class NoSuchProcess(Exception):
     """
-    when process does not exist
+    when command does not exist
     """
-
 
 class RateError(Exception):
     """

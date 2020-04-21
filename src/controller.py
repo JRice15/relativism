@@ -6,9 +6,9 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
     rel_plot)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
-from src.object_data import (public_process, is_public_process, 
-    RelativismSavedObj, RelativismPublicObj)
-
+from src.rel_objects import (public_process, is_public_process, 
+    RelativismSavedObj, RelativismPublicObj, RelativismContainer)
+from src.errors import *
 
 
 
@@ -53,7 +53,7 @@ from src.object_data import (public_process, is_public_process,
 
 
 
-class ControllerMarker(RelativismSavedObj):
+class ControllerMarker(RelativismContainer):
 
     def __init__(self, beatsec, value, change_type):
         self.beatsec = beatsec
@@ -67,21 +67,52 @@ class ControllerMarker(RelativismSavedObj):
         return self.beatsec.to_samps()
 
 
-class Controller(RelativismSavedObj, abc.ABC):
+class ControllerData():
+
+    def __init__(self):
+        self.modes = {}
+
+    def add_commands(self, modes):
+        """
+        add command or list of commands
+        """
+        if isinstance(modes, ControllerCommand):
+            self.modes[modes.names] = modes
+        else:
+            for i in modes:
+                self.modes[modes.names] = modes
+
+    def get_command(self, name):
+        for k,v in self.modes.items():
+            if name in k:
+                return v
+
+
+
+class ControllerCommand(abc.ABC):
+    """
+    a command that can be run on a controller
+    """
+
+    def __init__(self, name, aliases, desc):
+        self.name = name
+        self.aliases = aliases
+        self.desc = desc
+
+    @abc.abstractmethod
+    def action(self):
+        ...
+
+
+
+class Controller(RelativismPublicObj, abc.ABC):
     """
     for controlling an attribute (pan, volume, bpm, etc.) over time.
     abstract methods 'validate_value' and 'apply'. create convert method if value
-    if non-numerical. call 'edit' to change markers
+    is non-numerical. call 'edit' to change markers
     """
 
     valid_change_types = ('hard', 'linear', 'smooth')
-    valid_edit_types = {
-        'add': ['add'],
-        'del': ['delete', 'del', 'remove', 'rm'],
-        'view': ['view', 'show', 'list', 'ls'],
-        'plot': ['plot', 'plt'],
-        'move': ['mv', 'move']
-    }
     edit_descriptions = {
         'add': "add <beat/sec> <value> <change-type, default 'hard'>",
         'del': 'del <beat/sec>',
@@ -90,30 +121,12 @@ class Controller(RelativismSavedObj, abc.ABC):
         'move': 'move <current beat/sec> <new beat/sec>'
     }
 
-    def __init__(self, rate, reltype):
+    def __init__(self, rate, reltype, rel_id, name, path, parent, mode):
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, mode=mode)
         self.rate = rate
         self.reltype = reltype
         self.beat_markers = {} # beats (base units only) quant: ControllerNode
         self.sec_markers = {} # secs: ControllerNode
-
-    def display_markers(self):
-        info_title("Controller for {0}".format(self.reltype))
-        if len(self.beat_markers) == 0 and len(self.sec_markers) == 0:
-            info_list("(empty)")
-        for i in sorted(self.beat_markers):
-            info_list(self.beat_markers[i])
-        for i in sorted(self.sec_markers):
-            info_list(self.sec_markers[i])
-
-    def plot(self):
-        ind, val = self.generate()
-        channel = np.asarray(list(zip(ind, val)))
-        rel_plot(
-            left_or_mono=channel,
-            start=0,
-            end=max(ind),
-            rate=self.rate
-        )
 
     def validate_edit_type(self, edit_type):
         edit_type = inpt_validate(edit_type, 'alphanum')
@@ -178,96 +191,108 @@ class Controller(RelativismSavedObj, abc.ABC):
         """
         ...
 
-
-    def edit(self):
+    @alias("ls")
+    @public_process
+    def view(self):
         """
-        run edit loop. describe value parameters in public function that calls this one
+        cat: info
+        desc: list the markers in this controller
         """
-        info_title("Valid commands ('q' to quit, 'o' for options):")
-        for i in self.valid_edit_types.keys():
-            info_list(i + ": " + self.edit_descriptions[i], hang=4)
-        info_title("Valid change types are:")
-        info_list(self.valid_change_types)
-        while True:
+        info_title("Controller for {0}".format(self.reltype))
+        if len(self.beat_markers) == 0 and len(self.sec_markers) == 0:
+            info_list("(empty)")
+        for i in sorted(self.beat_markers):
+            info_list(self.beat_markers[i])
+        for i in sorted(self.sec_markers):
+            info_list(self.sec_markers[i])
 
-            print("\n  Command: ", end="")
-            command = inpt('split', split_modes=['alphanum', 'beat', 'stnd', 'alphanum'], 
-                catch='o', catch_callback=self.edit)
+    @public_process
+    def plot(self):
+        """
+        cat: info
+        desc: plot this controller over time
+        """
+        if len(self.markers) == 0:
+            err_mess("No data to plot!")
+            return
+        inds, vals = self.generate()
+        channel = np.asarray(list(zip(inds, vals)))
+        rel_plot(
+            left_or_mono=channel,
+            start=0,
+            end=max(inds),
+            rate=self.rate
+        )
 
-            try:
-                edit_type = self.validate_edit_type(command[0])
+    @public_process
+    def add(self, *args):
+        # TODO
 
-                if edit_type in self.valid_edit_types['view']:
-                    self.display_markers()
-                    continue
-                elif edit_type in self.valid_edit_types['plot']:
-                    if len(self.markers) == 0:
-                        err_mess("No data to plot!")
-                    else:
-                        self.plot()
-                    continue
+        try:
+            beatsec = inpt_validate(command[1], 'beat')
+        except IndexError:
+            p("Choose a beat/sec for this marker to occur at")
+            beatsec = inpt('beat')
+        sample_ind = beatsec
+        try:
+            value = self.validate_value(command[2])
+        except IndexError:
+            p("Choose a value to add")
+            value = self.validate_value(inpt('stnd'))
+        try:
+            change_type = self.validate_change_type(command[3])
+        except IndexError:
+            change_type = 'hard'
+        try:
+            replace = self.markers[sample_ind]
+            info_line("Replacing marker {0}".format(replace))
+        except KeyError:
+            pass
+        new_marker = ControllerMarker(sample_ind, beatsec, value, change_type)
+        info_line("Added marker {0}".format(new_marker))
+        self.markers[sample_ind] = new_marker
 
-                try:
-                    beatsec = inpt_validate(command[1], 'beat')
-                except IndexError:
-                    p("Choose a beat/sec for this marker to occur at")
-                    beatsec = inpt('beat')
-                sample_ind = beatsec
+    @public_process
+    def move(self):
+        try:
+            beatsec = inpt_validate(command[1], 'beat')
+        except IndexError:
+            p("Choose a beat/sec for this marker to occur at")
+            beatsec = inpt('beat')
+        sample_ind = beatsec
+        try:
+            marker = self.markers[sample_ind]
+        except KeyError:
+            err_mess("No marker to move at {0}".format(beatsec))    
+            continue
+        del self.markers[sample_ind]
+        new_beatsec = inpt_validate(command[2], 'beat')
+        new_samp_ind = samps(new_beatsec, self.rate)
+        try:
+            replace = self.markers[new_samp_ind]
+            info_line("Replacing marker {0}".format(replace))
+        except KeyError:
+            pass
+        info_line("Moved marker from {0} to {1}".format(marker.beatsec, new_beatsec))
+        self.markers[new_samp_ind] = ControllerMarker(new_samp_ind,
+            new_beatsec, marker.value, marker.change_type)
 
-                if edit_type in self.valid_edit_types['del']:
-                    try:
-                        marker = self.markers[sample_ind]
-                        info_line("Deleted marker {0}".format(marker.beatsec))
-                        del self.markers[sample_ind]
-                    except KeyError:
-                        err_mess("No marker to delete at {0}".format(beatsec))
 
-                elif edit_type in self.valid_edit_types['move']:
-                    try:
-                        marker = self.markers[sample_ind]
-                    except KeyError:
-                        err_mess("No marker to move at {0}".format(beatsec))    
-                        continue
-                    del self.markers[sample_ind]
-                    new_beatsec = inpt_validate(command[2], 'beat')
-                    new_samp_ind = samps(new_beatsec, self.rate)
-                    try:
-                        replace = self.markers[new_samp_ind]
-                        info_line("Replacing marker {0}".format(replace))
-                    except KeyError:
-                        pass
-                    info_line("Moved marker from {0} to {1}".format(marker.beatsec, new_beatsec))
-                    self.markers[new_samp_ind] = ControllerMarker(new_samp_ind,
-                        new_beatsec, marker.value, marker.change_type)
-
-                elif edit_type in self.valid_edit_types['add']:
-                    try:
-                        value = self.validate_value(command[2])
-                    except IndexError:
-                        p("Choose a value to add")
-                        value = self.validate_value(inpt('stnd'))
-                    try:
-                        change_type = self.validate_change_type(command[3])
-                    except IndexError:
-                        change_type = 'hard'
-                    try:
-                        replace = self.markers[sample_ind]
-                        info_line("Replacing marker {0}".format(replace))
-                    except KeyError:
-                        pass
-                    new_marker = ControllerMarker(sample_ind, beatsec, value, change_type)
-                    info_line("Added marker {0}".format(new_marker))
-                    self.markers[sample_ind] = new_marker
-                else:
-                    err_mess("Command '{0}' not recognized!".format(edit_type))
-
-            except Cancel:
-                pass
+    @alias("rm")
+    @public_process
+    def delete(self):
+        try:
+            beatsec = inpt_validate(command[1], 'beat')
+        except IndexError:
+            p("Choose a beat/sec for this marker to occur at")
+            beatsec = inpt('beat')
+        try:
+            marker = self.markers[sample_ind]
+            info_line("Deleted marker {0}".format(marker.beatsec))
+            del self.markers[sample_ind]
+        except KeyError:
+            err_mess("No marker to delete at {0}".format(beatsec))
         
-
-    def get_help(self):
-        pass
-
 
 
 class TestController(Controller):

@@ -9,7 +9,7 @@ from src.errors import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import (autofill, inpt, inpt_validate, input_dir,
                                   input_file)
-from src.object_data import (RelativismSavedObj, RelativismPublicObj,
+from src.rel_objects import (RelativismSavedObj, RelativismPublicObj,
                              is_public_process, public_process)
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,

@@ -2,7 +2,7 @@
 
 import random as rd
 
-from src.object_data import (public_process, is_public_process, 
+from src.rel_objects import (public_process, is_public_process, 
     RelativismSavedObj, RelativismPublicObj)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
@@ -153,6 +153,7 @@ def process_error_handling(e, command, obj):
         err_mess("Argument entered incorrectly: {0}".format(message))
 
     elif isinstance(e, (KeyError, AutofillError, NoSuchProcess)):
+        raise e
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
 
     else:

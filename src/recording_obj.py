@@ -37,7 +37,7 @@ from src.errors import *
 from src.utility import *
 
 from src.data_types import *
-from src.object_data import (public_process, is_public_process, 
+from src.rel_objects import (public_process, is_public_process, 
     RelativismSavedObj, RelativismPublicObj)
 from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file

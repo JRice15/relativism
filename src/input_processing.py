@@ -55,7 +55,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
             return inpt(mode, split_modes=split_modes, catch=catch, 
                 catch_callback=catch_callback, allowed=allowed, required=required)
         else:
-            return ""
+            return val
     if val in ("h", "help"):
         try:
             help_callback()

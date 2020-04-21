@@ -6,7 +6,7 @@ chance-based generative Sampler object
 from src.data_types import *
 from src.recording_obj import Recording
 from src.integraters import mix, mix_multiple, concatenate
-from src.object_data import (public_process, is_public_process, 
+from src.rel_objects import (public_process, is_public_process, 
     RelativismSavedObj, RelativismPublicObj)
 from src.controller import Controller
 from src.output_and_prompting import (p, info_title, info_list, info_line, 

@@ -1,7 +1,7 @@
 import importlib
 
 from src.data_types import *
-from src.object_data import RelativismSavedObj, RelativismObject, RelativismContainer
+from src.rel_objects import RelativismSavedObj, RelativismObject, RelativismContainer
 from src.path import join_path, split_path
 from src.globals import RelGlobals, Settings
 from src.output_and_prompting import section_head

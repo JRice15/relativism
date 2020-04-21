@@ -1,6 +1,6 @@
 # Relativism Objects
 
-src.object_data
+src.rel_objects
 
 ## Saved
 
@@ -12,6 +12,23 @@ Implement:
 - `rename` (that calls super, and only handles renaming extra files)
 - `file_ref_repr` (if you dont want the standard name.reltype)
 - `validate_child_name`: -> bool
+
+### Public
+
+These objects are directly editable by the user, via `@public_process` methods
+
+in the docstring of the public processes, give relevant info in the following format:
+
+cat: {category: edit|meta|info|save|effect|other}  
+desc: {a description to be displayed to the user}  
+args:  
+&ensp;&ensp;{argname}: {argument description for user}; {hidden data relevant to arg for various
+purposes, such as Recording's random_method()}  
+dev: {this line and all the rest below it will not be visible to the user, and are used for
+developer notes}
+
+Square brackets [] around the whole line of an argument signal that it is an optional argument
+
 
 ## Container
 

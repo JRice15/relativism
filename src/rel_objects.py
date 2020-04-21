@@ -102,6 +102,8 @@ class RelativismSavedObj(RelativismObject):
         self.name = name
         self.path = path # path including object's own directory
         self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
+        if path is not None and reltype != "Program":
+            os.makedirs(self.path, exist_ok=True)
 
     def __repr__(self):
         string = "'{0}'. {1} object".format(self.name, self.reltype)
@@ -153,7 +155,7 @@ class RelativismSavedObj(RelativismObject):
     @public_process
     def rename(self, name=None):
         """
-        call this method via super, and implement renaming of files other than 
+        dev: call this method via super, and implement renaming of files other than 
         datafile and its self.path directory
         """
         old_name = self.name
@@ -241,7 +243,6 @@ class RelativismSavedObj(RelativismObject):
         return self.get_data_filename()
 
 
-
 class RelativismPublicObj(RelativismSavedObj):
     """
     methods to implement on classes that inherit from this:
@@ -260,8 +261,6 @@ class RelativismPublicObj(RelativismSavedObj):
 
         if mode == "create":
             section_head("Initializing {0}".format(reltype))
-            if path is not None and reltype != "Program":
-                os.makedirs(self.path, exist_ok=False)
         elif mode == "load":
             info_line("Loading {0} '{1}'".format(reltype, name))
         else:
@@ -314,7 +313,8 @@ class RelativismPublicObj(RelativismSavedObj):
             with style("cyan"):
                 info_line(str(cat).upper(), indent=2)
             for name, method in self.method_data_by_category[cat].items():
-                method.display()
+                if not method.is_alias:
+                    method.display()
 
         
     @public_process
@@ -322,29 +322,36 @@ class RelativismPublicObj(RelativismSavedObj):
         """
         cat: save
         desc: exit to parent process (shortcut 'q')
+        dev: this is handled in input_processing
         """
+        raise Cancel
 
 
     class MethodData:
 
-        def __init__(self, parent, method):
+        def __init__(self, parent, method_name):
             """
             method: str
             """
             self.parent = parent
-            self.method_name = method
-            self.method_func = getattr(self, method)
+            self.method_name = method_name
+            self.method_func = getattr(parent, method_name)
+            self.is_alias = is_alias(self.method_func, self.method_name)
 
             self.category = None
             self.raw_category = None
             self.args = []
             self.desc = ""
+            if not self.is_alias and hasattr(self.method_func, "__rel_aliases__"):
+                self.aliases = self.method_func.__rel_aliases__
+            else:
+                self.aliases = None
 
             self.analayze_doc()
         
 
         def analayze_doc(self):
-            doc = getattr(self, self.method_name).__doc__
+            doc = self.method_func.__doc__
             if doc is not None:
                 doc = [
                     j for j in 
@@ -363,13 +370,13 @@ class RelativismPublicObj(RelativismSavedObj):
                             elif title in ("catg", "cat", "category", "catgry", "categry"):
                                 self.category = self.display_category(content.strip())
                                 self.raw_category = self.parse_category(content.strip())
-                            elif title in ("args", "arguments"):
+                            elif title in ("args", "arguments", "arg"):
                                 args_now = True
                         else:
                             arg_dt = RelativismPublicObj.ArgData(self, line)
                             self.args.append(arg_dt)
                     except:
-                        err_mess("Error getting object data from method " + self.method_name + ": " + str(line))
+                        err_mess("Error reading docstring method object data from method '" + self.method_name + ": " + str(line) + "'")
             
             if self.category is None:
                 self.category = "Other"
@@ -413,7 +420,13 @@ class RelativismPublicObj(RelativismSavedObj):
 
 
         def display(self):
-            message = self.method_name.capitalize() + ": " + self.desc
+            message = self.method_name.capitalize()
+            message += ": " + self.desc
+            if self.aliases is not None:
+                message += " (alias"
+                if len(self.aliases) > 1:
+                    message += "es"
+                message += ": '" + "', '".join(self.aliases) + "')"
             info_list(message, hang=4)
             for i in self.args:
                 info_line(i.get_display(), indent=12)

@@ -11,6 +11,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import re
+from src.errors import *
 
 
 # import numba
@@ -36,13 +37,42 @@ def public_process(func):
     func.__rel_public__ = True
     return func
 
+def alias(*args):
+    """
+    decorator: aliases for a method
+    """
+    if len(args) == 0:
+        raise UnexpectedIssue("No aliases provided to alias decorator")
+    def wrapper(func):
+        func.__rel_aliases__ = args
+        return func
+    return wrapper
 
-def is_public_process(func):
+def allow_aliases(clss):
+    """
+    class decorator: to allow aliases for methods
+    """
+    # copy to prevent modifying what we iterate over
+    dct = {k:v for k,v in vars(clss).items()}
+    for name, method in dct.items():
+        if hasattr(method, "__rel_aliases__"):
+            for alias in method.__rel_aliases__:
+                if hasattr(clss, alias):
+                    raise NameError("Class '{0}' already has method/name '{1}' that cannot be aliases".format(clss.__name__, alias))
+                setattr(clss, alias, method)
+    return clss
+
+def is_public_process(method_obj):
     try:
-        return func.__rel_public__
+        return method_obj.__rel_public__
     except AttributeError:
         return False
 
+def is_alias(method_obj, name):
+    try:
+        return name in method_obj.__rel_aliases__
+    except AttributeError:
+        return False
 
 
 @contextmanager
