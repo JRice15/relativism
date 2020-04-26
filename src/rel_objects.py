@@ -15,6 +15,7 @@ from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       section_head, show_error, style, log_err)
 from src.path import join_path, split_path
 from src.errors import *
+from src.decorators import *
 
 
 
@@ -25,6 +26,21 @@ class RelativismObject(abc.ABC):
 
     def __init__(self, parent):
         self.parent = parent
+
+        if is_rel_wrap_all(self):
+            self._do_wrap_all()
+
+    def _do_wrap_all(self):
+        """
+        wrapping
+        """
+        encloser = get_wrap_all_encloser(self)
+        for attr in dir(self):
+            if "__" not in attr:
+                if is_public_process(getattr(self, attr)):
+                    print("a", type(getattr(self, attr)), getattr(self,attr).__name__)
+                    new_val = rel_wrap(encloser)(getattr(self, attr))
+                    setattr(self, attr, new_val)
 
     @abc.abstractmethod
     def file_ref_repr(self):
@@ -277,7 +293,6 @@ class RelativismPublicObj(RelativismSavedObj):
             except KeyError:
                 self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
 
-
     def _do_aliases(self):
         """
         set aliases
@@ -291,6 +306,7 @@ class RelativismPublicObj(RelativismSavedObj):
                         raise NameError("Class '{0}' already has method/name '{1}' that cannot be aliases".format(
                             self.__class__.__name__, alias))
                     setattr(self, alias, method)
+
 
     def get_all_method_names(self):
         """

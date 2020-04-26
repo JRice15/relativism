@@ -30,38 +30,6 @@ from src.errors import *
 
 
 
-def public_process(func):
-    """
-    decorator: allow user access via 'process'
-    """
-    func.__rel_public = True
-    return func
-
-def alias(*args):
-    """
-    decorator: aliases for a method
-    """
-    if len(args) == 0:
-        raise UnexpectedIssue("No aliases provided to alias decorator")
-    def wrapper(func):
-        print("aliasing " + func.__name__)
-        func.__rel_aliases = args
-        return func
-    return wrapper
-
-def is_public_process(method_obj):
-    try:
-        return method_obj.__rel_public
-    except AttributeError:
-        return False
-
-def is_alias(method_obj, name):
-    try:
-        return name in method_obj.__rel_aliases
-    except AttributeError:
-        return False
-
-
 @contextmanager
 def suppress_output(err_log_name="data/errors.log"):
     """

@@ -6,8 +6,8 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
     rel_plot)
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
-from src.rel_objects import (public_process, is_public_process, 
-    RelativismSavedObj, RelativismPublicObj, RelativismContainer)
+from src.rel_objects import (RelativismSavedObj, RelativismPublicObj, RelativismContainer)
+from src.decorators import public_process, is_public_process, rel_alias, is_alias
 from src.errors import *
 
 
@@ -89,22 +89,6 @@ class ControllerData():
 
 
 
-class ControllerCommand(abc.ABC):
-    """
-    a command that can be run on a controller
-    """
-
-    def __init__(self, name, aliases, desc):
-        self.name = name
-        self.aliases = aliases
-        self.desc = desc
-
-    @abc.abstractmethod
-    def action(self):
-        ...
-
-
-@allow_aliases
 class Controller(RelativismPublicObj, abc.ABC):
     """
     for controlling an attribute (pan, volume, bpm, etc.) over time.
@@ -191,7 +175,7 @@ class Controller(RelativismPublicObj, abc.ABC):
         """
         ...
 
-    @alias("ls")
+    @rel_alias("ls")
     @public_process
     def view(self):
         """
@@ -224,10 +208,15 @@ class Controller(RelativismPublicObj, abc.ABC):
             rate=self.rate
         )
 
+
+    def generate_format(self):
+        #TODO
+        pass
+
     @public_process
     def add(self, *args):
-        # TODO
 
+        print("add <beat/sec> <value> <change-type, default 'hard'>")
         try:
             beatsec = inpt_validate(command[1], 'beat')
         except IndexError:
@@ -253,32 +242,32 @@ class Controller(RelativismPublicObj, abc.ABC):
         self.markers[sample_ind] = new_marker
 
     @public_process
-    def move(self):
-        try:
-            beatsec = inpt_validate(command[1], 'beat')
-        except IndexError:
-            p("Choose a beat/sec for this marker to occur at")
-            beatsec = inpt('beat')
-        sample_ind = beatsec
+    def move(self, current, new):
+        """
+        Args:
+            current: the beat/sec of the marker to move
+            new: the beat/sec to move it to
+        """
+        old_beatsec = inpt_validate(current, 'beatsec')
+        old_sample_ind = old_beatsec.to_samps()
         try:
             marker = self.markers[sample_ind]
         except KeyError:
-            err_mess("No marker to move at {0}".format(beatsec))    
-            continue
-        del self.markers[sample_ind]
-        new_beatsec = inpt_validate(command[2], 'beat')
-        new_samp_ind = samps(new_beatsec, self.rate)
+            err_mess("No marker to move at {0}".format(old_beatsec))    
+        new_beatsec = inpt_validate(new, 'beatsec')
+        new_samp_ind = new_beatsec.to_samps()
         try:
-            replace = self.markers[new_samp_ind]
-            info_line("Replacing marker {0}".format(replace))
+            replaced = self.markers[new_samp_ind]
+            info_line("Replacing marker {0}".format(replaced))
         except KeyError:
             pass
-        info_line("Moved marker from {0} to {1}".format(marker.beatsec, new_beatsec))
+        info_line("Moved marker from {0} to {1}".format(old_beatsec, new_beatsec))
         self.markers[new_samp_ind] = ControllerMarker(new_samp_ind,
             new_beatsec, marker.value, marker.change_type)
+        del self.markers[old_sample_ind]
 
 
-    @alias("rm")
+    @rel_alias("rm")
     @public_process
     def delete(self):
         try:

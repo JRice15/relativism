@@ -8,7 +8,7 @@ from src.errors import *
 from src.input_processing import autofill, inpt, p
 from src.output_and_prompting import (err_mess, info_block, info_list,
                                       info_title, section_head)
-from src.utility import is_public_process, public_process
+from src.decorators import public_process, is_public_process, rel_alias, is_alias
 
 
 def init_globals():
@@ -164,7 +164,7 @@ class Settings():
     @staticmethod
     def save_settings():
         """
-        dct: dict of vars to save
+        save settings to settingsfile
         """
         info_block("Saving settings...")
         attrs = [attr for attr in dir(_SettingsContainer) if "__" not in attr and attr != "_defaults"]
