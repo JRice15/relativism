@@ -3,8 +3,6 @@ top level
 """
 
 ### Initialize
-
-
 import os, time, sys
 SESS_START = time.time()
 
@@ -25,9 +23,6 @@ PROJFILE_NAME = "projects.relativism-data"
 
 MAX_SESS_LOGS = 20
 
-
-with open(ERROR_LOG, "a") as log:
-    log.write("\nsess-start\t{0}\n".format(SESS_START))
 
 with suppress_output(ERROR_LOG):
 
@@ -56,7 +51,7 @@ init_globals()
 with open(ERROR_LOG, "r") as log:
 
     # check multiple open sessions
-    info_block("Checking activity...")
+    info_block("Checking logs...")
     lines = log.readlines()
     last = [i for i in lines if i.startswith("sess-start") or i.startswith("sess-end")][-1]
     kind, secs = last.strip().split("\t")
@@ -84,32 +79,40 @@ if start_count > MAX_SESS_LOGS and i != 0:
         log.write("{0} most recent session logs are kept\n\n".format(MAX_SESS_LOGS))
         log.writelines(lines)
 
-
-### Main loop
-
-rel = Relativism(RELDATA_DIR, PROJFILE_NAME)
-
-while True:
-    try:
-        rel.main_menu()
-    except Exception as e:
-        if isinstance(e, Cancel):
-            p("Exit Relativism?", o="y/n", q=False)
-            if inpt("y-n", quit_on_q=False):
-                break
-        else:
-            err_mess("EXCEPTION AT TOP LEVEL")
-            show_error(e, force=True)
-
-### Cleanup
-
-rel.save()
-
-# writes settings and data files
-save_globals()
-
-info_block("Exiting...")
-nl()
-
+# log start
 with open(ERROR_LOG, "a") as log:
-    log.write("sess-end\t{0}\n".format(time.time()))
+    log.write("\nsess-start\t{0}\n".format(SESS_START))
+
+
+def run():
+    rel = Relativism(RELDATA_DIR, PROJFILE_NAME)
+
+    LOAD_TIME = time.time()
+    info_block("Loaded in {0:.4f} seconds".format(LOAD_TIME - SESS_START))
+
+    while True:
+        try:
+            rel.main_menu()
+        except Exception as e:
+            if isinstance(e, Cancel):
+                p("Exit Relativism?", o="y/n", q=False)
+                if inpt("y-n", quit_on_q=False):
+                    break
+            else:
+                err_mess("EXCEPTION AT TOP LEVEL")
+                show_error(e, force=True)
+    
+    rel.save()
+
+    # writes settings and data files
+    save_globals()
+
+    info_block("Successfully Saved. Exiting...")
+    nl()
+
+    with open(ERROR_LOG, "a") as log:
+        log.write("sess-end\t{0}\n".format(time.time()))
+
+
+if __name__ == "__main__":
+    run()

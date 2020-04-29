@@ -50,15 +50,15 @@ class TestCases(unittest.TestCase):
 
         # creation and conversion
         samps = Units.samps(44100)
-        self.assertEqual(samps.to_secs(), Units.secs(1))
+        self.assertEqual(samps.to_secs(), Units.secs("1s"))
         self.assertEqual(samps.to_beats(), Units.beats("2b"))
         self.assertEqual(samps.to_secs().to_beats().to_samps(), samps)
 
         self.assertEqual(Units.beats("6b"), Units.beats("12hb"))
         self.assertNotEqual(Units.beats("4b"), Units.new("8.0000001hb"))
 
-        mult = Units.rate(44100/2) * Units.secs(0.2)
-        made = Units.secs(0.1).to_samps()
+        mult = Units.rate(44100/2) * Units.secs("0.2s")
+        made = Units.secs("0.1s").to_samps()
         self.assertEqual(made, mult)
 
         a = Units.rate(44100)
@@ -67,7 +67,7 @@ class TestCases(unittest.TestCase):
 
         # beat and time addition and conversion
         beats = Units.beats("4b")
-        beats += Units.secs(1.3).to_beats()
+        beats += Units.secs("1.3s").to_beats()
         self.assertEqual(beats, Units.new("13.2b") / 2)
 
         self.assertEqual(Units.beats("12.2 qb").beat_repr(), "12.2qb")
@@ -87,8 +87,8 @@ class TestCases(unittest.TestCase):
 
         # percent
         a = Units.pcnt("20")
-        b = a * Units.secs(4)
-        self.assertEqual(b, Units.secs(0.8))
+        b = a * Units.secs("4s")
+        self.assertEqual(b, Units.secs("0.8s"))
 
         # ind() func
         a = Units.rate("200") * Units.new(2, "second") * Units.new("10 percent")
@@ -107,7 +107,7 @@ class TestCases(unittest.TestCase):
             self.assertEqual(inpt_validate("G", "letter", allowed="MLK"), "l")
 
         self.assertEqual(inpt_validate("42.8b", "beatsec"), Units.beats("42.8b"))
-        self.assertEqual(inpt_validate("42.8", "beatsec"), Units.secs(42.8))
+        self.assertEqual(inpt_validate("42.8", "beatsec"), Units.secs("42.8s"))
 
 
     def test_recording(self):

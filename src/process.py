@@ -65,7 +65,8 @@ def do_command(command, obj):
         method_name, args = command[0], command[1:]
 
         # get full method name with autofill
-        method_name = process_autofill(method_name, obj)
+        all_methods = obj.get_all_method_names()
+        method_name = autofill(method_name, all_methods, "arg")
         method = obj.get_method(method_name).method_func
 
         pre_process(obj, method_name)
@@ -125,13 +126,6 @@ def process_complete_args(e, command, obj):
         return command + new_args
 
 
-def process_autofill(method_name, obj):
-    methods = obj.get_all_method_names()
-    try:
-        return autofill(method_name, methods, "arg")
-    except AutofillError as e:
-        process_error_handling(NoSuchProcess(str(e)), method_name, obj)
-
 
 def process_error_handling(e, command, obj):
     """
@@ -152,7 +146,6 @@ def process_error_handling(e, command, obj):
         err_mess("Argument entered incorrectly: {0}".format(message))
 
     elif isinstance(e, (KeyError, AutofillError, NoSuchProcess)):
-        raise e
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
 
     else:

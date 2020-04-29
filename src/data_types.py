@@ -27,20 +27,21 @@ def _proj_rate_wrapper():
     defaults to 44100hz
     """
     try:
-        return Project.get_rate()
+        return RelGlobals.get_rate()
     except NameError:
         return Units.rate(44100)
 
 
 def _proj_bps_wrapper(bpm_context):
     """
-    get beats-per-second
+    get beats per second
     """
     try:
-        bpm = Project.get_bpm(bpm_context)
-    except NameError: # if Project not imported yet
+        bpm = RelGlobals.get_bpm(bpm_context)
+    except NameError: # if Globals not imported yet
         bpm = Units.bpm(120)
     return bpm.to("beats/second")
+
 
 def _time_beat_convert(x, bpm_context, to="time"):
     """
@@ -66,12 +67,14 @@ def numerize(val):
 
 class Units:
     """
-    class for creating data with units. use new() method or the name of the units
+    staticmethod class for creating data with units. use new() method or the name of the units
     shorthand method (secs(), samps(), freq(), etc.)
     """
 
     # unit registry
     _reg = pint.UnitRegistry()
+
+    Quant = _reg.Quantity
 
     @staticmethod
     def setup():
@@ -123,13 +126,13 @@ class Units:
         """
         if len(args) == 0:
             raise TypeError("No args supplied to Units.new()")
-        if isinstance(args[0], Units._reg.Quantity):
+        if isinstance(args[0], Units.Quant):
             try:
                 return args[0].to(args[1])
             except:
                 return args[0]
         else:
-            return Units._reg.Quantity(*args)
+            return Units.Quant(*args)
 
     # RATE
 
@@ -157,11 +160,20 @@ class Units:
             return Units.new(numerize(val), "samples")
 
     @staticmethod
-    def secs(val):
+    def secs(sec_str):
+        """
+        sec_str, ie '2s', '4min', '33ms'
+        """
         try:
-            return val.to_secs()
+            return sec_str.to_secs()
         except:
-            return Units.new(numerize(val), "seconds")
+            val = Units.new(sec_str)
+            if val.check("[time]"):
+                return val
+            elif val.magnitude == 0:
+                return Units.secs("0s")
+            else:
+                raise ValueError("Invalid beat string, dimension was '{}'".format(val.dimensionality))
 
     @staticmethod
     def beats(beat_str):
@@ -230,7 +242,6 @@ class Units:
             else:
                 prev = i[2]
 
-
     @staticmethod
     def beat_options():
         note_fracs = [
@@ -267,7 +278,8 @@ class Units:
         print("\n    Time can also be indicated with just a number, which will be")
         print("    interpreted as seconds")
 
-    # FREQUENCY
+    # FREQUENCY/NOTES
+
     @staticmethod
     def freq(val):
         if isinstance(val, PitchUnits):
@@ -280,7 +292,7 @@ class Units:
             return val.to_note()
         return RelNote(val)
         
-    # Misc Makers
+    # Misc
 
     @staticmethod
     def pcnt(val):
@@ -290,7 +302,7 @@ class Units:
 
 class UnitOperations:
     """
-    methods to be aliased onto Units._reg.Quantity, below
+    methods to be aliased onto Units.Quant, below
     """
 
     @staticmethod
@@ -369,12 +381,12 @@ class UnitOperations:
             value = value.to_reduced_units().to_base_units()
             try:
                 while value.units._units["beat"] > 0 and value.units._units["second"] < 0:
-                    value = value * Units.secs(1) / Units.secs(1).to_beats()
+                    value = value * Units.secs("1s") / Units.secs("1s").to_beats()
             except KeyError:
                 pass
             try:
                 while value.units._units["second"] > 0 and value.units._units["beat"] < 0:
-                    value = value * Units.secs(1).to_beats() / Units.secs(1)
+                    value = value * Units.secs("1s").to_beats() / Units.secs("1s")
             except KeyError:
                 pass
         return value
@@ -391,25 +403,28 @@ class UnitOperations:
 
 
 """
-hacky method creation by aliasing
+monkeypatch time
 """
 
+# for RelProperty
+Units.Quant.__call__ = lambda self, context=None: self
+
 # conversion
-Units._reg.Quantity.to_samps = UnitOperations.to_samps
-Units._reg.Quantity.to_secs = UnitOperations.to_secs
-Units._reg.Quantity.to_beats = UnitOperations.to_beats
-Units._reg.Quantity.to_invsamps = UnitOperations.to_invsamps
-Units._reg.Quantity.to_rate = UnitOperations.to_rate
-Units._reg.Quantity.beat_repr = UnitOperations.beat_repr
-Units._reg.Quantity.reduce = UnitOperations.reduce
+Units.Quant.to_samps = UnitOperations.to_samps
+Units.Quant.to_secs = UnitOperations.to_secs
+Units.Quant.to_beats = UnitOperations.to_beats
+Units.Quant.to_invsamps = UnitOperations.to_invsamps
+Units.Quant.to_rate = UnitOperations.to_rate
+Units.Quant.beat_repr = UnitOperations.beat_repr
+Units.Quant.reduce = UnitOperations.reduce
 
 # base units alias
-Units._reg.Quantity.bu = Units._reg.Quantity.to_base_units
+Units.Quant.bu = Units.Quant.to_base_units
 
 # rounding
-Units._reg.Quantity.round = UnitOperations.round
+Units.Quant.round = UnitOperations.round
 
-# indexing function and aliasing
+# indexing function
 def ind(value):
     """
     get magnitude of sample value for indexing
@@ -419,7 +434,7 @@ def ind(value):
     except:
         raise TypeError("Value to be used as an index could not converted to samples")
 
-Units._reg.Quantity.__index__ = ind
+Units.Quant.__index__ = ind
 
 
 # init

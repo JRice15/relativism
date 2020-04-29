@@ -1,4 +1,5 @@
 import importlib
+import json, re
 
 from src.data_types import *
 from src.rel_objects import RelativismSavedObj, RelativismObject, RelativismContainer
@@ -123,8 +124,12 @@ class RelTypeEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
-        if isinstance(obj, Units._reg.Quantity):
+        from src.relativism import Relativism
+        if isinstance(obj, Units.Quant):
             return "<PINTQUANT>" + str(obj)
+
+        elif isinstance(obj, Relativism):
+            return "<RELATIVISM-PROGRAM>"
 
         elif isinstance(obj, RelativismObject):
 
@@ -134,7 +139,7 @@ class RelTypeEncoder(json.JSONEncoder):
             elif isinstance(obj, RelativismContainer):
                 return "<RELOBJ>" + obj.file_ref_repr()
 
-            # RELSET handled by parse_container_obj_sts below            
+            # RELSET handled by parse_container_obj_sets below
 
         return json.JSONEncoder.default(self, obj)
 

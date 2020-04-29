@@ -28,7 +28,7 @@ access any projects recs
 """
 
 
-class SampleGroup(RelativismPublicObj):
+class SampleGroup(RelativismPublicObj, RelativismSavedObj):
     """
     containing one or more audio samples
     """
@@ -80,7 +80,7 @@ class SampleGroup(RelativismPublicObj):
     def validate_child_name(self, name):
         return name not in self.samples
 
-    @add_sample
+    @public_process
     def add_sample(self, new_sample):
         if isinstance(new_sample, Recording):
             if not self.validate_child_name(new_sample.name):
@@ -95,7 +95,7 @@ class SampleGroup(RelativismPublicObj):
         self.save_metadata()
 
 
-class Rhythm(RelativismPublicObj):
+class Rhythm(RelativismPublicObj, RelativismSavedObj):
 
     def __init__(self, 
             name=None, 
@@ -241,7 +241,7 @@ class Rhythm(RelativismPublicObj):
             info_block("- " + self.beat_repr(i), newlines=False)
 
 
-class Active(RelativismPublicObj):
+class Active(RelativismPublicObj, RelativismSavedObj):
 
     def __init__(self, parent, path, act_rhythm, act_sample, reltype=None, 
             name=None, rel_id=None, muted=None):
@@ -340,7 +340,7 @@ class Active(RelativismPublicObj):
 
 
 
-class Sampler(RelativismPublicObj):
+class Sampler(RelativismPublicObj, RelativismSavedObj):
     """
     Attr:
         dir: directory

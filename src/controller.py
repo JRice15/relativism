@@ -7,7 +7,7 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
 from src.rel_objects import (RelativismSavedObj, RelativismPublicObj, RelativismContainer)
-from src.decorators import public_process, is_public_process, rel_alias, is_alias
+from src.decorators import public_process, is_public_process, rel_alias, is_alias, rel_wrap
 from src.errors import *
 
 
@@ -53,7 +53,26 @@ from src.errors import *
 
 
 
-class ControllerMarker(RelativismContainer):
+class DiscreteMarker(RelativismContainer):
+
+    def __init__(self, beatsec, value):
+        self.beatsec = beatsec
+        self.value = value
+
+    def __repr__(self):
+        return "{0}: {1}".format(self.beatsec, self.value)
+
+    def samps(self):
+        return self.beatsec.to_samps()
+
+    def file_ref_data(self):
+        return [self.beatsec, self.value]
+    
+    @staticmethod
+    def load(self_clss, data):
+        return self_clss(*data)
+
+class ContinuousMarker(DiscreteMarker):
 
     def __init__(self, beatsec, value, change_type):
         self.beatsec = beatsec
@@ -63,121 +82,136 @@ class ControllerMarker(RelativismContainer):
     def __repr__(self):
         return "{0}: {1} ({2} change)".format(self.beatsec, self.value, self.change_type)
 
-    def samps(self):
-        return self.beatsec.to_samps()
-
-
-class ControllerData():
-
-    def __init__(self):
-        self.modes = {}
-
-    def add_commands(self, modes):
-        """
-        add command or list of commands
-        """
-        if isinstance(modes, ControllerCommand):
-            self.modes[modes.names] = modes
-        else:
-            for i in modes:
-                self.modes[modes.names] = modes
-
-    def get_command(self, name):
-        for k,v in self.modes.items():
-            if name in k:
-                return v
+    def file_ref_data(self):
+        return [self.beatsec, self.value, self.change_type]
+    
 
 
 
 class Controller(RelativismPublicObj, abc.ABC):
     """
-    for controlling an attribute (pan, volume, bpm, etc.) over time.
-    abstract methods 'validate_value' and 'apply'. create convert method if value
-    is non-numerical. call 'edit' to change markers
+    discrete controlling of an attribute (pan, volume, bpm, etc.) over time.
+    implement:
+        validate_value(self, value)
+        type_hint
+        apply(self, target)
+        [get_allowed_times]
     """
 
-    valid_change_types = ('hard', 'linear', 'smooth')
-    edit_descriptions = {
-        'add': "add <beat/sec> <value> <change-type, default 'hard'>",
-        'del': 'del <beat/sec>',
-        'view': 'view',
-        'plot': 'plot',
-        'move': 'move <current beat/sec> <new beat/sec>'
-    }
-
-    def __init__(self, rate, reltype, rel_id, name, path, parent, mode):
+    def __init__(self, markers=None, time_units=None, start=None, reltype=None, 
+            rel_id=None, name=None, path=None, parent=None, mode="load"):
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, mode=mode)
-        self.rate = rate
-        self.reltype = reltype
-        self.beat_markers = {} # beats (base units only) quant: ControllerNode
-        self.sec_markers = {} # secs: ControllerNode
 
-    def validate_edit_type(self, edit_type):
-        edit_type = inpt_validate(edit_type, 'alphanum')
-        for t in self.valid_edit_types.values():
-            if edit_type in t:
-                return edit_type
-        err_mess("Invalid edit type '{0}'".format(edit_type))
-        p("Select one of: {0}".format(", ".join(self.valid_edit_types)))
-        edit_type = inpt('alphanum')
-        return self.validate_edit_type(edit_type)
+        self.start = start
+        self.markers = {} if markers is None else markers # {sample_ind : ControllerMarker}
 
-    def validate_change_type(self, change_type):
-        change_type = inpt_validate(change_type, 'alphanum')
-        if change_type in self.valid_change_types:
-            return change_type
+        if time_mode is None or time_mode not in ("b", "s"):
+            p("Select the timing units to be used for this controller, 'b' for beat/note notation, 's' for seconds")
+            time_mode = inpt("letter", allowed="bs")
+        self.time_units = time_mode
+
+    def get_time_input_mode(self):
+        if self.time_units == "b":
+            return "beats"
         else:
-            err_mess("Invalid change type '{0}'".format(change_type))
-            p("Select one of: {0}".format(", ".join(self.valid_change_types)))
-            change_type = inpt('alphanum')
-            return self.validate_change_type(change_type)
+            return "seconds"
+
+    def get_allowed_times(self):
+        """
+        override to return a 2-list of [low, high]
+        """
+        return None
+
+    @abc.abstractmethod
+    @public_process
+    def type_hint(self):
+        """
+        cat: info
+        dev: display hints on what kind of data is accepted for add() args
+        """
+        ...
 
     @abc.abstractmethod
     def validate_value(self, value):
         """
-        validate format of input value that is being controlled
+        validate input for the value that is being controlled
         """
         ...
-
-    def generate(self):
-        # TODO
-        i = 0
-        indexes = [i.sample_ind for i in self.markers.values()]
-        try:
-            values = [self.convert(i.value) for i in self.markers.values()]
-        except AttributeError:
-            values = [i.value for i in self.markers.values()]
-        output = np.array([])
-        new_indexes = np.arange(max(indexes))
-        try:
-            func = interp1d(indexes, values, kind="cubic", bounds_error=False, fill_value='extrapolate')
-            plt.plot(new_indexes, func(new_indexes))
-        except ValueError:
-            try:
-                func = interp1d(indexes, values, kind="quadratic")
-                plt.plot(new_indexes, func(new_indexes))
-            except ValueError:
-                try:
-                    func = interp1d(indexes, values, kind="linear")
-                    plt.plot(new_indexes, func(new_indexes))
-                except ValueError:
-                    plt.scatter(indexes, values)
-        plt.show()
-        return new_indexes, func(new_indexes)
-
-        # while i < len(markers):
-        #     output = np.concatenate
 
     @abc.abstractmethod
-    def apply(self, rec_arr):
+    def apply(self, target):
         """
-        apply controller effect to rec_arr
+        apply controller effect to target
         """
         ...
 
+    def add_marker(self, sample_ind, marker):
+        """
+        method to be called by add() process
+        """
+        try:
+            replaced = self.markers[sample_ind]
+            info_line("Replacing marker '{0}' with '{1}'".format(replaced, marker))
+        except KeyError:
+            info_line("Added marker '{0}'".format(marker))
+        self.markers[sample_ind] = marker
+
+    @public_process
+    def add(self, location, value):
+        """
+        cat: edit
+        desc: add a new marker (see type_hint process for info on the specific types that arguments allow)
+        args:
+            location: the beat or sec (whatever the time mode of this controller is) where this marker should occur
+            value: the value of this marker
+        """
+        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        sample_ind = beatsec.to_samps()
+        value = self.validate_value(value)
+        self.add_marker(sample_ind, DiscreteMarker(beatsec, value))
+
+    @public_process
+    def move(self, current, new):
+        """
+        desc: move a marker to a new location
+        Args:
+            current: the beat or sec of the marker to move
+            new: the beat or sec to move it to
+        """
+        old_beatsec = inpt_validate(current, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        new_beatsec = inpt_validate(new, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        old_sample_ind = old_beatsec.to_samps()
+        new_samp_ind = new_beatsec.to_samps()
+        try:
+            marker = self.markers[old_sample_ind]
+        except KeyError:
+            err_mess("No marker to move at {0}!".format(old_beatsec)) 
+            return
+        marker.beatsec = new_beatsec
+        self.add_marker(new_samp_ind, marker)
+        del self.markers[old_sample_ind]
+
+    @rel_alias("rm")
+    @public_process
+    def delete(self, location):
+        """
+        cat: edit
+        desc: delete a marker from this controller
+        args:
+            location: beat or sec of the marker to remove
+        """
+        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        sample_ind = beatsec.to_samps()
+        try:
+            marker = self.markers[sample_ind]
+            info_line("Deleting marker '{0}'".format(marker))
+            del self.markers[sample_ind]
+        except KeyError:
+            err_mess("No marker to delete at {0}".format(beatsec))
+        
     @rel_alias("ls")
     @public_process
-    def view(self):
+    def list_markers(self):
         """
         cat: info
         desc: list the markers in this controller
@@ -208,80 +242,82 @@ class Controller(RelativismPublicObj, abc.ABC):
             rate=self.rate
         )
 
+    def generate(self):
+        # TODO
+        i = 0
+        indexes = [i.sample_ind for i in self.markers.values()]
+        try:
+            values = [self.convert(i.value) for i in self.markers.values()]
+        except AttributeError:
+            values = [i.value for i in self.markers.values()]
+        output = np.array([])
+        new_indexes = np.arange(max(indexes))
+        try:
+            func = interp1d(indexes, values, kind="cubic", bounds_error=False, fill_value='extrapolate')
+            plt.plot(new_indexes, func(new_indexes))
+        except ValueError:
+            try:
+                func = interp1d(indexes, values, kind="quadratic")
+                plt.plot(new_indexes, func(new_indexes))
+            except ValueError:
+                try:
+                    func = interp1d(indexes, values, kind="linear")
+                    plt.plot(new_indexes, func(new_indexes))
+                except ValueError:
+                    plt.scatter(indexes, values)
+        plt.show()
+        return new_indexes, func(new_indexes)
 
-    def generate_format(self):
-        #TODO
-        pass
-
-    @public_process
-    def add(self, *args):
-
-        print("add <beat/sec> <value> <change-type, default 'hard'>")
-        try:
-            beatsec = inpt_validate(command[1], 'beat')
-        except IndexError:
-            p("Choose a beat/sec for this marker to occur at")
-            beatsec = inpt('beat')
-        sample_ind = beatsec
-        try:
-            value = self.validate_value(command[2])
-        except IndexError:
-            p("Choose a value to add")
-            value = self.validate_value(inpt('stnd'))
-        try:
-            change_type = self.validate_change_type(command[3])
-        except IndexError:
-            change_type = 'hard'
-        try:
-            replace = self.markers[sample_ind]
-            info_line("Replacing marker {0}".format(replace))
-        except KeyError:
-            pass
-        new_marker = ControllerMarker(sample_ind, beatsec, value, change_type)
-        info_line("Added marker {0}".format(new_marker))
-        self.markers[sample_ind] = new_marker
-
-    @public_process
-    def move(self, current, new):
-        """
-        Args:
-            current: the beat/sec of the marker to move
-            new: the beat/sec to move it to
-        """
-        old_beatsec = inpt_validate(current, 'beatsec')
-        old_sample_ind = old_beatsec.to_samps()
-        try:
-            marker = self.markers[sample_ind]
-        except KeyError:
-            err_mess("No marker to move at {0}".format(old_beatsec))    
-        new_beatsec = inpt_validate(new, 'beatsec')
-        new_samp_ind = new_beatsec.to_samps()
-        try:
-            replaced = self.markers[new_samp_ind]
-            info_line("Replacing marker {0}".format(replaced))
-        except KeyError:
-            pass
-        info_line("Moved marker from {0} to {1}".format(old_beatsec, new_beatsec))
-        self.markers[new_samp_ind] = ControllerMarker(new_samp_ind,
-            new_beatsec, marker.value, marker.change_type)
-        del self.markers[old_sample_ind]
+        # while i < len(markers):
+        #     output = np.concatenate
 
 
-    @rel_alias("rm")
-    @public_process
-    def delete(self):
-        try:
-            beatsec = inpt_validate(command[1], 'beat')
-        except IndexError:
-            p("Choose a beat/sec for this marker to occur at")
-            beatsec = inpt('beat')
-        try:
-            marker = self.markers[sample_ind]
-            info_line("Deleted marker {0}".format(marker.beatsec))
-            del self.markers[sample_ind]
-        except KeyError:
-            err_mess("No marker to delete at {0}".format(beatsec))
+class ContinuousController(Controller):
+    """
+    controller that is continuous over time, instead of discrete  
+    implement:
+        validate_value(self, value)
+        type_hint
+        apply(self, target)
+        [get_allowed_times]
+    """
+
+    change_type_options = ('hard', 'linear', 'smooth')
+
+    def __init__(self, markers=None, time_units=None, change_types=None, start=None, reltype=None, 
+            rel_id=None, name=None, path=None, parent=None, mode="load"):
+
+        # super Controller
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, 
+            mode=mode, markers=markers, time_units=time_units, start=start)
         
+        # validate change types
+        if not all(i in self.change_type_options for i in change_types):
+            raise UnexpectedIssue("Unknown change_type in '{0}'".format(change_types))
+        self.valid_change_types = change_types
+
+    def validate_change_type(self, change_type):
+        while change_type not in self.valid_change_types:
+            err_mess("Invalid change type '{0}'".format(change_type))
+            p("Select one of: {0}".format(", ".join(self.valid_change_types)))
+            change_type = inpt('alphanum')
+        return change_type
+    
+    @public_process
+    def add(self, location, value, change_type=None):
+        """
+        cat: edit
+        desc: add a new marker (see type_hint process for info on the specific types that arguments allow)
+        args:
+            location: the beat or sec (whatever the time mode of this controller is) where this marker should occur
+            value: the value of this marker
+            [change type: how this marker's value transitions the following one]
+        """
+        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        sample_ind = beatsec.to_samps()
+        value = self.validate_value(value)
+        change_type = self.validate_change_type(change_type)
+        self.add_marker(sample_ind, ContinuousMarker(beatsec, value, change_type))
 
 
 class TestController(Controller):

@@ -9,7 +9,7 @@ from src.errors import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import (autofill, inpt, inpt_validate, input_dir,
                                   input_file)
-from src.rel_objects import RelativismSavedObj, RelativismPublicObj
+from src.rel_objects import RelativismSavedObj, RelativismPublicObj, RelativismContainer
 from src.decorators import public_process, is_public_process, rel_alias, is_alias
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
@@ -20,12 +20,11 @@ from src.project import Project
 from src.project_loader import ProjectLoader
 
 
-class Relativism(RelativismPublicObj):
+class Relativism():
 
 
     def __init__(self, reldata_dir, proj_filename):
-        super().__init__(rel_id=-1, reltype="Program", name="Relativism", 
-            path=None, parent=None, mode="create")
+        section_head("Initializing Program")
 
         RelGlobals.set_rel_instance(self)
 
@@ -262,8 +261,6 @@ class Relativism(RelativismPublicObj):
             self.current_open_proj.save()
         self.write_proj_file()
 
-    def file_ref_repr(self):
-        return "<RELATIVISM-PROGRAM>"
 
 
 class BPM:

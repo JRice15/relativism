@@ -47,7 +47,7 @@ from src.analysis import Analysis
 from src.path import join_path, split_path
 
 
-class Recording(RelativismPublicObj):
+class Recording(RelativismPublicObj, RelativismSavedObj):
     """
     Args:
         mode: "create" or "load". load requires file arg

@@ -43,7 +43,6 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
     except:
         pass
     if val == catch:
-        # for options call
         catch_callback()
         print("\n  enter intended value ('q' for quit): ", end="")
         return inpt(mode, split_modes=split_modes)
@@ -125,11 +124,10 @@ def inpt_validate(val, mode, allowed=None):
         else:
             val = False
 
-    elif mode == "letter":
+    elif mode in ("letter", "lttr", "ltr", "lett"):
         if (allowed is not None) and (len(val) != 1 or val not in allowed):
             p("> Select one of " + ", ".join(allowed.upper()))
             val = inpt(mode, allowed=allowed)
-
 
     elif mode in ("obj", "file", "alphanum", "name"):
         val = re.sub(r"\s+", "_", val)
@@ -158,11 +156,9 @@ def inpt_validate(val, mode, allowed=None):
             )
             val = inpt(mode, help_callback=Units.beat_options)
 
-    elif mode in ("sec", "second", "seconds"):
+    elif mode in ("sec", "secs", "second", "seconds"):
         try:
             val = Units.secs(val)
-            if not val.check('[time]'):
-                raise ValueError
         except:
             info_block(
                 "> Value '{0}' is not a validly number for seconds. Enter intended value ('q' to cancel): ".format(val),
@@ -176,8 +172,6 @@ def inpt_validate(val, mode, allowed=None):
         except ValueError:
             try:
                 val = Units.secs(val)
-                if not val.check('[time]'):
-                    raise ValueError            
             except:
                 info_block(
                     "> Value '{0}' is not a validly formed beat or second. Enter intended value ('q' to cancel): ".format(val),
@@ -236,12 +230,13 @@ def inpt_validate(val, mode, allowed=None):
                 if allowed[1] is not None: 
                     assert val <= allowed[1]
         except AssertionError:
-            allowed_str = []
+            allowed_str = "value must be "
+            allowed_conditions = []
             if allowed[0] is not None:
-                allowed_str.append("value must be greater than or equal to {0}".format(allowed[0]))
+                allowed_conditions.append("less than or equal to {0}".format(allowed[0]))
             if allowed[1] is not None:
-                allowed_str.append("value must be less than or equal to {0}".format(allowed[1]))
-            allowed_str = " and ".join(allowed_str)
+                allowed_conditions.append("less than or equal to {0}".format(allowed[1]))
+            allowed_str += " and ".join(allowed_conditions)
             p("> Invalid: " + allowed_str)
             val = inpt(mode)
 

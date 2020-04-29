@@ -52,7 +52,7 @@ class RelGlobals:
         """
         read vars from data file
         """
-        info_block("Loading data...")
+        info_block("Loading global data...")
         if RelGlobals.data_file() is None:
             raise AttributeError("data_file attr not yet set in _RelGlobalContainer")
         try:
@@ -68,7 +68,7 @@ class RelGlobals:
         """
         dct: dict of vars to save
         """
-        info_block("Saving data...")
+        info_block("Saving global data...")
         dct = {i:getattr(_RelGlobalsContainer, i) for i in _RelGlobalsContainer._write_vars}
         with open(RelGlobals.data_file(), "w") as f:
             json.dump(dct, f, indent=2)

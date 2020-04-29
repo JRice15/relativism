@@ -2,6 +2,11 @@
 
 src.rel_objects
 
+Relativism Objects must inherit from either RelativismSavedObj (which are saved
+in their own file) or RelativismContainerObj (which are smaller data containers
+usually stored in their parent's file). Either may also inherit from 
+RelativismPublicObj if the object should be directly processable by the user
+
 ## Saved
 
 Objects (usually public) that are saved to files
@@ -13,11 +18,26 @@ Implement:
 - `file_ref_repr` (if you dont want the standard name.reltype)
 - `validate_child_name`: -> bool
 
-### Public
+Notes:
+- mode arg default must be "load"
+
+## Container
+
+These are simpler containers of data, that don't have children. They are saved
+in a more compact format in the file of their parent, or in their own file if
+there is a set of them all of the same class
+
+Implement:
+- `file_ref_data` and its inverse `load`
+
+
+
+## Public
 
 These objects are directly editable by the user, via `@public_process` methods
 
 in the docstring of the public processes, give relevant info in the following format:
+
 
 cat: {category: edit|meta|info|save|effect|other}  
 desc: {a description to be displayed to the user}  
@@ -29,13 +49,12 @@ developer notes}
 
 Square brackets [] around the whole line of an argument signal that it is an optional argument
 
+Argument type checking and conversion can be done by the `@public_process` decorator as well:
 
-## Container
+`@public_process("mode1", "mode2", "mode3", allowed=([mode1-low, mode1-high], ..., "mode3-allowed-chars"))`
 
-These are simpler containers of data, that don't have children. They are saved
-in a more compact format in the file of their parent, or in their own file if
-there is a set of them all of the same class
-
-Implement:
-- `file_ref_data` and its inverse `load`
+Where modes1-3 are inpt_validate modes, that correspond to the same positional
+arguments in the decorated function. "allowed" is a tuple of allowed values,
+which accepts 'None' for any argument without an "allowed", or at most one Ellipsis 
+(...) for multiple arguments in a row without "allowed"
 

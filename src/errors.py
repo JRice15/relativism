@@ -24,20 +24,21 @@ class Cancel(Exception):
     the user cancelled out of whatever is going on.
     """
 
-class NoSuchProcess(Exception):
-    """
-    when command does not exist
-    """
-
 class RateError(Exception):
     """
     Error with sampe rates
     """
 
-class InitOrderError(Exception):
+
+class NoSuchProcess(Exception):
     """
-    when things are not initialized in the right order so
-    something goes wrong
+    when command does not exist
     """
+
+class ArgumentError(Exception):
+    """
+    when process recieves too many or few arguments
+    """
+
 
 

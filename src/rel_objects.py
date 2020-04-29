@@ -24,7 +24,8 @@ class RelativismObject(abc.ABC):
     base rel object class
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, **kwargs):
+        super().__init__()
         self.parent = parent
 
         if is_rel_wrap_all(self):
@@ -56,14 +57,14 @@ class RelativismContainer(RelativismObject):
     class for objects that are not saved to a file but directly as strings 
     in other files
     implement:
-        load
-        file_ref_data
+        load(self_clss, data) # staticmethod
+        file_ref_data(self)
     """
 
     setfile_extension = "rel-set"
 
-    def __init__(self, parent):
-        super().__init__(parent=parent)
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent=parent, **kwargs)
 
     def class_data_repr(self):
         mod = self.__class__.__module__
@@ -112,8 +113,8 @@ class RelativismSavedObj(RelativismObject):
 
     datafile_extension = "rel-obj"
 
-    def __init__(self, rel_id, reltype, name, path, parent):
-        super().__init__(parent=parent)
+    def __init__(self, rel_id, reltype, name, path, parent, **kwargs):
+        super().__init__(parent=parent, rel_id=rel_id, reltype=reltype, name=name, path=path, **kwargs)
         self.reltype = reltype
         self.name = name
         self.path = path # path including object's own directory
@@ -196,7 +197,10 @@ class RelativismSavedObj(RelativismObject):
                     AttributeError("Parent obj '{0}' does not have validate_child_name".format(self.parent))
                 )
             else:
-                log_err("Parent object type {0} has no 'validate_child_name' method".format(self.parent.reltype))
+                try:
+                    log_err("Parent object type {0} has no 'validate_child_name' method".format(self.parent.reltype))
+                except AttributeError:
+                    log_err("Parent object '{0}' of '{1}' has no 'validate_child_name' method".format(self.parent, self))
             self.name = name
             info_block("Named '{0}'".format(name))
         
@@ -259,7 +263,7 @@ class RelativismSavedObj(RelativismObject):
         return self.get_data_filename()
 
 
-class RelativismPublicObj(RelativismSavedObj):
+class RelativismPublicObj(RelativismObject):
     """
     methods to implement on classes that inherit from this:
         save (if any additional file saving needed beyond save_metadata)
@@ -270,10 +274,10 @@ class RelativismPublicObj(RelativismSavedObj):
         pre_process and post_process
     """
 
-    def __init__(self, rel_id, reltype, name, path, parent, mode):
+    def __init__(self, rel_id, reltype, name, path, parent, mode, **kwargs):
 
-        super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
-                        path=path, parent=parent)
+        super().__init__(parent=parent, rel_id=rel_id, name=name, path=path, 
+            mode=mode, reltype=reltype, **kwargs)
 
         if mode == "create":
             section_head("Initializing {0}".format(reltype))

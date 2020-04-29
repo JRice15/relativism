@@ -19,12 +19,10 @@ from src.recording_obj import Recording
 from src.sampler import Sampler
 
 
-class Project(RelativismPublicObj):
+class Project(RelativismPublicObj, RelativismSavedObj):
     """
     """
 
-    # global access for the current instance
-    _instance = None
 
     TESTBPM = Units.bpm(120)
 
@@ -112,7 +110,7 @@ class Project(RelativismPublicObj):
             child.save()
 
     def parse_write_meta(self, dct):
-        del dct['mix']
+        del dct['arr']
         return dct
 
     def make(self):
