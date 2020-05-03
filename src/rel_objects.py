@@ -24,10 +24,10 @@ class RelativismObject(abc.ABC):
     base rel object class
     """
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.parent = parent
-
+        for k,v in kwargs.items():
+            setattr(self, k, v)
         if is_rel_wrap_all(self):
             self._do_wrap_all()
 
@@ -63,8 +63,8 @@ class RelativismContainer(RelativismObject):
 
     setfile_extension = "rel-set"
 
-    def __init__(self, parent, **kwargs):
-        super().__init__(parent=parent, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def class_data_repr(self):
         mod = self.__class__.__module__
@@ -114,7 +114,8 @@ class RelativismSavedObj(RelativismObject):
     datafile_extension = "rel-obj"
 
     def __init__(self, rel_id, reltype, name, path, parent, **kwargs):
-        super().__init__(parent=parent, rel_id=rel_id, reltype=reltype, name=name, path=path, **kwargs)
+        super().__init__(parent=parent, rel_id=rel_id, reltype=reltype, 
+            name=name, path=path, **kwargs)
         self.reltype = reltype
         self.name = name
         self.path = path # path including object's own directory
@@ -274,10 +275,9 @@ class RelativismPublicObj(RelativismObject):
         pre_process and post_process
     """
 
-    def __init__(self, rel_id, reltype, name, path, parent, mode, **kwargs):
+    def __init__(self, name, reltype, mode, **kwargs):
 
-        super().__init__(parent=parent, rel_id=rel_id, name=name, path=path, 
-            mode=mode, reltype=reltype, **kwargs)
+        super().__init__(name=name, mode=mode, reltype=reltype, **kwargs)
 
         if mode == "create":
             section_head("Initializing {0}".format(reltype))
@@ -286,16 +286,15 @@ class RelativismPublicObj(RelativismObject):
         else:
             raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
 
+        self.name = name
+        self.reltype = reltype
+
         self._do_aliases()
 
         self.method_data_by_category = {}
         public_method_strs = [func for func in dir(self) if is_public_process(getattr(self, func))]
         for m in public_method_strs:
-            m_data = RelativismPublicObj.MethodData(self, m)
-            try:
-                self.method_data_by_category[m_data.category][m_data.method_name] = m_data
-            except KeyError:
-                self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
+            self.add_method(m)
 
     def _do_aliases(self):
         """
@@ -328,6 +327,17 @@ class RelativismPublicObj(RelativismObject):
             except KeyError:
                 pass
         raise KeyError
+
+    def add_method(self, method_name):
+        """
+        add method to method_data_by_category to expose public
+        """
+        m_data = RelativismPublicObj.MethodData(self, method_name)
+        try:
+            self.method_data_by_category[m_data.category][m_data.method_name] = m_data
+        except KeyError:
+            self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
+        return m_data
 
 
     @public_process
@@ -417,7 +427,6 @@ class RelativismPublicObj(RelativismObject):
                 self.category = "Other"
 
 
-
         def parse_category(self, category):
             category = category.lower()
             if category in ("edit", "edits"):
@@ -464,7 +473,7 @@ class RelativismPublicObj(RelativismObject):
                 message += ": '" + "', '".join(self.aliases) + "')"
             info_list(message, hang=4)
             for i in self.args:
-                info_line(i.get_display(), indent=12)
+                info_line("• " + i.get_display(), indent=8)
 
 
         def get_random_defaults(self):

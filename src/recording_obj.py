@@ -386,7 +386,7 @@ class Recording(RelativismPublicObj, RelativismSavedObj):
                 end = self.size_samps()
         if end <= start:
             err_mess("End cannot be before or equal to start")
-            raise Cancel
+            return
         precision = inpt_validate(precision, 'pcnt', allowed=[5, 10000])
 
         info_block("Generating waveform at {0}%...".format(precision))

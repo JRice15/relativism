@@ -107,8 +107,9 @@ def run():
     # writes settings and data files
     save_globals()
 
-    info_block("Successfully Saved. Exiting...")
     nl()
+    info_block("Successfully Saved. Exiting...")
+    nl(2)
 
     with open(ERROR_LOG, "a") as log:
         log.write("sess-end\t{0}\n".format(time.time()))

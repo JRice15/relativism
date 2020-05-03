@@ -31,7 +31,7 @@ class Analysis():
             self.end = self.obj.size_samps().magnitude
         if self.end <= self.start:
             err_mess("End cannot be before or equal to start")
-            raise Cancel
+            return
 
         self.arr = rec.arr[self.start:self.end]
         self.mono_arr = np.mean(self.arr, axis=1)

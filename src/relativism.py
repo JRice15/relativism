@@ -192,11 +192,9 @@ class Relativism():
         if self.current_open_proj is None:
             err_mess("No project is currently open! Open or create one")
         else:
-            try:
-                process(self.current_open_proj)
-            except Cancel:
-                self.current_open_proj.save()
-                self.current_open_proj = None
+            process(self.current_open_proj)
+            self.current_open_proj.save()
+            self.current_open_proj = None
 
     def read_proj_file(self):
         """
@@ -251,7 +249,6 @@ class Relativism():
                 del self.projects[proj_name]
 
         self.write_proj_file()
-
 
     def save(self):
         """

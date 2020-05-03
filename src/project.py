@@ -171,10 +171,8 @@ class Project(RelativismPublicObj, RelativismSavedObj):
                 if child is not None:
                     raise UnexpectedIssue("Multiple children with name {0}".format(child_name))
                 child = i
-        try:
-            process(child)
-        except Cancel:
-            child.save()
+        process(child)
+        child.save()
 
     def add_child(self, child):
         """

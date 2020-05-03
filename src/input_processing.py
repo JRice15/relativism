@@ -146,42 +146,54 @@ def inpt_validate(val, mode, allowed=None):
             )
             val = inpt(mode, help_callback=PitchUnits.note_options)
 
-    elif mode in ("beat", "beats", "b"):
-        try:
-            val = Units.beats(val)
-        except:
-            info_block(
-                "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
-                for_prompt=True
-            )
-            val = inpt(mode, help_callback=Units.beat_options)
+    elif mode in ("beat", "beats", "b", "sec", "secs", "seconds", "second", "beatsec", "beat/sec"):
 
-    elif mode in ("sec", "secs", "second", "seconds"):
-        try:
-            val = Units.secs(val)
-        except:
-            info_block(
-                "> Value '{0}' is not a validly number for seconds. Enter intended value ('q' to cancel): ".format(val),
-                for_prompt=True
-            )
-            val = inpt(mode)
+        if mode in ("beat", "beats", "b"):
+            try:
+                val = Units.beats(val)
+            except:
+                info_block(
+                    "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
+                    for_prompt=True
+                )
+                val = inpt(mode, help_callback=Units.beat_options)
 
-    elif mode in ("beatsec", "beat/sec"):
-        try:
-            val = Units.beats(val)
-        except ValueError:
+        elif mode in ("sec", "secs", "second", "seconds"):
             try:
                 val = Units.secs(val)
             except:
                 info_block(
-                    "> Value '{0}' is not a validly formed beat or second. Enter intended value ('q' to cancel): ".format(val),
+                    "> Value '{0}' is not a validly number for seconds. Enter intended value ('q' to cancel): ".format(val),
                     for_prompt=True
                 )
                 val = inpt(mode)
 
+        elif mode in ("beatsec", "beat/sec"):
+            try:
+                val = Units.beats(val)
+            except ValueError:
+                try:
+                    val = Units.secs(val)
+                except:
+                    info_block(
+                        "> Value '{0}' is not a validly formed beat or second. Enter intended value ('q' to cancel): ".format(val),
+                        for_prompt=True
+                    )
+                    val = inpt(mode)
+        
+        try:
+            if allowed is not None:
+                if allowed[0] is not None: 
+                    assert val >= inpt_validate(allowed[0], mode)
+                if allowed[1] is not None: 
+                    assert val <= inpt_validate(allowed[1], mode)
+        except AssertionError:
+            p("> Invalid: value must be" + allowed_repr(allowed))
+            val = inpt(mode)
+
 
     # number inputs
-    elif mode in ("pcnt", "pct", "percent", "int", "flt", "float"):
+    elif mode in ("pcnt", "pct", "percent", "int", "integer", "flt", "float", "decimal"):
 
         if mode in ("pcnt", "pct", "percent"):
             if isinstance(val, str):
@@ -203,7 +215,7 @@ def inpt_validate(val, mode, allowed=None):
                 allowed[1] = Units.pcnt(allowed[1])
             except: pass
 
-        elif mode == "int":
+        elif mode in ("int", "integer"):
             try:
                 val = int(val)
             except ValueError:
@@ -213,7 +225,7 @@ def inpt_validate(val, mode, allowed=None):
                 )
                 val = inpt(mode)
 
-        elif mode in ("flt", "float"):
+        elif mode in ("flt", "float", "decimal"):
             try:
                 val = float(val)
             except ValueError:
@@ -230,14 +242,7 @@ def inpt_validate(val, mode, allowed=None):
                 if allowed[1] is not None: 
                     assert val <= allowed[1]
         except AssertionError:
-            allowed_str = "value must be "
-            allowed_conditions = []
-            if allowed[0] is not None:
-                allowed_conditions.append("less than or equal to {0}".format(allowed[0]))
-            if allowed[1] is not None:
-                allowed_conditions.append("less than or equal to {0}".format(allowed[1]))
-            allowed_str += " and ".join(allowed_conditions)
-            p("> Invalid: " + allowed_str)
+            p("> Invalid: value must be" + allowed_repr(allowed))
             val = inpt(mode)
 
     else:
@@ -246,6 +251,19 @@ def inpt_validate(val, mode, allowed=None):
     return val
 
 
+def allowed_repr(allowed):
+    """
+    return str explaining conditions of allowed
+    """
+    if allowed is None:
+        return ""
+    allowed_conditions = []
+    if allowed[0] is not None:
+        allowed_conditions.append("less than or equal to {0}".format(allowed[0]))
+    if allowed[1] is not None:
+        allowed_conditions.append("less than or equal to {0}".format(allowed[1]))
+    allowed_str = " and ".join(allowed_conditions)
+    return allowed_str
 
 
 def input_file():

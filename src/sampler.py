@@ -456,10 +456,7 @@ class Sampler(RelativismPublicObj, RelativismSavedObj):
             print("\n  Which sample of {0} '{1}' would you like to edit? ('q' to cancel, 'list' to list samples): "
                 .format(self.reltype, self.name), end="")
             sample = self.choose("sample")
-            try:
-                process(sample)
-            except Cancel:
-                continue
+            process(sample)
 
     @public_process
     def list_samples(self):
@@ -494,10 +491,7 @@ class Sampler(RelativismPublicObj, RelativismSavedObj):
         self.list_rhythms()
         p("Process this rhythm? y/n")
         if inpt("yn"):
-            try:
-                process(new_rhythm)
-            except Cancel:
-                pass
+            process(new_rhythm)
 
     @public_process
     def edit_rhythm(self):

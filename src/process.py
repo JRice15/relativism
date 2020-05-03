@@ -15,21 +15,22 @@ def process(obj):
     """
     process an object.
     'self.name', 'self.reltype' required.
-    caller must try/except handle Cancel error
     """
     section_head("Processing {0} '{1}'".format(obj.reltype, obj.name))
 
-    while True: # broken by raise Cancel
+    while True:
 
         with style("cyan, bold"):
             print("\n{0} ".format(RelGlobals.get_process_num()), end="")
         p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), 
             h=True, o="'o' to view process options", indent=0, hang=4, leading_newline=False)
 
-        command = inpt(mode='split', split_modes='arg', help_callback=processes_help)
-
-        if process_validate(command, obj):
-            do_command(command, obj)
+        try:
+            command = inpt(mode='split', split_modes='arg', help_callback=processes_help)
+            if process_validate(command, obj):
+                do_command(command, obj)
+        except Cancel:
+            return
 
 
 def process_validate(command, obj):

@@ -101,12 +101,11 @@ def show_error(e, force=False):
     raise crit error message and give option to raise error if debug is on
     """
     from src.globals import Settings
-    if not isinstance(e, Cancel) or force:
-        critical_err_mess(e)
-        if Settings.is_debug():
-            p("Debug mode is on. Raise error? [y/n]")
-            if input().lower().strip() == "y":
-                raise e
+    critical_err_mess(e)
+    if Settings.is_debug():
+        p("Debug mode is on. Raise error? [y/n]")
+        if input().lower().strip() == "y":
+            raise e
 
 def critical_err_mess(e):
     """

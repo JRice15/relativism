@@ -91,59 +91,40 @@ class ContinuousMarker(DiscreteMarker):
 class Controller(RelativismPublicObj, abc.ABC):
     """
     discrete controlling of an attribute (pan, volume, bpm, etc.) over time.
-    implement:
-        validate_value(self, value)
-        type_hint
-        apply(self, target)
-        [get_allowed_times]
+    args:
+        time_units: inpt mode either beats or secs
+        val_units: units of the value, inpt mode
     """
 
-    def __init__(self, markers=None, time_units=None, start=None, reltype=None, 
+    def __init__(self, markers=None, time_units="beats", val_units="float", 
+            val_allowed=None, time_allowed=None, start=None, reltype="Controller", 
             rel_id=None, name=None, path=None, parent=None, mode="load"):
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, mode=mode)
 
         self.start = start
         self.markers = {} if markers is None else markers # {sample_ind : ControllerMarker}
 
-        if time_mode is None or time_mode not in ("b", "s"):
+        if time_units is None or time_units not in ("beat", "beats", "sec", "secs", "second", "seconds"):
             p("Select the timing units to be used for this controller, 'b' for beat/note notation, 's' for seconds")
             time_mode = inpt("letter", allowed="bs")
-        self.time_units = time_mode
+            if time_mode == "b":
+                time_units = "beats"
+            else:
+                time_units = "secs"
+        self.time_units = time_units
+        self.val_units = val_units
+        self.val_allowed = val_allowed
+        self.time_allowed = time_allowed
 
-    def get_time_input_mode(self):
-        if self.time_units == "b":
-            return "beats"
-        else:
-            return "seconds"
-
-    def get_allowed_times(self):
-        """
-        override to return a 2-list of [low, high]
-        """
-        return None
-
-    @abc.abstractmethod
-    @public_process
-    def type_hint(self):
-        """
-        cat: info
-        dev: display hints on what kind of data is accepted for add() args
-        """
-        ...
-
-    @abc.abstractmethod
-    def validate_value(self, value):
-        """
-        validate input for the value that is being controlled
-        """
-        ...
-
-    @abc.abstractmethod
-    def apply(self, target):
-        """
-        apply controller effect to target
-        """
-        ...
+        try:
+            self.add.__doc__ = self.add.__doc__.format(
+                val_units=self.val_units, 
+                time_units=time_units
+            )
+        except:
+            pass 
+            # if format fails, it means add docstring is overridden somewhere, 
+            # and will be handled there
 
     def add_marker(self, sample_ind, marker):
         """
@@ -162,14 +143,16 @@ class Controller(RelativismPublicObj, abc.ABC):
         cat: edit
         desc: add a new marker (see type_hint process for info on the specific types that arguments allow)
         args:
-            location: the beat or sec (whatever the time mode of this controller is) where this marker should occur
-            value: the value of this marker
+            location: the time where this marker should occur, in '{time_units}'
+            value: the value of this marker, in/as a '{val_units}'
+        dev: this docstring is .format()ed in init
         """
-        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        beatsec = inpt_validate(location, self.time_units, allowed=self.time_allowed)
+        value = inpt_validate(value, self.val_units, self.val_allowed)
         sample_ind = beatsec.to_samps()
-        value = self.validate_value(value)
         self.add_marker(sample_ind, DiscreteMarker(beatsec, value))
 
+    @rel_alias("mv")
     @public_process
     def move(self, current, new):
         """
@@ -178,8 +161,8 @@ class Controller(RelativismPublicObj, abc.ABC):
             current: the beat or sec of the marker to move
             new: the beat or sec to move it to
         """
-        old_beatsec = inpt_validate(current, self.get_time_input_mode(), allowed=self.get_allowed_times())
-        new_beatsec = inpt_validate(new, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        old_beatsec = inpt_validate(current, self.time_units, allowed=self.time_allowed)
+        new_beatsec = inpt_validate(new, self.time_units, allowed=self.time_allowed)
         old_sample_ind = old_beatsec.to_samps()
         new_samp_ind = new_beatsec.to_samps()
         try:
@@ -200,7 +183,7 @@ class Controller(RelativismPublicObj, abc.ABC):
         args:
             location: beat or sec of the marker to remove
         """
-        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        beatsec = inpt_validate(location, self.time_units, allowed=self.time_allowed)
         sample_ind = beatsec.to_samps()
         try:
             marker = self.markers[sample_ind]
@@ -217,12 +200,7 @@ class Controller(RelativismPublicObj, abc.ABC):
         desc: list the markers in this controller
         """
         info_title("Controller for {0}".format(self.reltype))
-        if len(self.beat_markers) == 0 and len(self.sec_markers) == 0:
-            info_list("(empty)")
-        for i in sorted(self.beat_markers):
-            info_list(self.beat_markers[i])
-        for i in sorted(self.sec_markers):
-            info_list(self.sec_markers[i])
+        info_list(list(self.markers.values()))
 
     @public_process
     def plot(self):
@@ -230,7 +208,7 @@ class Controller(RelativismPublicObj, abc.ABC):
         cat: info
         desc: plot this controller over time
         """
-        if len(self.markers) == 0:
+        if not self.markers:
             err_mess("No data to plot!")
             return
         inds, vals = self.generate()
@@ -275,28 +253,41 @@ class Controller(RelativismPublicObj, abc.ABC):
 class ContinuousController(Controller):
     """
     controller that is continuous over time, instead of discrete  
-    implement:
-        validate_value(self, value)
-        type_hint
-        apply(self, target)
-        [get_allowed_times]
+    args:
+        time_units: inpt mode either beats or secs
+        val_units: units of the value, inpt mode
+        change_types: tuple of allowed change types, the first being the default
     """
 
     change_type_options = ('hard', 'linear', 'smooth')
 
-    def __init__(self, markers=None, time_units=None, change_types=None, start=None, reltype=None, 
-            rel_id=None, name=None, path=None, parent=None, mode="load"):
+    def __init__(self, markers=None, time_units="beats", val_units="float", 
+            val_allowed=None, time_allowed=None, start=None, reltype="Controller", 
+            change_types="all", rel_id=None, name=None, path=None, parent=None, mode="load"):
 
-        # super Controller
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, 
-            mode=mode, markers=markers, time_units=time_units, start=start)
-        
+            mode=mode, markers=markers, time_units=time_units, val_units=val_units,
+            val_allowed=val_allowed, time_allowed=time_allowed, start=start)
+            
         # validate change types
-        if not all(i in self.change_type_options for i in change_types):
-            raise UnexpectedIssue("Unknown change_type in '{0}'".format(change_types))
+        if change_types == "all":
+            change_types = self.change_type_options
+        elif not all(i in self.change_type_options for i in change_types):
+            raise UnexpectedIssue("Unknown change_type in '{0}' in Controller constructor".format(change_types))
         self.valid_change_types = change_types
 
+        try:
+            self.add.__doc__ = self.add.__doc__.format(
+                val_units=self.val_units, 
+                time_units=time_units,
+                change_types="', '".join(self.valid_change_types)
+            )
+        except:
+            pass
+
     def validate_change_type(self, change_type):
+        if change_type is None:
+            return self.change_type_options[0]
         while change_type not in self.valid_change_types:
             err_mess("Invalid change type '{0}'".format(change_type))
             p("Select one of: {0}".format(", ".join(self.valid_change_types)))
@@ -309,15 +300,18 @@ class ContinuousController(Controller):
         cat: edit
         desc: add a new marker (see type_hint process for info on the specific types that arguments allow)
         args:
-            location: the beat or sec (whatever the time mode of this controller is) where this marker should occur
-            value: the value of this marker
-            [change type: how this marker's value transitions the following one]
+            location: the time where this marker should occur, in '{time_units}'
+            value: the value of this marker, in/as '{val_units}'
+            [change type: how this marker's value transitions the following one, one of '{change_types}']
+        dev: this docstring is .format()ed in init
         """
-        beatsec = inpt_validate(location, self.get_time_input_mode(), allowed=self.get_allowed_times())
+        beatsec = inpt_validate(location, self.time_units, self.time_allowed)
         sample_ind = beatsec.to_samps()
-        value = self.validate_value(value)
+        value = inpt_validate(value, self.val_units, self.val_allowed)
         change_type = self.validate_change_type(change_type)
         self.add_marker(sample_ind, ContinuousMarker(beatsec, value, change_type))
+
+
 
 
 class TestController(Controller):
