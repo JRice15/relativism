@@ -1,5 +1,5 @@
 from src.rel_objects import RelativismContainer, RelativismPublicObj, RelativismSavedObj
-from src.decorators import public_process, is_public_process, rel_alias, is_alias
+from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
@@ -10,25 +10,25 @@ from src.data_types import *
 
 class RelProperty(RelativismContainer, RelativismPublicObj):
     """
-    property that wraps a pint quant or controller.  
+    property that wraps a pint quant or controller.
     args:
         name (str)
         inpt_mode (str): valid inpt() mode
         desc (str): user-viewable description
         controllable (bool): whether property can be turned into a controller
-        cont_type (str): "c" for default "continuous", or any other value for discrete
+        cont_type (str|None): "c" for default "continuous", None for not controllable, or any other value for discrete
     """
 
-    def __init__(self, name, inpt_mode, desc="", controllable=True, cont_type="c",
+    def __init__(self, name, inpt_mode, desc="", cont_type="c",
             mode="load", reltype="Property"):
         super().__init__(name=name, reltype=reltype, mode=mode)
         self.name = name
         self.inpt_mode = inpt_mode
         self.desc = desc
         self.val = None
-        if not controllable:
-            self.control.__rel_public = False
         self.cont_type = cont_type
+        if self.cont_type is None:
+            self.control.__rel_public = False
 
     def file_ref_data(self):
         # all the rest is statically generated every time

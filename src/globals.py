@@ -8,7 +8,7 @@ from src.errors import *
 from src.input_processing import autofill, inpt, p
 from src.output_and_prompting import (err_mess, info_block, info_list,
                                       info_title, section_head)
-from src.decorators import public_process, is_public_process, rel_alias, is_alias
+from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 
 
 def init_globals():

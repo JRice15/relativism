@@ -38,7 +38,7 @@ from src.utility import *
 
 from src.data_types import *
 from src.rel_objects import RelativismSavedObj, RelativismPublicObj
-from src.decorators import public_process, is_public_process, rel_alias, is_alias
+from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.output_and_prompting import (p, info_title, info_list, info_line, 

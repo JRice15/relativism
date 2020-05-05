@@ -7,7 +7,7 @@ from src.output_and_prompting import (p, info_title, info_list, info_line,
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
 from src.utility import *
 from src.rel_objects import (RelativismSavedObj, RelativismPublicObj, RelativismContainer)
-from src.decorators import public_process, is_public_process, rel_alias, is_alias, rel_wrap
+from src.method_ops import public_process, is_public_process, rel_alias, is_alias, rel_wrap
 from src.errors import *
 
 

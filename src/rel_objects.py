@@ -15,7 +15,7 @@ from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       section_head, show_error, style, log_err)
 from src.path import join_path, split_path
 from src.errors import *
-from src.decorators import *
+from src.method_ops import *
 
 
 
@@ -291,7 +291,12 @@ class RelativismPublicObj(RelativismObject):
 
         self._do_aliases()
 
-        self.method_data_by_category = {}
+        self._do_method_data()
+
+    def _do_method_data(self):
+        """
+        set __rel_data attr on methods
+        """
         public_method_strs = [func for func in dir(self) if is_public_process(getattr(self, func))]
         for m in public_method_strs:
             self.add_method(m)
@@ -395,160 +400,12 @@ class RelativismPublicObj(RelativismObject):
             self.analayze_doc()
         
 
-        def analayze_doc(self):
-            doc = self.method_func.__doc__
-            if doc is not None:
-                doc = [
-                    j for j in 
-                    [re.sub(r"\s+", " ", i.strip()) for i in doc.split('\n')]
-                    if j not in ("", " ")
-                    ]
-                args_now = False
-                for line in doc:
-                    try:
-                        title, content = line.split(":")[0].lower(), line.split(":")[1]
-                        if title == "dev":
-                            break
-                        if not args_now:
-                            if title in ("desc", "descrip", "description"):
-                                self.desc = content.strip()
-                            elif title in ("catg", "cat", "category", "catgry", "categry"):
-                                self.category = self.display_category(content.strip())
-                                self.raw_category = self.parse_category(content.strip())
-                            elif title in ("args", "arguments", "arg"):
-                                args_now = True
-                        else:
-                            arg_dt = RelativismPublicObj.ArgData(self, line)
-                            self.args.append(arg_dt)
-                    except:
-                        err_mess("Error reading docstring method object data from method '" + self.method_name + ": " + str(line) + "'")
-            
-            if self.category is None:
-                self.category = "Other"
-
-
-        def parse_category(self, category):
-            category = category.lower()
-            if category in ("edit", "edits"):
-                category = "edit"
-            elif category in ("meta", "metadata"):
-                category = "meta"
-            elif category in ("info", "repr", "representation"):
-                category = "info"
-            elif category in ("save", "saving"):
-                category = "save"
-            elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
-                category = "effect"
-            else:
-                category = "other"
-            return category
-
-
-        def display_category(self, category):
-            """
-            get the display version of the category
-            """
-            if category in ("edit", "edits"):
-                category = "Edits"
-            elif category in ("meta", "metadata"):
-                category = "Metadata"
-            elif category in ("info", "repr", "representation"):
-                category = "Object Info"
-            elif category in ("save", "saving"):
-                category = "Saving & Data Handling"
-            elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
-                category = "Effects"
-            else:
-                category = "Other"
-            return category
-
-
-        def display(self):
-            message = self.method_name.capitalize()
-            message += ": " + self.desc
-            if self.aliases is not None:
-                message += " (alias"
-                if len(self.aliases) > 1:
-                    message += "es"
-                message += ": '" + "', '".join(self.aliases) + "')"
-            info_list(message, hang=4)
-            for i in self.args:
-                info_line("• " + i.get_display(), indent=8)
-
-
-        def get_random_defaults(self):
-            args = []
-            for i in self.args:
-                arg = i.choose_random_default() 
-                if arg is None:
-                    break
-                else:
-                    args.append(arg)
-            return args
-
-
-        def oneline_arg_list(self):
-            argstr = []
-            for i in self.args:
-                if i.optional:
-                    argstr.append("[" + i.name + "]")
-                else:
-                    argstr.append(i.name)
-            return ", ".join(argstr)
-
-
-        def is_edit_rec(self):
-            """
-            is category that the rec.arr should be saved on
-            """
-            return self.raw_category in ('edit', 'effect')
-
-
-        def is_edit_meta(self, cat):
-            """
-            if is catg that rec metadata should be save on
-            """
-            return self.raw_category in ('meta')
 
 
 
-    class ArgData:
 
-        def __init__(self, parent, doc_line):
-            self.parent = parent
-            self.optional = False
-            self.parse_arg_doc(doc_line)
 
-        
-        def parse_arg_doc(self, doc_line):
-            if doc_line[0] == "[":
-                doc_line = doc_line.strip("[").strip("]")
-                self.optional = True
-            name, rest = doc_line.split(":")
-            self.name = name.strip()
-            self.desc = rest.split(';')[0].strip()
 
-            self.defaults_low, self.defaults_high = None, None
-            try:
-                defaults = rest.split(";")[1].split(',')
-                self.defaults_low = float(defaults[0])
-                self.defaults_high = float(defaults[1])
-            except:
-                pass
-
-        def get_display(self):
-            string = self.name + ": " + self.desc
-            if self.optional:
-                string = "[" + string + "]"
-            return string
-
-        def choose_random_default(self):
-            if self.defaults_high is None:
-                return None
-            else:
-                num = rd.random()
-                arg = (self.defaults_low * (1 - num)) + (self.defaults_high * (num))
-                return arg
 
 
 

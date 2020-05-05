@@ -8,7 +8,7 @@ from src.globals import RelGlobals, Settings
 from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
 from src.integraters import concatenate, mix, mix_multiple
 from src.rel_objects import RelativismSavedObj, RelativismPublicObj
-from src.decorators import public_process, is_public_process, rel_alias, is_alias
+from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
                                       section_head, show_error)
