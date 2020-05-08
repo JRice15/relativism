@@ -1,7 +1,7 @@
 """
 high-powered dynamic ruining of all your favorite classes, functions, and methods
 
-__rel_data format:
+_rel_data format:
 {
     "public": bool
     "name": str
@@ -23,25 +23,76 @@ from src.errors import *
 from src.input_processing import err_mess, inpt_validate, info_block, info_list, info_line
 
 
+""" Classes """
 
-class _RelData:
+class Category(Enum):
+    """
+    category attr of methods
+    """
+
+    OTHER = "Other"
+    EDIT = "Edits"
+    META = "Metadata"
+    INFO = "Object Info"
+    SAVE = "Saving & Data Handling"
+    EFFECT = "Effects"
+
+    @staticmethod
+    def get(category, kind="std"):
+        """
+        get category  
+        kind: "std" for Enum obj, anything else for display category
+        """
+        category = category.lower()
+        if category in ("edit", "edits"):
+            val = Category.EDIT
+        elif category in ("meta", "metadata"):
+            val = Category.META
+        elif category in ("info", "repr", "representation"):
+            val = Category.INFO
+        elif category in ("save", "saving"):
+            val = Category.SAVE
+        elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
+            val = Category.EFFECT
+        else:
+            val = Category.OTHER
+        if kind == "std":
+            return val
+        return val.value
+
+
+class _ClsRelData:
+    """
+    reldata for classes
+    """
+
+    __slots__ = ["wrap_all_encloser", "alias_map"]
+
+    def __init__(self):
+        self.wrap_all_encloser = None
+        self.alias_map = {} # maps alias to actual method name
+
+
+class RelData:
     """
     data for methods
     """
 
-    __slots__ = ["public", "name", "cat", "desc", "args", "aliases"]
-    def __init__(self):
+    __slots__ = ["public", "name", "category", "desc", "args", "aliases", "is_alias"]
+
+    def __init__(self, name, is_alias=False):
+        self.name = name
         self.public = False
-        self.name = None
-        self.cat = _Category.OTHER
-        self.desc = ""
+        self.category = Category.OTHER
+        self.desc = None
         self.args = []
         self.aliases = []
+        self.is_alias = is_alias
 
     def display(self):
         message = self.name.capitalize()
         message += ": " + self.desc
-        if self.aliases is not None:
+        if len(self.aliases) > 0:
             message += " (alias"
             if len(self.aliases) > 1:
                 message += "es"
@@ -51,7 +102,13 @@ class _RelData:
             info_line("• " + i.get_display(), indent=8)
 
     def get_random_defaults(self):
-        return [i.choose_random_default() for i in self.args]
+        defs = []
+        for i in self.args:
+            d = i.choose_random_defaults()
+            if d is None:
+                break
+            defs.append(d)
+        return defs
 
     def oneline_arg_list(self):
         argstr = []
@@ -63,41 +120,7 @@ class _RelData:
         return ", ".join(argstr)
 
 
-
-class _Category(Enum):
-    OTHER = "Other"
-    EDIT = "Edits"
-    META = "Metadata"
-    INFO = "Object Info"
-    SAVE = "Saving & Data Handling"
-    EFFECT = "Effects"
-
-
-def _get_category(category, kind="std"):
-    """
-    get category  
-    kind: "std" for Enum obj, anything else for display category
-    """
-    category = category.lower()
-    if category in ("edit", "edits"):
-        val = _Category.EDIT
-    elif category in ("meta", "metadata"):
-        val = _Category.META
-    elif category in ("info", "repr", "representation"):
-        val = _Category.INFO
-    elif category in ("save", "saving"):
-        val = _Category.SAVE
-    elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
-        val = _Category.EFFECT
-    else:
-        val = _Category.OTHER
-    if kind == "std":
-        return val
-    return val.value
-
-
-
-class _ArgData:
+class ArgData:
 
     def __init__(self, parent, doc_line):
         self.optional = False
@@ -134,23 +157,60 @@ class _ArgData:
             return arg
 
 
+def add_reldata(obj, attrname, value, overwrite=True, kind="meth"):
+    """
+    obj._rel_data.attrname = value  
+    if overwrite false, will not overwrite an existing value  
+    kind: "meth", or "clss"
+    """
+    if hasattr(obj, "_rel_data"):
+        if (not overwrite):
+            return
+    else:
+        if kind == "meth":
+            obj._rel_data = RelData(obj.__name__)
+        else:
+            obj._rel_data = _ClsRelData()
+    setattr(obj._rel_data, attrname, value)
+
+
+def add_reldata_arg(method, arg_docline):
+    """
+    obj._rel_data.args.append(ArgData(parent=obj, docline=arg_docline))
+    """
+    args = get_reldata(method, "args")
+    args.append(
+        ArgData(method, arg_docline)
+    )
+
+
+def get_reldata(obj, attrname):
+    """
+    obj._rel_data.attrname, or KeyError on failure
+    """
+    return getattr(obj._rel_data, attrname)
+
+
+
+
+""" Checking functions """
 
 
 def is_edit_rec(method):
     """
     is category that the rec.arr should be saved on
     """
-    return method.__rel_data["category"] in ('edit', 'effect')
+    return get_reldata(method, "category") in (Category.EDIT, Category.EFFECT)
 
 def is_edit_meta(method):
     """
     if is catg that rec metadata should be save on
     """
-    return method.__rel_data["category"] in ('meta')
+    return get_reldata(method, "category") in (Category.META)
 
 def is_public_process(method_obj):
     try:
-        return method_obj.__rel_data["public"]
+        return get_reldata(method_obj, "public")
     except AttributeError:
         return False
 
@@ -159,8 +219,14 @@ def is_alias(method_obj, name):
     check if name is alias of method
     """
     try:
-        return name in method_obj.__rel_data["aliases"]
+        return name in get_reldata(method_obj, "aliases")
     except AttributeError:
+        return False
+
+def has_aliases(method):
+    try:
+        return len(get_reldata(method, "aliases")) > 0
+    except:
         return False
 
 def is_rel_wrap_all(clss):
@@ -168,19 +234,17 @@ def is_rel_wrap_all(clss):
     check if wrap_all_encloser is not None
     """
     try:
-        return clss.__rel_data["wrap_all_encloser"] is not None
+        return get_reldata(clss, "wrap_all_encloser") is not None
     except AttributeError:
         return False
 
 def get_wrap_all_encloser(clss):
-    return clss.__rel_data["wrap_all_encloser"]
+    return get_reldata(clss, "wrap_all_encloser")
 
 
 
 
-
-
-
+""" Public Processes and Decorators """
 
 def _do_public_process(method):
     """
@@ -208,22 +272,18 @@ def _do_public_process(method):
                     if title in ("desc", "descrip", "description"):
                         add_reldata(method, "desc", content.strip())
                     elif title in ("catg", "cat", "category", "catgry", "categry"):
-                        cat = _MethodOps.get_std_category(content.strip())
+                        cat = Category.get(content.strip())
                         add_reldata(method, "category", cat)
                     elif title in ("args", "arguments", "arg"):
                         args_now = True
                 else:
-                    arg_dt = _ArgData(self, line)
-                    if "args" not in method.__rel_data:
-                        add_reldata(method, "args", [])
-                    method.__rel_data["args"].append(arg_dt)
-            except:
-                err_mess("Error reading docstring method object data from method '" + method.__name__ + ": " + str(line) + "'")
+                    add_reldata_arg(method, line)
+            except Exception as e:
+                err_mess("Error reading docstring method object data from method '" + method.__name__ + "'", trailing_newline=False)
+                err_mess("Docline: '" + str(line) + "'", trailing_newline=False, extra_leading_nl=False)
+                err_mess("Exception: " + str(e), extra_leading_nl=False)
     
-    add_reldata(method, "category", "other", overwrite=False)
-
     return method
-
 
 
 def public_process(*modes, allowed=None):
@@ -264,7 +324,7 @@ def rel_alias(*args):
     decorator: aliases for a method. the actual aliasing happens in Public Object's _do_aliases method  
     args: *args of strings to alias
     """
-    if len(args) == 0:
+    if len(args) == 0 or (len(args) == 1 and callable(args[0])):
         raise UnexpectedIssue("No aliases provided to alias decorator")
 
     def wrapper(method):
@@ -305,10 +365,9 @@ def rel_wrap_all(encloser):
         encloser with signature 'enc(obj, method, *args, **kwargs)'
     """
     def wrap_all(clss):
-        add_reldata(clss, "wrap_all_encloser", encloser)
+        add_reldata(clss, "wrap_all_encloser", encloser, kind="clss")
         return clss
     return wrap_all
-
 
 
 
@@ -316,11 +375,8 @@ def _bootstrap_reldata(this_func, old_func):
     """
     bootstrap special attrs from old_func to this_func
     """
-    if hasattr(old_func, "__rel_data"):
-        dct = old_func.__rel_data
-        if hasattr(this_func, "__rel_data"):
-            dct.update(this_func.__rel_data)
-        this_func.__rel_data = dct
+    if hasattr(old_func, "_rel_data"):
+        this_func._rel_data = old_func._rel_data
 
 
 def _expand_ellipses(length, tup):
@@ -362,24 +418,3 @@ def _expand_ellipses(length, tup):
         rest_i += 1
     return expanded
 
-
-def add_reldata(obj, attrname, value, overwrite=True):
-    """
-    obj.__rel_data["attrname"] = value  
-    if overwrite false, will not overwrite an existing value
-    """
-    if hasattr(obj, "__rel_data"):
-        if (not overwrite) and (attrname in obj.__rel_data):
-            return
-        obj.__rel_data[attrname] = value
-    else:
-        obj.__rel_data = {attrname: value}
-
-def get_reldata(obj, attrname):
-    """
-    obj.__rel_data[attrname], or KeyError on failure
-    """
-    try:
-        return obj.__rel_data[attrname]
-    except:
-        raise KeyError("Obj '{0}' has no reldata '{1}'".format(obj, attrname))

@@ -8,6 +8,7 @@ SESS_START = time.time()
 
 from src.utility import suppress_output
 from src.path import join_path
+from src.output_and_prompting import style
 
 # paths
 
@@ -24,6 +25,9 @@ PROJFILE_NAME = "projects.relativism-data"
 MAX_SESS_LOGS = 20
 
 
+with style("cyan, bold"):
+    print("\n***** RELATIVISM *****\n")
+
 with suppress_output(ERROR_LOG):
 
     from src.relativism import *
@@ -37,8 +41,6 @@ with suppress_output(ERROR_LOG):
     except:
         pass
 
-with style("cyan, bold"):
-    print("\n***** RELATIVISM *****\n")
 
 RelGlobals.set_error_log(ERROR_LOG)
 RelGlobals.set_data_file(DATA_FILE)

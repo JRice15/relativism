@@ -66,9 +66,9 @@ def do_command(command, obj):
         method_name, args = command[0], command[1:]
 
         # get full method name with autofill
-        all_methods = obj.get_all_method_names()
+        all_methods = obj.get_all_public_methods()
         method_name = autofill(method_name, all_methods, "arg")
-        method = obj.get_method(method_name).method_func
+        method = obj.get_process(method_name)
 
         pre_process(obj, method_name)
 

@@ -30,6 +30,19 @@ from src.errors import *
 
 
 
+def specialjoin(iterable, sep=", ", last_sep=", or "):
+    """
+    join like a human would, with an "and" or "or" before the last item
+    """
+    if len(iterable) == 0:
+        return ""
+    if len(iterable) == 1:
+        return iterable[1]
+    return sep.join(iterable[:-1]) + last_sep + iterable[-1]
+    
+
+
+
 @contextmanager
 def suppress_output(err_log_name="data/errors.log"):
     """

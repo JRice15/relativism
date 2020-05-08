@@ -82,8 +82,6 @@ class Units:
         initalize beat, samplerate, and percent units
         """
 
-        print("Calibrating units")
-
         # define beats
         for i in Units._get_beat_frac_tables():
             if i[2] == "beat":

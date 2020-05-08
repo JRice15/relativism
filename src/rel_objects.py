@@ -1,22 +1,26 @@
 
+import abc
 import json
 import os
 import random as rd
 import re
-import abc
 
 import soundfile as sf
 
 from src.data_types import *
+from src.errors import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.method_ops import (ArgData, Category, RelData, _ClsRelData,
+                            add_reldata, add_reldata_arg, get_reldata,
+                            get_wrap_all_encloser, has_aliases,
+                            is_public_process, is_rel_wrap_all, public_process,
+                            rel_wrap)
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
-                                      info_line, info_list, info_title, nl, p,
-                                      section_head, show_error, style, log_err)
+                                      info_line, info_list, info_title,
+                                      log_err, nl, p, section_head, show_error,
+                                      style)
 from src.path import join_path, split_path
-from src.errors import *
-from src.method_ops import *
-
 
 
 class RelativismObject(abc.ABC):
@@ -98,6 +102,8 @@ class RelativismContainer(RelativismObject):
         load object from data returned by file_ref_data
         """
         ...
+
+
 
 
 class RelativismSavedObj(RelativismObject):
@@ -228,9 +234,13 @@ class RelativismSavedObj(RelativismObject):
         """
         info_block("saving {0} '{1}' metadata...".format(self.reltype, self.name))
 
-        attrs = vars(self)
-        del attrs["method_data_by_category"]
+        # must copy list, otherwise we will edit this object's __dict__
+        attrs = {k:v for k,v in vars(self).items()}
         attrs = self.parse_write_meta(attrs)
+        try:
+            del attrs["_rel_data"]
+        except:
+            pass
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
 
@@ -264,6 +274,8 @@ class RelativismSavedObj(RelativismObject):
         return self.get_data_filename()
 
 
+
+
 class RelativismPublicObj(RelativismObject):
     """
     methods to implement on classes that inherit from this:
@@ -277,7 +289,7 @@ class RelativismPublicObj(RelativismObject):
 
     def __init__(self, name, reltype, mode, **kwargs):
 
-        super().__init__(name=name, mode=mode, reltype=reltype, **kwargs)
+        super().__init__(name=name, reltype=reltype, **kwargs)
 
         if mode == "create":
             section_head("Initializing {0}".format(reltype))
@@ -290,60 +302,70 @@ class RelativismPublicObj(RelativismObject):
         self.reltype = reltype
 
         self._do_aliases()
+        self._do_props()
 
-        self._do_method_data()
 
-    def _do_method_data(self):
-        """
-        set __rel_data attr on methods
-        """
-        public_method_strs = [func for func in dir(self) if is_public_process(getattr(self, func))]
-        for m in public_method_strs:
-            self.add_method(m)
+    def _do_props(self):
+        from src.property import RelProperty
+        props = [i for i in dir(self) if isinstance(getattr(self, i), RelProperty)]
+        if len(props) > 0:
+
+            # extra process to handle properties
+            @public_process
+            def edit_property(self, prop_name):
+                """
+                cat: edit
+                """
+                if prop_name not in props:
+                    raise NoSuchProcess("Property '{0}' does not exist")
+                # RelProp.process() method
+                getattr(self, prop_name).process()
+
+            self.edit_property = edit_property
+            propstr = specialjoin(props, "', '", "', or '")
+            desc = "edit a property. One of the following: '" + propstr + "'"
+            add_reldata(self.edit_property, "desc", desc)
+            add_reldata(self.edit_property, "category", Category.EDIT)
+            add_reldata_arg(self.edit_property, "name: name of the property to edit")
+
 
     def _do_aliases(self):
         """
-        set aliases
+        add all aliases
         """
+        if not hasattr(self, "_rel_data"):
+            self._rel_data = _ClsRelData()
+        alias_map = self._rel_data.alias_map
         # copy to prevent modifying what we iterate over
         dct = {k:getattr(self, k) for k in dir(self)}
-        for name, method in dct.items():
-            if hasattr(method, "__rel_aliases"):
-                for alias in getattr(method, "__rel_aliases"):
-                    if hasattr(self, alias):
+        for meth_name,method in dct.items():
+            if has_aliases(method):
+                for alias in get_reldata(method, "aliases"):
+                    if hasattr(self, alias) or alias in alias_map:
                         raise NameError("Class '{0}' already has method/name '{1}' that cannot be aliases".format(
                             self.__class__.__name__, alias))
-                    setattr(self, alias, method)
+                    alias_map[alias] = meth_name
 
 
-    def get_all_method_names(self):
+    def get_process(self, name):
         """
-        get all public methods
+        handles getting aliases too
+        """
+        # endswith to handle namespaced attr names
+        if hasattr(self, name):
+            return getattr(self, name)
+        try:
+            real_name = self._rel_data.alias_map[name]
+            return getattr(self, real_name)
+        except:
+            raise AttributeError("Object '{0}' has not attribute '{1}'".format(self, name))
+
+
+    def get_all_public_methods(self):
+        """
+        get the names of all public methods
         """
         return [func for func in dir(self) if is_public_process(getattr(self, func))]
-
-    def get_method(self, method_name):
-        """
-        get a public method
-        """
-        for i in self.method_data_by_category.items():
-            try:
-                return i[1][method_name]
-            except KeyError:
-                pass
-        raise KeyError
-
-    def add_method(self, method_name):
-        """
-        add method to method_data_by_category to expose public
-        """
-        m_data = RelativismPublicObj.MethodData(self, method_name)
-        try:
-            self.method_data_by_category[m_data.category][m_data.method_name] = m_data
-        except KeyError:
-            self.method_data_by_category[m_data.category] = {m_data.method_name : m_data}
-        return m_data
-
 
     @public_process
     def options(self):
@@ -357,16 +379,27 @@ class RelativismPublicObj(RelativismObject):
         info_line("- {Process}")
         info_line("{arguments in order, optional if in [square brackets]}", indent=8)
         nl()
-        categories = list(self.method_data_by_category.keys())
-        categories.sort()
+
+        meths = {}
+        for i in dir(self):
+            mth = getattr(self, i)
+            if is_public_process(mth):
+                cat = get_reldata(mth, "category")
+                try:
+                    meths[cat].append(mth)
+                except KeyError:
+                    meths[cat] = [mth]
+
+        categories = list(meths.keys())
+        categories.sort(key=lambda x: x.value)
         for cat in categories:
             with style("cyan"):
-                info_line(str(cat).upper(), indent=2)
-            for name, method in self.method_data_by_category[cat].items():
-                if not method.is_alias:
-                    method.display()
+                # category.value is the display version of the category
+                info_line(cat.value.upper(), indent=2)
+            for method in meths[cat]:
+                method._rel_data.display()
 
-        
+
     @public_process
     def quit(self):
         """
@@ -375,36 +408,6 @@ class RelativismPublicObj(RelativismObject):
         dev: this is handled in input_processing
         """
         raise Cancel
-
-
-    class MethodData:
-
-        def __init__(self, parent, method_name):
-            """
-            method: str
-            """
-            self.parent = parent
-            self.method_name = method_name
-            self.method_func = getattr(parent, method_name)
-            self.is_alias = is_alias(self.method_func, self.method_name)
-
-            self.category = None
-            self.raw_category = None
-            self.args = []
-            self.desc = ""
-            if not self.is_alias and hasattr(self.method_func, "__rel_aliases"):
-                self.aliases = getattr(self.method_func, "__rel_aliases")
-            else:
-                self.aliases = None
-
-            self.analayze_doc()
-        
-
-
-
-
-
-
 
 
 
@@ -434,5 +437,3 @@ class SourceInfo(RelativismObject):
         set info from dict
         """
         self.s_info.update(info)
-
-

@@ -27,24 +27,25 @@ import random as rd
 import re
 import sys
 import time
-import numpy as np
 
+import numpy as np
 import sounddevice as sd
 import soundfile as sf
 from pydub import AudioSegment as pd
 
-from src.errors import *
-from src.utility import *
-
-from src.data_types import *
-from src.rel_objects import RelativismSavedObj, RelativismPublicObj
-from src.method_ops import public_process, is_public_process, rel_alias, is_alias
-from src.process import process
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
 from src.analysis import Analysis
+from src.data_types import *
+from src.errors import *
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.method_ops import (Category, get_reldata, is_alias, is_public_process,
+                            public_process, rel_alias)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
 from src.path import join_path, split_path
+from src.process import process
+from src.rel_objects import RelativismPublicObj, RelativismSavedObj
+from src.utility import *
 
 
 class Recording(RelativismPublicObj, RelativismSavedObj):
@@ -644,11 +645,12 @@ class Recording(RelativismPublicObj, RelativismSavedObj):
         desc: implement random sound-editing on recording, with random args. Introduce a little anarchy!
         cat: edit
         """
-        methods = [i[1] for i in self.method_data_by_category['Edits'].items()]
-        method_data = rd.choice(methods)
-        args = method_data.get_random_defaults()
+        public_methods = self.get_all_public_methods()
+        public_edits = [i for i in public_methods if get_reldata(getattr(self, i)).category == Category.EDIT]
+        method = getattr(self, rd.choice(public_edits))
+        args = method.get_random_defaults()
         try:
-            method_data.method_func(*args)
+            method(*args)
         except Exception as e:
             err_mess("Random Process error:")
             show_error(e)

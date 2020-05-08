@@ -23,7 +23,6 @@ class Project(RelativismPublicObj, RelativismSavedObj):
     """
     """
 
-
     TESTBPM = Units.bpm(120)
 
     def __init__(self,
@@ -51,16 +50,13 @@ class Project(RelativismPublicObj, RelativismSavedObj):
             self.path = join_path(input_dir(), self.get_data_filename(), is_dir=True)
             os.makedirs(self.path, exist_ok=False)
 
-        if children is None:
-            children = []
-        self.children = children
+        self.children = children if children is not None else []
         self.rate = rate
         # self.bpm_controller = "______" #TODO
         self.arr = None
 
         if mode == "create":
             self.save()
-
 
     def __repr__(self):
         return "{0} '{1}', stored at: {2}. {3} direct children objects".format(
@@ -89,6 +85,9 @@ class Project(RelativismPublicObj, RelativismSavedObj):
 
     @public_process
     def info(self):
+        """
+        cat: info
+        """
         info_block("{0} '{1}'".format(self.reltype, self.name))
         info_line("Stored at '{0}'".format(self.path))
         info_line("Samplerate: {0}".format(self.rate))
