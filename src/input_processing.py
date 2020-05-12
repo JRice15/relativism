@@ -163,7 +163,7 @@ def inpt_validate(val, mode, allowed=None):
                 val = Units.secs(val)
             except:
                 info_block(
-                    "> Value '{0}' is not a validly number for seconds. Enter intended value ('q' to cancel): ".format(val),
+                    "> Value '{0}' is not a validly seconds string (must be of the form '4s' or '4sec', not '4'). Enter intended value ('q' to cancel): ".format(val),
                     for_prompt=True
                 )
                 val = inpt(mode)
@@ -176,7 +176,7 @@ def inpt_validate(val, mode, allowed=None):
                     val = Units.secs(val)
                 except:
                     info_block(
-                        "> Value '{0}' is not a validly formed beat or second. Enter intended value ('q' to cancel): ".format(val),
+                        "> Value '{0}' is not a validly formed beat or second (must be (must be of the form '4s' or '4b', not '4')). Enter intended value ('q' to cancel): ".format(val),
                         for_prompt=True
                     )
                     val = inpt(mode)
@@ -188,8 +188,8 @@ def inpt_validate(val, mode, allowed=None):
                 if allowed[1] is not None: 
                     assert val <= inpt_validate(allowed[1], mode)
         except AssertionError:
-            p("> Invalid: value must be" + allowed_repr(allowed))
-            val = inpt(mode)
+            p("> Invalid: value '{0}' must be ".format(val) + allowed_repr(allowed))
+            val = inpt(mode, allowed=allowed)
 
 
     # number inputs
@@ -233,7 +233,7 @@ def inpt_validate(val, mode, allowed=None):
                     "> Value '{0}' is not a valid number (decimal allowed). Enter intended value (or 'q' to quit): ".format(val),
                     for_prompt=True
                 )
-                val = inpt(mode)
+                val = inpt(mode, allowed=allowed)
 
         try:
             if allowed is not None:
@@ -242,11 +242,11 @@ def inpt_validate(val, mode, allowed=None):
                 if allowed[1] is not None: 
                     assert val <= allowed[1]
         except AssertionError:
-            p("> Invalid: value must be" + allowed_repr(allowed))
+            p("> Invalid: value '{0}' must be ".format(val) + allowed_repr(allowed))
             val = inpt(mode)
 
     else:
-        raise UnexpectedIssue("Unknown mode for inpt_validate")
+        raise UnexpectedIssue("Unknown mode for inpt_validate '{0}'".format(mode))
 
     return val
 

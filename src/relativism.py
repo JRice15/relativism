@@ -9,7 +9,7 @@ from src.errors import *
 from src.globals import RelGlobals, Settings
 from src.input_processing import (autofill, inpt, inpt_validate, input_dir,
                                   input_file)
-from src.rel_objects import RelativismSavedObj, RelativismPublicObj, RelativismContainer
+from src.rel_objects import RelSavedObj, RelPublicObj, RelContainer
 from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       info_line, info_list, info_title, nl, p,
@@ -165,7 +165,7 @@ class Relativism():
     def see_proj(self, proj_name, proj_path):
         info_block("Previewing Project '{0}'".format(proj_name))
         info_block("Children:")
-        fullpath = join_path(proj_path, proj_name + ".Project." + RelativismPublicObj.datafile_extension)
+        fullpath = join_path(proj_path, proj_name + ".Project." + RelPublicObj.datafile_extension)
         with open(fullpath, "r") as f:
             lines = f.readlines()
             in_children = False

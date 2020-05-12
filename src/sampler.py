@@ -6,7 +6,7 @@ chance-based generative Sampler object
 from src.data_types import *
 from src.recording_obj import Recording
 from src.integraters import mix, mix_multiple, concatenate
-from src.rel_objects import RelativismSavedObj, RelativismPublicObj
+from src.rel_objects import RelSavedObj, RelPublicObj
 from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.controller import Controller
 from src.output_and_prompting import (p, info_title, info_list, info_line, 
@@ -28,7 +28,7 @@ access any projects recs
 """
 
 
-class SampleGroup(RelativismPublicObj, RelativismSavedObj):
+class SampleGroup(RelPublicObj, RelSavedObj):
     """
     containing one or more audio samples
     """
@@ -95,7 +95,7 @@ class SampleGroup(RelativismPublicObj, RelativismSavedObj):
         self.save_metadata()
 
 
-class Rhythm(RelativismPublicObj, RelativismSavedObj):
+class Rhythm(RelPublicObj, RelSavedObj):
 
     def __init__(self, 
             name=None, 
@@ -241,7 +241,7 @@ class Rhythm(RelativismPublicObj, RelativismSavedObj):
             info_block("- " + self.beat_repr(i), newlines=False)
 
 
-class Active(RelativismPublicObj, RelativismSavedObj):
+class Active(RelPublicObj, RelSavedObj):
 
     def __init__(self, parent, path, act_rhythm, act_sample, reltype=None, 
             name=None, rel_id=None, muted=None):
@@ -340,7 +340,7 @@ class Active(RelativismPublicObj, RelativismSavedObj):
 
 
 
-class Sampler(RelativismPublicObj, RelativismSavedObj):
+class Sampler(RelPublicObj, RelSavedObj):
     """
     Attr:
         dir: directory

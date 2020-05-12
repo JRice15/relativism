@@ -2,10 +2,10 @@
 
 src.rel_objects
 
-Relativism Objects must inherit from either RelativismSavedObj (which are saved
-in their own file) or RelativismContainerObj (which are smaller data containers
+Relativism Objects must inherit from either RelSavedObj (which are saved
+in their own file) or RelContainerObj (which are smaller data containers
 usually stored in their parent's file). Either may also inherit from 
-RelativismPublicObj if the object should be directly processable by the user
+RelPublicObj if the object should be directly processable by the user
 
 ## Saved
 

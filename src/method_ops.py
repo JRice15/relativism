@@ -18,6 +18,7 @@ _rel_data format:
 from enum import Enum, auto
 import random as rd
 import re
+from inspect import signature, Parameter
 
 from src.errors import *
 from src.input_processing import err_mess, inpt_validate, info_block, info_list, info_line
@@ -280,8 +281,8 @@ def _do_public_process(method):
                     add_reldata_arg(method, line)
             except Exception as e:
                 err_mess("Error reading docstring method object data from method '" + method.__name__ + "'", trailing_newline=False)
-                err_mess("Docline: '" + str(line) + "'", trailing_newline=False, extra_leading_nl=False)
-                err_mess("Exception: " + str(e), extra_leading_nl=False)
+                info_line("Docline: '" + str(line) + "'", indent=8)
+                info_line("Exception: " + str(e), indent=8)
     
     return method
 
@@ -305,10 +306,22 @@ def public_process(*modes, allowed=None):
             nonlocal allowed, modes
             allowed = _expand_ellipses(len(modes), allowed)
 
-            func_args = []
-            for i in range(len(args)):
-                mode = modes[i]
-                val = inpt_validate(args[i], mode, allowed=allowed[i])
+            func_args = [ args[0] ] # self as first arg
+            for i in range(len(args) - 1):
+                try:
+                    mode = modes[i]
+                except IndexError:
+                    func_args.append(args[i+1])
+                else:
+                    val = inpt_validate(args[i+1], mode, allowed=allowed[i])
+                    func_args.append(val)
+            
+            # do default args
+            params = list(signature(method).parameters.values())
+            for i in range(len(args) - 1, len(modes)):
+                if params[i+1].default == Parameter.empty:
+                    break
+                val = inpt_validate(params[i+1].default, modes[i], allowed=allowed[i])
                 func_args.append(val)
 
             return method(*func_args)
@@ -360,7 +373,7 @@ def rel_wrap(encloser):
 def rel_wrap_all(encloser):
     """
     rel_wrap all public methods (and aliases). wrapping happens in 
-    RelativismObject._do_wrap_all  
+    RelObject._do_wrap_all  
     args: 
         encloser with signature 'enc(obj, method, *args, **kwargs)'
     """

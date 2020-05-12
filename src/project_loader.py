@@ -2,7 +2,7 @@ import importlib
 import json, re
 
 from src.data_types import *
-from src.rel_objects import RelativismSavedObj, RelativismObject, RelativismContainer
+from src.rel_objects import RelSavedObj, RelObject, RelContainer
 from src.path import join_path, split_path
 from src.globals import RelGlobals, Settings
 from src.output_and_prompting import section_head
@@ -33,7 +33,7 @@ class ProjectLoader:
         """
         prev_path = self.current_path
         self.current_path = directory
-        path = join_path(directory, filename + "." + RelativismSavedObj.datafile_extension)
+        path = join_path(directory, filename + "." + RelSavedObj.datafile_extension)
 
         with open(path, "r") as f:
             attrs = json.load(f, object_hook=self._decoder)
@@ -88,7 +88,7 @@ class ProjectLoader:
             
             elif val.startswith("<RELSET>"):
                 filename = re.sub("<RELSET>", "", val)
-                with open(filename + "." + RelativismContainer.setfile_extension, "r") as f:
+                with open(filename + "." + RelContainer.setfile_extension, "r") as f:
                     data = f.readlines()
                 mod_name = data.pop(0).strip()
                 clss_name = data.pop(0).strip()
@@ -131,12 +131,12 @@ class RelTypeEncoder(json.JSONEncoder):
         elif isinstance(obj, Relativism):
             return "<RELATIVISM-PROGRAM>"
 
-        elif isinstance(obj, RelativismObject):
+        elif isinstance(obj, RelObject):
 
-            if isinstance(obj, RelativismSavedObj):
+            if isinstance(obj, RelSavedObj):
                 return "<RELOBJFILE>" + obj.file_ref_repr()
 
-            elif isinstance(obj, RelativismContainer):
+            elif isinstance(obj, RelContainer):
                 return "<RELOBJ>" + obj.file_ref_repr()
 
             # RELSET handled by parse_container_obj_sets below
@@ -154,7 +154,7 @@ class RelTypeEncoder(json.JSONEncoder):
 
             if isinstance(attr, dict) and len(attr) > 1:
                 first_val = list(attr.values())[0]
-                if isinstance(first_val, RelativismContainer) and \
+                if isinstance(first_val, RelContainer) and \
                     all([type(v) == type(first_val) for v in attr.values()]
                 ):
                     new_attr = {k:v.file_ref_data() for k,v in attr.items()}
@@ -162,7 +162,7 @@ class RelTypeEncoder(json.JSONEncoder):
             elif isinstance(attr, (list, tuple)) and len(attr) > 1:
 
                 first_val = attr[0]
-                if isinstance(first_val, RelativismContainer) and \
+                if isinstance(first_val, RelContainer) and \
                     all([type(v) == type(first_val) for v in attr]
                 ):
                     new_attr = [v.file_ref_data() for v in attr]

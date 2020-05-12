@@ -23,7 +23,7 @@ from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
 from src.path import join_path, split_path
 
 
-class RelativismObject(abc.ABC):
+class RelObject(abc.ABC):
     """
     base rel object class
     """
@@ -56,7 +56,7 @@ class RelativismObject(abc.ABC):
 
 
 
-class RelativismContainer(RelativismObject):
+class RelContainer(RelObject):
     """
     class for objects that are not saved to a file but directly as strings 
     in other files
@@ -106,7 +106,7 @@ class RelativismContainer(RelativismObject):
 
 
 
-class RelativismSavedObj(RelativismObject):
+class RelSavedObj(RelObject):
     """
     methods to implement on classes that inherit from this:
         save (if any additional file saving needed beyond save_metadata)
@@ -153,12 +153,6 @@ class RelativismSavedObj(RelativismObject):
         """
         return join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
 
-    def get_audiofile_fullpath(self):
-        """
-        datafile path, but wav extension instead
-        """
-        return join_path(self.path, self.get_data_filename() + ".wav")
-
     def get_path(self, filename=None, extension="obj"):
         """
         get path of this object's files, or path in same dir of 'filename'.
@@ -173,7 +167,7 @@ class RelativismSavedObj(RelativismObject):
         elif extension == "wav":
             path += ".wav"
         else:
-            raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelativismObject.get_path".format(extension))
+            raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelObject.get_path".format(extension))
         return path
 
     @public_process
@@ -239,10 +233,11 @@ class RelativismSavedObj(RelativismObject):
         attrs = self.parse_write_meta(attrs)
         try:
             del attrs["_rel_data"]
-        except:
+        except KeyError:
             pass
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
+        attrs["mode"] = "load"
 
         from src.project_loader import RelTypeEncoder
         attrs = RelTypeEncoder.parse_container_obj_sets(attrs, self.path)
@@ -254,29 +249,64 @@ class RelativismSavedObj(RelativismObject):
 
     def parse_write_meta(self, attrs):
         """
-        remove attrs that shouldnt be json encoded to file (ex: audio data) by
-        overriding this method
+        override when applicable. remove attrs that shouldnt 
+        be json encoded to file (e.g. audio data) by overriding this method
         """
+        return attrs
+
+    def file_ref_repr(self):
+        """
+        don't override. how this object is referenced in other objects json data files
+        """
+        return self.get_data_filename()
+
+
+class RelAudioObj(RelSavedObj):
+    """
+    object with audio
+    """
+
+    def __init__(self, arr, rate, rel_id, reltype, name, path, parent, **kwargs):
+        super().__init__(self, rel_id=rel_id, reltype=reltype, name=name, path=path,
+            parent=parent, **kwargs)
+
+        self.arr = arr
+        self.rate = rate
+
+    def get_audiofile_fullpath(self):
+        """
+        datafile path, but wav extension instead
+        """
+        return join_path(self.path, self.get_data_filename() + ".wav")
+
+    @public_process
+    def save(self):
+        """
+        cat: save
+        dev: default save method, just calls save_metadata. override for additional saving
+        """
+        self.save_metadata()
+        self.save_audio()
+
+    def parse_write_meta(self, attrs):
+        """
+        override with super() call when applicable. remove attrs that shouldnt 
+        be json encoded to file (e.g. audio data) by overriding this method
+        """
+        del attrs['arr']
+        attrs["file"] = self.get_audiofile_fullpath()
         return attrs
 
     def save_audio(self):
         """
         base wav audio saving. requires 'rate' and 'arr' attributes
         """
-        info_block("saving {0} '{1}' audio...".format(self.reltype, self.name))
+        info_block("saving audio of {0} '{1}'...".format(self.reltype, self.name))
         outfile = join_path(self.path, self.get_data_filename() + ".wav")
         sf.write(outfile, self.arr, self.rate.magnitude)
 
-    def file_ref_repr(self):
-        """
-        how this object is referenced in other objects json data files
-        """
-        return self.get_data_filename()
 
-
-
-
-class RelativismPublicObj(RelativismObject):
+class RelPublicObj(RelObject):
     """
     methods to implement on classes that inherit from this:
         save (if any additional file saving needed beyond save_metadata)
@@ -413,7 +443,7 @@ class RelativismPublicObj(RelativismObject):
 
 
 
-class SourceInfo(RelativismObject):
+class SourceInfo(RelObject):
     """
     class for saving source info
     """

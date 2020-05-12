@@ -1,4 +1,4 @@
-from src.rel_objects import RelativismContainer, RelativismPublicObj, RelativismSavedObj
+from src.rel_objects import RelContainer, RelPublicObj, RelSavedObj
 from src.method_ops import public_process, is_public_process, rel_alias, is_alias
 from src.process import process
 from src.input_processing import inpt, inpt_validate, input_dir, input_file
@@ -8,7 +8,7 @@ from src.controller import Controller, ContinuousController
 from src.data_types import *
 
 
-class RelProperty(RelativismContainer, RelativismPublicObj):
+class RelProperty(RelContainer, RelPublicObj):
     """
     property that wraps a pint quant or controller.
     args:

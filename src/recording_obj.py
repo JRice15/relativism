@@ -44,11 +44,11 @@ from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       section_head, show_error)
 from src.path import join_path, split_path
 from src.process import process
-from src.rel_objects import RelativismPublicObj, RelativismSavedObj
+from src.rel_objects import RelPublicObj, RelSavedObj, RelAudioObj
 from src.utility import *
 
 
-class Recording(RelativismPublicObj, RelativismSavedObj):
+class Recording(RelPublicObj, RelAudioObj):
     """
     Args:
         mode: "create" or "load". load requires file arg
@@ -251,15 +251,6 @@ class Recording(RelativismPublicObj, RelativismSavedObj):
             join_path(recents_dir, str(time.time_ns()) + ".wav")
         )
 
-    def parse_write_meta(self, attrs):
-        """
-        for parsing attribute data for writing
-        """
-        del attrs['arr']
-        attrs["mode"] = "load"
-        attrs["file"] = self.get_audiofile_fullpath()
-        return attrs
-
     @public_process
     def undo(self):
         """
@@ -271,15 +262,6 @@ class Recording(RelativismPublicObj, RelativismSavedObj):
             self.arr = self.recents.pop(0)
         else:
             err_mess("No history to revert to!")
-
-    @public_process
-    def save(self):
-        """
-        cat: save
-        desc: save data
-        """
-        self.save_audio()
-        self.save_metadata()
 
     @public_process
     def export_to_wav(self, outfile=None):
@@ -577,7 +559,7 @@ class Recording(RelativismPublicObj, RelativismSavedObj):
         desc: trim to only contain audio between <left> and <right>
         args:
             left: beat/second; 0, 5;
-            [right: beat/second. defaults to end; 10]
+            [right: beat/second. defaults to end; 10, 20;]
         """
         left = inpt_validate(left, 'beatsec')
         if right is None:
