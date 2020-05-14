@@ -82,7 +82,7 @@ class Relativism():
                     self.create_proj()
 
             p("Process project '{0}'? [y/n]".format(self.current_open_proj.name))
-            if inpt("y-n"):
+            if inpt("yn"):
                 self.process_project()
             else:
                 self.current_open_proj.save()
@@ -91,7 +91,6 @@ class Relativism():
     def help_menu(self):
         #TODO
         raise NotImplementedError
-
 
     def validate_child_name(self, name):
         if name in self.projects:
@@ -158,9 +157,9 @@ class Relativism():
             except FileExistsError:
                 err_mess("The directory already exists and cannot be overwritten. Choose another name or location")
 
-        self.projects[self.current_open_proj.name] = self.current_open_proj.path
+        self.projects[self.current_open_proj.name] = self.current_open_proj.get_datafile_fullpath()
         with open(self.relfile_path, "a") as relfile:
-            relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.path))
+            relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.get_datafile_fullpath()))
         
     def see_proj(self, proj_name, proj_path):
         info_block("Previewing Project '{0}'".format(proj_name))
@@ -233,7 +232,7 @@ class Relativism():
         p("Locate '{0}'?".format(proj_name), o="y/n")
 
         located = False
-        if inpt("y-n"):
+        if inpt("yn"):
             p("Select the project's folder/directory (should be named '{0}.Project'".format(
                 proj_name), start="\n")
             try:
@@ -245,7 +244,7 @@ class Relativism():
 
         if not located:
             p("Failed to locate. Remove this Project from known projects?", o="y/n")
-            if inpt("y-n"):
+            if inpt("yn"):
                 del self.projects[proj_name]
 
         self.write_proj_file()

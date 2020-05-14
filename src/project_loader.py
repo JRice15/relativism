@@ -38,6 +38,8 @@ class ProjectLoader:
         with open(path, "r") as f:
             attrs = json.load(f, object_hook=self._decoder)
 
+        attrs["mode"] = "load"
+
         self.current_path = prev_path
         mod = importlib.import_module(attrs.pop("__module__"))
         obj_class = getattr(mod, attrs.pop("__class__"))

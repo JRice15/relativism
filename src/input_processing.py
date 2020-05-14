@@ -15,6 +15,224 @@ from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
                                       section_head, show_error)
 from src.path import join_path, split_path
 from src.utility import *
+from src.method_ops import rel_alias, rel_wrap, _ClsRelData
+
+
+def help_(help_func):
+    """
+    decorator for _InptValidate methods to provide help
+    """
+    def wrapper(method):
+        method._help_func = help_func
+        return method
+    return wrapper
+
+def do_allowed(method, val, mode, allowed):
+    """
+    allowed-checking wrapper for _InptValidate methods
+    """
+    val = method(val, mode, allowed)
+    # expanding for methods that edit allowed, ie percent()
+    if isinstance(val, tuple):
+        val, allowed = val
+    try:
+        if allowed is not None:
+            if allowed[0] is not None: 
+                assert val >= inpt_validate(allowed[0], mode)
+            if allowed[1] is not None: 
+                assert val <= inpt_validate(allowed[1], mode)
+    except AssertionError:
+        p("> Invalid: value '{0}' must be ".format(val) + allowed_repr(allowed))
+        raise TryAgain
+    return val
+
+
+class _InptValidate:
+    """
+    methods (with aliased names) for validating user input
+    """
+
+    @staticmethod
+    def none(val, mode, allowed):
+        return val
+    
+    @staticmethod
+    def standard(val, mode, allowed):
+        return re.sub(r"[^-_a-z9-9. ]", "", val)
+
+    std = stnd = stdrd = standard
+
+    @staticmethod
+    def arg(val, mode, allowed):
+        val = re.sub(r"[^-_.a-z0-9]", "", val)
+        return re.sub(r"-", "_", val)
+
+    args = arg
+
+    @staticmethod
+    def yesno(val, mode, allowed):
+        if len(val) == 0 or val[0] not in "yn":
+            err_mess("Enter 'y' or 'n': ")
+            raise TryAgain
+        if val[0] == "y":
+            return True
+        return False
+        
+    y_n = yn = yesno
+
+    @staticmethod
+    def letter(val, mode, allowed):
+        if (len(val) != 1) or (allowed is not None and val not in allowed.lower()):
+            p("> Select one of " + ", ".join(allowed.upper()))
+            raise TryAgain
+        return val
+
+    lttr = ltr = lett = letter
+
+    @staticmethod
+    def alphanum(val, mode, allowed):
+        val = re.sub(r"\s+", "_", val)
+        val = re.sub(r"-", "_", val)
+        val = re.sub(r"[^_a-z0-9]", "", val)
+        val = re.sub(r"_{2,}", "_", val)
+        return val
+
+    obj = file = name = alphanum
+
+    @staticmethod
+    def freq(val, mode, allowed):
+        try:
+            val = PitchUnits.valid_pitch(val)
+        except TypeError:
+            info_block(
+                "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
+                indent=2,
+                for_prompt=True
+            )
+            val = inpt(mode, help_callback=PitchUnits.note_options)
+        return val
+
+    note = frq = frequency = freq
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    @help_(Units.beat_options)
+    def beat(val, mode, allowed):
+        try:
+            val = Units.beats(val)
+        except:
+            info_block(
+                "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
+                for_prompt=True
+            )
+            val = inpt(mode, help_callback=Units.beat_options)
+        return val
+
+    beats = b = beat
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def sec(val, mode, allowed):
+        try:
+            val = Units.secs(val)
+        except:
+            info_block(
+                "> Value '{0}' is not a validly seconds string (must be of the form '4s' or '4sec', not '4'). Enter intended value ('q' to cancel): ".format(val),
+                for_prompt=True
+            )
+            val = inpt(mode)
+        return val
+
+    secs = second = seconds = sec
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    @help_(Units.beat_options)
+    def beatsec(val, mode, allowed):
+        try:
+            val = Units.beats(val)
+        except ValueError:
+            try:
+                val = Units.secs(val)
+            except:
+                info_block(
+                    "> Value '{0}' is not a validly formed beat or second (must be of the form '4s' or '4b', not '4'). Enter intended value ('q' to cancel): ".format(val),
+                    for_prompt=True
+                )
+                val = inpt(mode)
+        return val
+
+    beat_sec = beatsecs = beat_secs = beatsec
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def percent(val, mode, allowed):
+        if isinstance(val, str):
+            val = re.sub(r"%", "", val)
+        try:
+            val = Units.pcnt(val)
+        except (ValueError):
+            info_block(
+                "> Value '{0}' is not a valid percentage. Enter intended value (or 'q' to quit): ".format(val),
+                for_prompt=True
+            )
+            val = inpt(mode)
+        if allowed is None:
+            allowed = [0, None]
+        try:
+            allowed[0] = Units.pcnt(allowed[0])
+        except: pass
+        try:
+            allowed[1] = Units.pcnt(allowed[1])
+        except: pass
+    
+        return (val, allowed)
+
+    pct = pcnt = percent
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def integer(val, mode, allowed):
+        try:
+            val = int(val)
+        except ValueError:
+            info_block(
+                "> Value '{0}' is not a valid integer. Enter intended value (or 'q' to quit): ".format(val),
+                for_prompt=True
+            )
+            val = inpt(mode)
+        return val
+
+    int = integer
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def decimal(val, mode, allowed):
+        try:
+            val = float(val)
+        except ValueError:
+            info_block(
+                "> Value '{0}' is not a valid number (decimal number allowed). Enter intended value (or 'q' to quit): ".format(val),
+                for_prompt=True
+            )
+            val = inpt(mode, allowed=allowed)
+        return val
+
+    flt = float = decimal
+
+
+def do_help_msg(mode, help_callback):
+    """
+    try to print a help message, either from help_callback, or from
+    modemethod._help_func
+    """
+    if callable(help_callback):
+        help_callback()
+    else:
+        try:
+            getattr(getattr(_InptValidate, mode), "_help_func")()
+        except AttributeError: 
+            err_mess("No help is configured for this action")
 
 
 def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=None, 
@@ -23,7 +241,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
     get and clean input via some specifications
         mode: str:
             obj, file, alphanum, name: whitespaces to underscore, alphanumeric
-            y-n: yes or no question, returns bool
+            yn: yes or no question, returns bool
             beat: valid beat input
             note, freq: valid note/freq input
             int: integer, optional allowed list
@@ -37,50 +255,50 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
         catch callback: function to call on catch
         allowed: str for letters, or two-list of inclusive low and high bound for num inputs
     """
-    val = input().lower().strip()
-    try: 
-        allowed = allowed.lower()
-    except:
-        pass
-    if val == catch:
-        catch_callback()
-        print("\n  enter intended value ('q' for quit): ", end="")
-        return inpt(mode, split_modes=split_modes)
-    if val == "q" and quit_on_q:
-        raise Cancel
-    if val == "":
-        if required:
-            p("> A value is required. Enter intended value")
-            return inpt(mode, split_modes=split_modes, catch=catch, 
-                catch_callback=catch_callback, allowed=allowed, required=required)
-        else:
-            return val
-    if val in ("h", "help"):
+    while True:
         try:
-            help_callback()
-            val = "h"
-        except:
-            if mode in ("beat", "beats", "b"):
-                Units.beat_options()
-            else:
-                err_mess("No help is configured for this action")
-    if mode == "split":
-        val = val.split()
-        for i in range(len(val)):
-            if split_modes is None:
-                raise ValueError("Must supply a mode to inpt, but recieved None for split_modes")
-            else:
-                if isinstance(split_modes, str):
-                    this_mode = split_modes
+
+            val = input().lower().strip()
+            if val == catch:
+                catch_callback()
+                p("Enter intended value")
+                raise TryAgain
+            if val == "q" and quit_on_q:
+                raise Cancel
+            if val == "":
+                if required:
+                    err_mess("A value is required. Enter intended value")
+                    raise TryAgain
                 else:
-                    try:
-                        this_mode = split_modes[i]
-                    except IndexError:
-                        this_mode = split_modes[-1]
-            val[i] = inpt_validate(val[i], this_mode)
-    else:
-        val = inpt_validate(val, mode, allowed)
+                    return val
+            if val in ("h", "help"):
+                do_help_msg(mode, help_callback)
+                p("Enter intended value")
+                raise TryAgain
+
+            if mode == "split":
+                val = val.split()
+                for i in range(len(val)):
+                    if split_modes is None:
+                        raise ValueError("Must supply a mode to inpt, but recieved None for split_modes")
+                    if isinstance(split_modes, str):
+                        this_mode = split_modes
+                    else:
+                        try:
+                            this_mode = split_modes[i]
+                        except IndexError:
+                            this_mode = split_modes[-1]
+                    val[i] = inpt_validate(val[i], this_mode)
+            else:
+                val = inpt_validate(val, mode, allowed)
+
+        except TryAgain:
+            continue
+        else:
+            break
+
     return val
+
 
 
 def inpt_validate(val, mode, allowed=None):
@@ -90,7 +308,7 @@ def inpt_validate(val, mode, allowed=None):
     mode: str:
         standard, stnd: whitespace, alphnum, underscore and dash, periods commas
         obj, file, alphanum, name: whitespaces to underscore, alphanumeric
-        y-n: yes or no question, returns bool
+        yn: yes or no question, returns bool
         beat: valid beat input
         sec: float as second
         beatsec: beat or second
@@ -105,150 +323,16 @@ def inpt_validate(val, mode, allowed=None):
     if mode is None:
         raise ValueError("Must supply a mode to inpt_validate, but recieved None")
 
-    elif mode == "none":
-        return val
+    if isinstance(val, str):
+        val = val.lower().strip()
+    mode = mode.lower().strip()
 
-    elif mode in ("standard", 'stnd'):
-        val = re.sub(r"[^-_a-z0-9. ]", "", val)
+    try:
+        method = getattr(_InptValidate, mode)
+    except AttributeError:
+        raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
 
-    elif mode in ("arg", "args"):
-        val = re.sub(r"[^-_.a-z0-9]", "", val)
-        val = re.sub(r"-", "_", val)
-
-    elif mode in ("y-n", "y/n", "yn", "yesno", "yes/no"):
-        if len(val) == 0 or val[0] not in "yn":
-            print("  > Enter 'y' or 'n': ", end="")
-            return inpt(mode)
-        if val[0] == "y":
-            val = True
-        else:
-            val = False
-
-    elif mode in ("letter", "lttr", "ltr", "lett"):
-        if (allowed is not None) and (len(val) != 1 or val not in allowed):
-            p("> Select one of " + ", ".join(allowed.upper()))
-            val = inpt(mode, allowed=allowed)
-
-    elif mode in ("obj", "file", "alphanum", "name"):
-        val = re.sub(r"\s+", "_", val)
-        val = re.sub(r"-", "_", val)
-        val = re.sub(r"[^_a-z0-9]", "", val)
-        val = re.sub(r"_{2,}", "_", val)
-
-    elif mode in ("note", "freq", "frq", "frequency"):
-        try:
-            val = PitchUnits.valid_pitch(val)
-        except TypeError:
-            info_block(
-                "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
-                indent=2,
-                for_prompt=True
-            )
-            val = inpt(mode, help_callback=PitchUnits.note_options)
-
-    elif mode in ("beat", "beats", "b", "sec", "secs", "seconds", "second", "beatsec", "beat/sec"):
-
-        if mode in ("beat", "beats", "b"):
-            try:
-                val = Units.beats(val)
-            except:
-                info_block(
-                    "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
-                    for_prompt=True
-                )
-                val = inpt(mode, help_callback=Units.beat_options)
-
-        elif mode in ("sec", "secs", "second", "seconds"):
-            try:
-                val = Units.secs(val)
-            except:
-                info_block(
-                    "> Value '{0}' is not a validly seconds string (must be of the form '4s' or '4sec', not '4'). Enter intended value ('q' to cancel): ".format(val),
-                    for_prompt=True
-                )
-                val = inpt(mode)
-
-        elif mode in ("beatsec", "beat/sec"):
-            try:
-                val = Units.beats(val)
-            except ValueError:
-                try:
-                    val = Units.secs(val)
-                except:
-                    info_block(
-                        "> Value '{0}' is not a validly formed beat or second (must be (must be of the form '4s' or '4b', not '4')). Enter intended value ('q' to cancel): ".format(val),
-                        for_prompt=True
-                    )
-                    val = inpt(mode)
-        
-        try:
-            if allowed is not None:
-                if allowed[0] is not None: 
-                    assert val >= inpt_validate(allowed[0], mode)
-                if allowed[1] is not None: 
-                    assert val <= inpt_validate(allowed[1], mode)
-        except AssertionError:
-            p("> Invalid: value '{0}' must be ".format(val) + allowed_repr(allowed))
-            val = inpt(mode, allowed=allowed)
-
-
-    # number inputs
-    elif mode in ("pcnt", "pct", "percent", "int", "integer", "flt", "float", "decimal"):
-
-        if mode in ("pcnt", "pct", "percent"):
-            if isinstance(val, str):
-                val = re.sub(r"%", "", val)
-            try:
-                val = Units.pcnt(val)
-            except (ValueError):
-                info_block(
-                    "> Value '{0}' is not a valid percentage. Enter intended value (or 'q' to quit): ".format(val),
-                    for_prompt=True
-                )
-                val = inpt(mode)
-            if allowed is None:
-                allowed = [0, None]
-            try:
-                allowed[0] = Units.pcnt(allowed[0])
-            except: pass
-            try:
-                allowed[1] = Units.pcnt(allowed[1])
-            except: pass
-
-        elif mode in ("int", "integer"):
-            try:
-                val = int(val)
-            except ValueError:
-                info_block(
-                    "> Value '{0}' is not a valid integer. Enter intended value (or 'q' to quit): ".format(val),
-                    for_prompt=True
-                )
-                val = inpt(mode)
-
-        elif mode in ("flt", "float", "decimal"):
-            try:
-                val = float(val)
-            except ValueError:
-                info_block(
-                    "> Value '{0}' is not a valid number (decimal allowed). Enter intended value (or 'q' to quit): ".format(val),
-                    for_prompt=True
-                )
-                val = inpt(mode, allowed=allowed)
-
-        try:
-            if allowed is not None:
-                if allowed[0] is not None: 
-                    assert val >= allowed[0]
-                if allowed[1] is not None: 
-                    assert val <= allowed[1]
-        except AssertionError:
-            p("> Invalid: value '{0}' must be ".format(val) + allowed_repr(allowed))
-            val = inpt(mode)
-
-    else:
-        raise UnexpectedIssue("Unknown mode for inpt_validate '{0}'".format(mode))
-
-    return val
+    return method(val, mode, allowed)
 
 
 def allowed_repr(allowed):

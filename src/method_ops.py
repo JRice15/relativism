@@ -21,7 +21,7 @@ import re
 from inspect import signature, Parameter
 
 from src.errors import *
-from src.input_processing import err_mess, inpt_validate, info_block, info_list, info_line
+from src.output_and_prompting import err_mess, info_block, info_list, info_line
 
 
 """ Classes """
@@ -295,6 +295,8 @@ def public_process(*modes, allowed=None):
     
     Not to be thought of a type system for python, but instead as sanitizing user input
     """
+    from src.input_processing import inpt_validate
+    
     # called with no args
     if len(modes) == 1 and allowed is None and callable(modes[0]):
         return _do_public_process(modes[0])

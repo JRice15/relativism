@@ -45,7 +45,7 @@ def process_validate(command, obj):
         err_mess("Only alphanumeric characters, spaces, and underscores are allowed")
     elif command[0] in ("q", "quit"):
         p("Save before exiting?")
-        if inpt("y-n"):
+        if inpt("yn"):
             obj.save()
         info_block("Exiting processing of {0} '{1}'...".format(obj.reltype, obj.name))
         raise Cancel(obj)

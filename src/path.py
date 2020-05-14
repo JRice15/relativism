@@ -7,13 +7,16 @@ path object for handling paths
 import re
 
 
-def join_path(*args, is_dir=False):
+def join_path(*args, is_dir=False, ext=None):
     """
     join *args strings into a path
     """
     path = "/".join(args)
     if is_dir:
+        assert ext is None
         path += "/"
+    if ext is not None:
+        path += "." + ext
     path = re.sub(r"//", "/", path)
     return path
 

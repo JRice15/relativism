@@ -180,14 +180,17 @@ class Units:
         """
         try:
             return beat_str.to_beats(in_b=True)
-        except:  
-            val = Units.new(beat_str)
+        except:
+            try:
+                val = Units.new(beat_str)
+            except:
+                raise ValueError("Invalid beat string '{0}'".format(beat_str))
             if val.check("[beat_time]"):
                 return val
             elif val.magnitude == 0:
                 return Units.beats("0b")
             else:
-                raise ValueError("Invalid beat string, dimension was '{}'".format(val.dimensionality))
+                raise ValueError("Invalid beat string '{0}', dimension was '{1}'".format(beat_str, val.dimensionality))
 
     @staticmethod
     def _get_beat_frac_tables():
@@ -273,8 +276,8 @@ class Units:
         print("    Beats are signified by one of these notations, with an optional")
         print("    leading number. For example, '3qn' would be 3 quarter notes, ")
         print("    the equivilant of '3b', and also '6en' and '6hb'.")
-        print("\n    Time can also be indicated with just a number, which will be")
-        print("    interpreted as seconds")
+        print("\n    Time can also be indicated with just a number with the letter")
+        print("    's', which will be interpreted as seconds, such as '4.2s'")
 
     # FREQUENCY/NOTES
 

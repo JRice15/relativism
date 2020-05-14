@@ -163,7 +163,7 @@ class Rhythm(RelPublicObj, RelSavedObj):
             "lasts for one quarter note"
         )
         p("Do you need info on how to create properly formed beats?", o="y/n")
-        if inpt('y-n'):
+        if inpt('yn'):
             beat_options()
 
     @public_process
@@ -257,7 +257,7 @@ class Active(RelPublicObj, RelSavedObj):
             self.rename()
         if muted is None:
             p("Should this active pair begin muted?", o='y/n')
-            self.muted = inpt('y-n')
+            self.muted = inpt('yn')
 
     def __repr__(self):
         out_str = "'{0}', Active Rhythm-Sample pair".format(self.get_name())
@@ -370,7 +370,7 @@ class Sampler(RelPublicObj, RelSavedObj):
             self.rename()
 
         if (path is None) and (parent is not None):
-            self.path = join_path(self.parent.path, self.get_data_filename(), is_dir=True)
+            self.path = self.parent.get_data_dir()
             os.makedirs(self.path, exist_ok=True)
         
         if not hidden:

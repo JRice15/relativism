@@ -103,6 +103,11 @@ def show_error(e, force=False):
     from src.globals import Settings
     critical_err_mess(e)
     if Settings.is_debug():
+        with style("red"):
+            print("\n>------------------------------------>\n")
+        print("".join(traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)))
+        with style("red"):
+            print(">------------------------------------>\n")
         p("Debug mode is on. Raise error? [y/n]")
         if input().lower().strip() == "y":
             raise e

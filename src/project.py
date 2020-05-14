@@ -47,8 +47,8 @@ class Project(RelPublicObj, RelAudioObj):
         if path is None:
             p("Select a location for this project (folder will " + \
                 "be created within selected location to house project files)")
-            self.path = join_path(input_dir(), self.get_data_filename(), is_dir=True)
-            os.makedirs(self.path, exist_ok=False)
+            self.path = input_dir()
+            os.makedirs(self.get_data_dir(), exist_ok=False)
 
         self.children = children if children is not None else []
         self.rate = rate
@@ -63,13 +63,6 @@ class Project(RelPublicObj, RelAudioObj):
             self.reltype, self.name, self.path, len(self.children)
         )
 
-    def validate_child_name(self, name):
-        for c in self.children:
-            if c.name == name:
-                err_mess("Child with name '{0}' already exists!".format(name))
-                return False
-        return True
-
     @staticmethod
     def get_proj_path():
         return RelGlobals.get_project_instance().path
@@ -82,6 +75,13 @@ class Project(RelPublicObj, RelAudioObj):
     def get_bpm(context=None):
         return Project.TESTBPM
         return Project._instance.bpm_controller.get_bpm(context)
+
+    def validate_child_name(self, name):
+        for c in self.children:
+            if c.name == name:
+                err_mess("Child with name '{0}' already exists!".format(name))
+                return False
+        return True
 
     @public_process
     def info(self):
@@ -183,7 +183,7 @@ class Project(RelPublicObj, RelAudioObj):
         self.children.append(child)
         self.save_metadata()
         p("Process new {0} '{1}'? [y/n]".format(child.reltype, child.name))
-        if inpt("y-n"):
+        if inpt("yn"):
             self.process_child(child.name)
 
     @public_process

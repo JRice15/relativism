@@ -97,11 +97,11 @@ class Recording(RelPublicObj, RelAudioObj):
         # path
         if self.path is None:
             if self.parent is not None:
-                self.path = join_path(self.parent.path, self.get_data_filename(), is_dir=True)
+                self.path = self.parent.get_data_dir()
             else:
-                self.path = join_path(".", self.get_data_filename(), is_dir=True)
-            os.makedirs(self.path, exist_ok=False)
-        os.makedirs(join_path(self.path, "recents", is_dir=True), exist_ok=True)
+                self.path = "./"
+            os.makedirs(self.get_data_dir(), exist_ok=False)
+        os.makedirs(self.get_path("recents", "dir"), exist_ok=True)
 
         # audio data
         self.rate = Units.rate(rate)
@@ -245,10 +245,10 @@ class Recording(RelPublicObj, RelAudioObj):
         """
         update recents arr to include last arr
         """
-        recents_dir = join_path(self.path, "recents")
+        recents_dir = self.get_path("recents", "dir")
         os.rename(
-            join_path(self.path, self.get_data_filename() + ".wav"),
-            join_path(recents_dir, str(time.time_ns()) + ".wav")
+            self.get_path(self.get_data_filename(), "wav"),
+            join_path(recents_dir, str(time.time_ns()), ext=".wav")
         )
 
     @public_process
@@ -571,7 +571,7 @@ class Recording(RelPublicObj, RelAudioObj):
         left, right = left.to_secs(), right.to_secs()
         if left * self.rate > self.size_samps():
             print("  > this will empty the recording, confirm? [y/n]: ", end="")
-            if not inpt("y-n"):
+            if not inpt("yn"):
                 return
             self.arr = np.empty(shape=(0,2))
         else:

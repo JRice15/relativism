@@ -66,7 +66,7 @@ class Analysis():
 
     def maybe_playback(self):
         p("Playback before analyzing? [y/n]")
-        if inpt("y-n"):
+        if inpt("yn"):
             self.obj.playback()
 
 

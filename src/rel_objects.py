@@ -122,23 +122,27 @@ class RelSavedObj(RelObject):
     def __init__(self, rel_id, reltype, name, path, parent, **kwargs):
         super().__init__(parent=parent, rel_id=rel_id, reltype=reltype, 
             name=name, path=path, **kwargs)
+        self.parent = parent
         self.reltype = reltype
         self.name = name
-        self.path = path # path including object's own directory
+        self.path = path # path not including object's own directory
         self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
         if path is not None and reltype != "Program":
-            os.makedirs(self.path, exist_ok=True)
+            os.makedirs(self.get_data_dir(), exist_ok=True)
 
     def __repr__(self):
         string = "'{0}'. {1} object".format(self.name, self.reltype)
-        try:
-            self.source_block
-        except AttributeError:
-            return string
-        string += " from"
-        for key, val in self.source_block.items():
-            string += " {0}: {1};".format(key, val)
+        if hasattr(self, "source_block"):
+            string += " from"
+            for key, val in self.source_block.items():
+                string += " {0}: {1};".format(key, val)
         return string
+
+    def get_data_dir(self):
+        """
+        get the directory of this object's files
+        """
+        return join_path(self.path, self.get_data_filename(), is_dir=True)
 
     def get_data_filename(self):
         """
@@ -151,23 +155,26 @@ class RelSavedObj(RelObject):
         """
         fullpath of datafile
         """
-        return join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
+        return join_path(self.get_data_dir(), self.get_data_filename(), ext=self.datafile_extension)
 
-    def get_path(self, filename=None, extension="obj"):
+    def get_path(self, filename, extension="obj"):
         """
-        get path of this object's files, or path in same dir of 'filename'.
-        extension: "obj" for datafile_extension, anything else used as extension 
-        with a dot
+        get path to a file or dir 
+        args:
+            extension: "obj" for datafile_extension, "dir" for directory, or "wav"
         """
-        if filename is None:
-            filename = self.name
-        path = join_path(self.path, filename)
+        is_dir = False
         if extension == "obj":
-            path += "." + self.datafile_extension
-        elif extension == "wav":
-            path += ".wav"
+            extension = self.datafile_extension
+        elif extension in ("wav",):
+            pass
+        elif extension == "dir":
+            is_dir = True
+            extension = None
         else:
             raise UnexpectedIssue("Unrecognized extension '{0}'. Add it in RelObject.get_path".format(extension))
+
+        path = join_path(self.get_data_dir(), filename, ext=extension, is_dir=is_dir)
         return path
 
     @public_process
@@ -177,6 +184,9 @@ class RelSavedObj(RelObject):
         datafile and its self.path directory
         """
         old_name = self.name
+        if old_name is not None:
+            old_data_dir = self.get_data_dir()
+            old_datafile_name = self.get_data_filename()
 
         if name is None:
             p("Give this {0} a name".format(self.reltype))
@@ -207,12 +217,14 @@ class RelSavedObj(RelObject):
         
         # if actual renaming and not an initial naming
         if old_name is not None:
-            new_path = join_path(self.parent.path, self.get_data_filename())
+            new_data_dir = self.get_data_dir()
             # rename datafile
-            os.rename(self.get_path(old_name), self.get_path())
+            old_datafile = join_path(old_data_dir, old_datafile_name, ext=self.datafile_extension)
+            new_datafile = self.get_datafile_fullpath()
+            os.rename(old_datafile, new_datafile)
             # rename dir
-            os.rename(self.path, new_path)
-            self.path = new_path
+            os.rename(old_data_dir, new_data_dir)
+
 
     @public_process
     def save(self):
@@ -237,12 +249,11 @@ class RelSavedObj(RelObject):
             pass
         attrs["__module__"] = self.__class__.__module__
         attrs["__class__"] = self.__class__.__name__
-        attrs["mode"] = "load"
 
         from src.project_loader import RelTypeEncoder
-        attrs = RelTypeEncoder.parse_container_obj_sets(attrs, self.path)
+        attrs = RelTypeEncoder.parse_container_obj_sets(attrs, self.get_data_dir())
 
-        fullpath = join_path(self.path, self.get_data_filename() + "." + self.datafile_extension)
+        fullpath = self.get_datafile_fullpath()
 
         with open(fullpath, 'w') as f:
             json.dump(attrs, fp=f, cls=RelTypeEncoder, indent=2)
@@ -266,18 +277,19 @@ class RelAudioObj(RelSavedObj):
     object with audio
     """
 
-    def __init__(self, arr, rate, rel_id, reltype, name, path, parent, **kwargs):
-        super().__init__(self, rel_id=rel_id, reltype=reltype, name=name, path=path,
+    def __init__(self, arr=None, rate=None, rel_id=None, reltype=None, name=None,
+            path=None, parent=None, **kwargs):
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path,
             parent=parent, **kwargs)
 
         self.arr = arr
-        self.rate = rate
+        self.rate = rate if rate is not None else None
 
     def get_audiofile_fullpath(self):
         """
         datafile path, but wav extension instead
         """
-        return join_path(self.path, self.get_data_filename() + ".wav")
+        return self.get_path(self.get_data_filename(), extension="wav")
 
     @public_process
     def save(self):
@@ -302,8 +314,10 @@ class RelAudioObj(RelSavedObj):
         base wav audio saving. requires 'rate' and 'arr' attributes
         """
         info_block("saving audio of {0} '{1}'...".format(self.reltype, self.name))
-        outfile = join_path(self.path, self.get_data_filename() + ".wav")
-        sf.write(outfile, self.arr, self.rate.magnitude)
+        if self.arr is None:
+            info_line("no audio to save...")
+        else:
+            sf.write(self.get_audiofile_fullpath(), self.arr, self.rate.magnitude)
 
 
 class RelPublicObj(RelObject):

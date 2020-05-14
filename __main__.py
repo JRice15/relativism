@@ -98,7 +98,7 @@ def run():
         except Exception as e:
             if isinstance(e, Cancel):
                 p("Exit Relativism?", o="y/n", q=False)
-                if inpt("y-n", quit_on_q=False):
+                if inpt("yn", quit_on_q=False):
                     break
             else:
                 err_mess("EXCEPTION AT TOP LEVEL")
