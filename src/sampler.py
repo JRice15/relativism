@@ -77,13 +77,13 @@ class SampleGroup(RelPublicObj, RelSavedObj):
                 err_mess("> Sample '{0}' does not exist!".format(name))
         process(self.samples[name])
 
-    def validate_child_name(self, name):
+    def validate_child_name(self, child, name):
         return name not in self.samples
 
     @public_process
     def add_sample(self, new_sample):
         if isinstance(new_sample, Recording):
-            if not self.validate_child_name(new_sample.name):
+            if not self.validate_child_name(new_sample, new_sample.name):
                 err_mess("Sample with name '{0}' already exists in Sample Group '{1}'! You may rename it and add it again".format(
                     new_sample.name, self.name))
         else:

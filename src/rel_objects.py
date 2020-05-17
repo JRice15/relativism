@@ -144,12 +144,15 @@ class RelSavedObj(RelObject):
         """
         return join_path(self.path, self.get_data_filename(), is_dir=True)
 
-    def get_data_filename(self):
+    def get_data_filename(self, name=None):
         """
-        name.reltype : name of directory and datafiles
-        this part of the path is included in self.path
+        name.reltype : name of directory and datafiles.  
+        args:
+            name: should not be included unless testing a new name
         """
-        return self.name + "." + self.reltype
+        if name == None:
+            name = self.name
+        return name + "." + self.reltype
 
     def get_datafile_fullpath(self):
         """
@@ -180,6 +183,7 @@ class RelSavedObj(RelObject):
     @public_process
     def rename(self, name=None):
         """
+        cat: meta
         dev: call this method via super, and implement renaming of files other than 
         datafile and its self.path directory
         """
@@ -195,14 +199,14 @@ class RelSavedObj(RelObject):
             name = inpt_validate(name, 'obj')
 
         # validate
-        try:
-            if self.parent.validate_child_name(name):
+        if hasattr(self.parent, "validate_child_name"):
+            if self.parent.validate_child_name(self, name):
                 self.name = name
                 info_block("Named '{0}'".format(name))
             else:
-                info_block("Invalid name")
+                err_mess("Invalid name")
                 self.rename()
-        except AttributeError:
+        else:
             if Settings.is_debug():
                 show_error(
                     AttributeError("Parent obj '{0}' does not have validate_child_name".format(self.parent))
@@ -218,12 +222,13 @@ class RelSavedObj(RelObject):
         # if actual renaming and not an initial naming
         if old_name is not None:
             new_data_dir = self.get_data_dir()
-            # rename datafile
-            old_datafile = join_path(old_data_dir, old_datafile_name, ext=self.datafile_extension)
-            new_datafile = self.get_datafile_fullpath()
-            os.rename(old_datafile, new_datafile)
             # rename dir
             os.rename(old_data_dir, new_data_dir)
+
+            # rename datafile (which is in newdatadir now)
+            old_datafile = join_path(new_data_dir, old_datafile_name, ext=self.datafile_extension)
+            new_datafile = self.get_datafile_fullpath()
+            os.rename(old_datafile, new_datafile)
 
 
     @public_process
@@ -271,6 +276,20 @@ class RelSavedObj(RelObject):
         """
         return self.get_data_filename()
 
+    def pre_process(self, method_obj):
+        """
+        override to provide pre-processing
+        """
+        raise NotImplementedError
+
+    def post_process(self, method_obj):
+        """
+        override with super() to provide post processing
+        """
+        if get_reldata(method_obj, "category") == Category.META:
+            self.save_metadata()
+
+
 
 class RelAudioObj(RelSavedObj):
     """
@@ -283,7 +302,7 @@ class RelAudioObj(RelSavedObj):
             parent=parent, **kwargs)
 
         self.arr = arr
-        self.rate = rate if rate is not None else None
+        self.rate = rate
 
     def get_audiofile_fullpath(self):
         """
@@ -306,7 +325,10 @@ class RelAudioObj(RelSavedObj):
         be json encoded to file (e.g. audio data) by overriding this method
         """
         del attrs['arr']
-        attrs["file"] = self.get_audiofile_fullpath()
+        if self.arr is None:
+            attrs["file"] = None
+        else:
+            attrs["file"] = self.get_audiofile_fullpath()
         return attrs
 
     def save_audio(self):
@@ -318,6 +340,52 @@ class RelAudioObj(RelSavedObj):
             info_line("no audio to save...")
         else:
             sf.write(self.get_audiofile_fullpath(), self.arr, self.rate.magnitude)
+
+    def read_file(self, file_path=None):
+        """
+        reads files for recording object init
+        takes multiple formats (via PyDub and Soundfile)
+        updates self.source, self.arr, self.rate
+        """
+        if file_path is None:
+            print("  Choose an input sound file...")
+            time.sleep(1)
+            file_path = input_file()
+
+        info_block("Reading audio file...")
+        t1 = time.time()
+
+        # Handling file types
+        _,_,ext = split_path(file_path)
+        if ext != "wav":
+            try:
+                not_wav = pd.from_file(file_path, file_path.ext)
+                not_wav.export(".temp_soundfile.wav", format="wav")
+                file_path = ".temp_soundfile.wav"
+            except FileNotFoundError:
+                print("  > unable to find file '{0}'".format(file_path))
+                print("  > make sure to include .wav/.mp3/etc extension")
+                return self.read_file()
+                
+        # self.source_block["file"] = file_path
+        # Reading and Processing File
+        try:
+            self.arr, rate = sf.read(file_path)
+            self.rate = Units.rate(rate)
+        except RuntimeError:
+            print("  > unable to find or read '{0}'. Is that the correct extension?".format(file_path))
+            return self.read_file()
+        try:
+            os.remove(".temp_soundfile.wav")
+        except FileNotFoundError:
+            pass
+        if len(self.arr.shape) < 2:
+            self.arr = NpOps.stereoify(self.arr)
+        t2 = time.time()
+        info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
+            file_path, t2-t1))
+
+
 
 
 class RelPublicObj(RelObject):

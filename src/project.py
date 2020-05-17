@@ -25,19 +25,11 @@ class Project(RelPublicObj, RelAudioObj):
 
     TESTBPM = Units.bpm(120)
 
-    def __init__(self,
-            parent=None,
-            name=None,
-            rel_id=None,
-            mode="load",
-            path=None,
-            rate=None,
-            reltype="Project",
-            children=None
-        ):
+    def __init__(self, parent=None, name=None, rel_id=None, mode="load", path=None,
+            rate=None, reltype="Project", children=None, file=None, **kwargs):
         
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
-            path=path, parent=parent, mode=mode)
+            path=path, parent=parent, mode=mode, **kwargs)
 
         RelGlobals.set_project_instance(self)
 
@@ -54,6 +46,8 @@ class Project(RelPublicObj, RelAudioObj):
         self.rate = rate
         # self.bpm_controller = "______" #TODO
         self.arr = None
+        if file is not None:
+            self.read_file()
 
         if mode == "create":
             self.save()
@@ -76,7 +70,7 @@ class Project(RelPublicObj, RelAudioObj):
         return Project.TESTBPM
         return Project._instance.bpm_controller.get_bpm(context)
 
-    def validate_child_name(self, name):
+    def validate_child_name(self, child, name):
         for c in self.children:
             if c.name == name:
                 err_mess("Child with name '{0}' already exists!".format(name))

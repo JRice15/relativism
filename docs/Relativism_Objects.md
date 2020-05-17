@@ -16,7 +16,7 @@ Implement:
 - `parse_write_meta`: dict -> dict with attrs added/removed (for save_metadata)
 - `rename` (that calls super, and only handles renaming extra files)
 - `file_ref_repr` (if you dont want the standard name.reltype)
-- `validate_child_name`: -> bool
+- `validate_child_name`: childobj, newname -> bool
 
 Notes:
 - mode arg default must be "load"

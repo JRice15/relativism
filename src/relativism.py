@@ -4,6 +4,7 @@ highest-level parent. One instance of Relativism() per program
 
 import os
 import re
+import json
 
 from src.errors import *
 from src.globals import RelGlobals, Settings
@@ -81,25 +82,30 @@ class Relativism():
                     info_block("No existing projects. Defaulting to create new")
                     self.create_proj()
 
-            p("Process project '{0}'? [y/n]".format(self.current_open_proj.name))
-            if inpt("yn"):
-                self.process_project()
-            else:
-                self.current_open_proj.save()
-                self.current_open_proj = None
+            self.process_project()
 
     def help_menu(self):
         #TODO
         raise NotImplementedError
 
-    def validate_child_name(self, name):
-        if name in self.projects:
-            err_mess("Project named '{0}' already exists!".format(name))
-        elif name == "see":
+    def validate_child_name(self, child, new_name):
+        if new_name in self.projects:
+            err_mess("Project named '{0}' already exists!".format(new_name))
+            return False
+        if new_name == "see":
             err_mess("'see' is a protected keyword. Choose another name")
-        else:
-            return True
-        return False
+            return False
+
+        newpath = join_path(child.path, child.get_data_filename(new_name), is_dir=True)
+        if os.path.exists(newpath):
+            err_mess("Something already exists at path '{0}'".format(newpath))
+            return False
+        
+        # update projects file
+        del self.projects[child.name]
+        self.projects[new_name] = child.get_data_dir()
+        self.write_proj_file()
+        return True
 
     def open_proj(self):
         """
@@ -164,20 +170,16 @@ class Relativism():
     def see_proj(self, proj_name, proj_path):
         info_block("Previewing Project '{0}'".format(proj_name))
         info_block("Children:")
-        fullpath = join_path(proj_path, proj_name + ".Project." + RelPublicObj.datafile_extension)
+        fullpath = join_path(proj_path, proj_name + ".Project." + RelSavedObj.datafile_extension)
         with open(fullpath, "r") as f:
-            lines = f.readlines()
-            in_children = False
-            for i in lines:
-                if '"children":' in i:
-                    in_children = True
-                elif "]," in i:
-                    in_children = False
-                elif in_children:
-                    info = i.strip().strip('"')
-                    info = re.sub("<RELOBJFILE>", "", info)
-                    name, reltype = info.split(".")
-                    info_list("{0} '{1}'".format(reltype, name))
+            data = json.load(f)
+        info_title("Children:")
+        children = [re.sub(r"<.*>", "", i).split(".") for i in data["children"]]
+        children = ["{0} '{1}'".format(i[1], i[0]) for i in children]
+        info_list(children)
+        info_line("Path: " + data["path"])
+        info_line("Audio file: " + str(data["file"]))
+
 
     def list_projects(self):
         info_title("Existing projects:")

@@ -72,7 +72,7 @@ class _InptValidate:
     @staticmethod
     def yesno(val, mode, allowed):
         if len(val) == 0 or val[0] not in "yn":
-            err_mess("Enter 'y' or 'n': ")
+            info_block("> Enter 'y' or 'n': ", for_prompt=True)
             raise TryAgain
         if val[0] == "y":
             return True

@@ -70,7 +70,7 @@ def do_command(command, obj):
         method_name = autofill(method_name, all_methods, "arg")
         method = obj.get_process(method_name)
 
-        pre_process(obj, method_name)
+        pre_process(obj, method)
 
         # call process
         try:
@@ -84,22 +84,22 @@ def do_command(command, obj):
             else:
                 raise e
         
-        post_process(obj, method_name)
+        post_process(obj, method)
 
     # error handling & autofill
     except Exception as e:
         process_error_handling(e, command, obj)
 
 
-def pre_process(obj, method_name):
+def pre_process(obj, method_obj):
     try:
-        obj.pre_process(method_name)
+        obj.pre_process(method_obj)
     except (NotImplementedError, AttributeError):
         pass
 
-def post_process(obj, method_name):
+def post_process(obj, method_obj):
     try: 
-        obj.post_process(method_name)
+        obj.post_process(method_obj)
     except (NotImplementedError, AttributeError):
         pass
 

@@ -182,49 +182,7 @@ class Recording(RelPublicObj, RelAudioObj):
             'live recording': "input '{0}'".format(device_name)
         }
 
-    def read_file(self, file_path=None):
-        """
-        reads files for recording object init
-        takes multiple formats (via PyDub and Soundfile)
-        updates self.source, self.arr, self.rate
-        """
-        if file_path is None:
-            print("  Choose an input sound file...")
-            time.sleep(1)
-            file_path = input_file()
-
-        info_block("Reading audio file...")
-        t1 = time.time()
-
-        # Handling file types
-        _,_,ext = split_path(file_path)
-        if ext != "wav":
-            try:
-                not_wav = pd.from_file(file_path, file_path.ext)
-                not_wav.export(".temp_soundfile.wav", format="wav")
-                file_path = ".temp_soundfile.wav"
-            except FileNotFoundError:
-                print("  > unable to find file '{0}'".format(file_path))
-                print("  > make sure to include .wav/.mp3/etc extension")
-                return self.read_file()
-                
-        self.source_block["file"] = file_path
-        # Reading and Processing File
-        try:
-            self.arr, rate = sf.read(file_path)
-            self.rate = Units.rate(rate)
-        except RuntimeError:
-            print("  > unable to find or read '{0}'. Is that the correct extension?".format(file_path))
-            return self.read_file()
-        try:
-            os.remove(".temp_soundfile.wav")
-        except FileNotFoundError:
-            pass
-        if len(self.arr.shape) < 2:
-            self.arr = NpOps.stereoify(self.arr)
-        t2 = time.time()
-        info_line("sound file '{0}' read successfully in {1:.4f} seconds".format(
-            file_path, t2-t1))
+    # read_path is in RelAudioObj
 
     # Saving #
     def pre_process(self, process):
