@@ -100,17 +100,17 @@ class _InptValidate:
     obj = file = name = alphanum
 
     @staticmethod
+    @help_(PitchUnits.note_options)
     def freq(val, mode, allowed):
         try:
-            val = PitchUnits.valid_pitch(val)
+            return PitchUnits.valid_pitch(val)
         except TypeError:
             info_block(
                 "> Value '{0}' is not a validly formed note. Enter intended value ('h' for help on how to make validly formed notes, 'q' to cancel): ".format(val),
                 indent=2,
                 for_prompt=True
             )
-            val = inpt(mode, help_callback=PitchUnits.note_options)
-        return val
+            raise TryAgain
 
     note = frq = frequency = freq
 
@@ -119,14 +119,14 @@ class _InptValidate:
     @help_(Units.beat_options)
     def beat(val, mode, allowed):
         try:
-            val = Units.beats(val)
+            return Units.beats(val)
         except:
             info_block(
                 "> Value '{0}' is not a validly formed beat. Enter intended value ('h' for help on how to make validly formed beats, 'q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt(mode, help_callback=Units.beat_options)
-        return val
+            raise TryAgain
+
 
     beats = b = beat
 
@@ -134,14 +134,13 @@ class _InptValidate:
     @rel_wrap(do_allowed)
     def sec(val, mode, allowed):
         try:
-            val = Units.secs(val)
+            return Units.secs(val)
         except:
             info_block(
                 "> Value '{0}' is not a validly seconds string (must be of the form '4s' or '4sec', not '4'). Enter intended value ('q' to cancel): ".format(val),
                 for_prompt=True
             )
-            val = inpt(mode)
-        return val
+            raise TryAgain
 
     secs = second = seconds = sec
 
@@ -159,7 +158,7 @@ class _InptValidate:
                     "> Value '{0}' is not a validly formed beat or second (must be of the form '4s' or '4b', not '4'). Enter intended value ('q' to cancel): ".format(val),
                     for_prompt=True
                 )
-                val = inpt(mode)
+                raise TryAgain
         return val
 
     beat_sec = beatsecs = beat_secs = beatsec
@@ -172,11 +171,8 @@ class _InptValidate:
         try:
             val = Units.pcnt(val)
         except (ValueError):
-            info_block(
-                "> Value '{0}' is not a valid percentage. Enter intended value (or 'q' to quit): ".format(val),
-                for_prompt=True
-            )
-            val = inpt(mode)
+            p("> Value '{0}' is not a valid percentage. Enter intended value".format(val))
+            raise TryAgain
         if allowed is None:
             allowed = [0, None]
         try:
@@ -194,14 +190,10 @@ class _InptValidate:
     @rel_wrap(do_allowed)
     def integer(val, mode, allowed):
         try:
-            val = int(val)
+            return int(val)
         except ValueError:
-            info_block(
-                "> Value '{0}' is not a valid integer. Enter intended value (or 'q' to quit): ".format(val),
-                for_prompt=True
-            )
-            val = inpt(mode)
-        return val
+            p("> Value '{0}' is not a valid integer (ie, whole number). Enter intended value".format(val))
+            raise TryAgain
 
     int = integer
 
@@ -209,16 +201,41 @@ class _InptValidate:
     @rel_wrap(do_allowed)
     def decimal(val, mode, allowed):
         try:
-            val = float(val)
+            return float(val)
         except ValueError:
-            info_block(
-                "> Value '{0}' is not a valid number (decimal number allowed). Enter intended value (or 'q' to quit): ".format(val),
-                for_prompt=True
-            )
-            val = inpt(mode, allowed=allowed)
-        return val
+            p("> Value '{0}' is not a valid number (decimal number allowed). Enter intended value".format(val))
+            raise TryAgain
 
     flt = float = decimal
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def bpm(val, mode, allowed):
+        try:
+            return Units.bpm(val)
+        except ValueError:
+            p("> Invalid beats-per-minute. Enter the intended value")
+            raise TryAgain
+        if val.magnitude <= 0:
+            info_block("> Value cannot be negative or zero. Enter intended value")
+            raise TryAgain
+        return val
+
+    @staticmethod
+    @rel_wrap(do_allowed)
+    def rate(val, mode, allowed):
+        try:
+            return Units.rate(val)
+        except ValueError:
+            p("> Invalid samplerate. Enter the intended value")
+            raise TryAgain
+        if val.magnitude <= 0:
+            info_block("> Samplerate cannot be negative or zero. Enter intended value")
+            raise TryAgain
+        return val
+
+    samplerate = rate
+
 
 
 def do_help_msg(mode, help_callback):
@@ -259,18 +276,22 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
         try:
 
             val = input().lower().strip()
+
             if val == catch:
                 catch_callback()
                 p("Enter intended value")
                 raise TryAgain
+
             if val == "q" and quit_on_q:
                 raise Cancel
+
             if val == "":
                 if required:
                     err_mess("A value is required. Enter intended value")
                     raise TryAgain
                 else:
                     return val
+
             if val in ("h", "help"):
                 do_help_msg(mode, help_callback)
                 p("Enter intended value")
@@ -288,9 +309,9 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
                             this_mode = split_modes[i]
                         except IndexError:
                             this_mode = split_modes[-1]
-                    val[i] = inpt_validate(val[i], this_mode)
+                    val[i] = inpt_validate(val[i], this_mode, True)
             else:
-                val = inpt_validate(val, mode, allowed)
+                val = inpt_validate(val, mode, allowed, True)
 
         except TryAgain:
             continue
@@ -301,7 +322,7 @@ def inpt(mode, split_modes=None, help_callback=None, catch=None, catch_callback=
 
 
 
-def inpt_validate(val, mode, allowed=None):
+def inpt_validate(val, mode, allowed=None, _from_inpt=False):
     """
     processes individual modes for inpt
     also used as input validation
@@ -332,7 +353,13 @@ def inpt_validate(val, mode, allowed=None):
     except AttributeError:
         raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
 
-    return method(val, mode, allowed)
+    try:
+        return method(val, mode, allowed)
+    except TryAgain as e:
+        # inpt has more info, so we would rather re-call from there if possible
+        if _from_inpt:
+            raise e
+        return inpt(mode, allowed=allowed)
 
 
 def allowed_repr(allowed):
@@ -398,7 +425,7 @@ def autofill(partial, possibles, inpt_mode="name"):
         if pos[:len(partial)] == partial:
             matches.append(pos)
     if len(matches) == 0:
-        raise AutofillError("No autofill matches for '{0}'".format(partial))
+        raise AutofillError(partial, "No autofill matches for '{0}'".format(partial))
     elif len(matches) == 1:
         if matches[0] != partial: # only display on imperfect match
             info_block("-> Autofilled '{0}'".format(matches[0]))

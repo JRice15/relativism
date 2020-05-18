@@ -96,15 +96,21 @@ class Relativism():
             err_mess("'see' is a protected keyword. Choose another name")
             return False
 
-        newpath = join_path(child.path, child.get_data_filename(new_name), is_dir=True)
-        if os.path.exists(newpath):
-            err_mess("Something already exists at path '{0}'".format(newpath))
-            return False
+        # if no path, we have to wait until after path is selected to check.
+        # this is verified in create_proj()
+        if child.path is not None:
+            newpath = join_path(child.path, child.get_data_filename(new_name), is_dir=True)
+            if os.path.exists(newpath):
+                err_mess("Something already exists at path '{0}'".format(newpath))
+                return False
         
-        # update projects file
-        del self.projects[child.name]
-        self.projects[new_name] = child.get_data_dir()
-        self.write_proj_file()
+            # update projects file
+            try:
+                del self.projects[child.name]
+            except KeyError: pass
+            self.projects[new_name] = child.get_data_dir()
+            self.write_proj_file()
+        
         return True
 
     def open_proj(self):
@@ -118,7 +124,12 @@ class Relativism():
         name_input = inpt("split", "obj")
         see = False
         if name_input[0] == "see":
-            proj_name = name_input[1]
+            try:
+                proj_name = name_input[1]
+            except IndexError:
+                err_mess("No name provided to 'see'")
+                self.open_proj()
+                return
             see = True
         else:
             proj_name = name_input[0]
@@ -128,8 +139,8 @@ class Relativism():
         except KeyError:
             try:
                 proj_name = autofill(proj_name, self.projects.keys(), "name")
-            except AutofillError:
-                err_mess("No project matches name '{0}'".format(proj_name))
+            except AutofillError as e:
+                err_mess("No project matches name '{0}'".format(e.word))
                 return
             proj_path = self.projects[proj_name]
 
@@ -163,22 +174,20 @@ class Relativism():
             except FileExistsError:
                 err_mess("The directory already exists and cannot be overwritten. Choose another name or location")
 
-        self.projects[self.current_open_proj.name] = self.current_open_proj.get_datafile_fullpath()
-        with open(self.relfile_path, "a") as relfile:
-            relfile.write("{0}\t{1}\n".format(self.current_open_proj.name, self.current_open_proj.get_datafile_fullpath()))
+        self.projects[self.current_open_proj.name] = self.current_open_proj.get_data_dir()
+        self.write_proj_file()
         
     def see_proj(self, proj_name, proj_path):
         info_block("Previewing Project '{0}'".format(proj_name))
-        info_block("Children:")
         fullpath = join_path(proj_path, proj_name + ".Project." + RelSavedObj.datafile_extension)
         with open(fullpath, "r") as f:
             data = json.load(f)
-        info_title("Children:")
+        info_title("Path: " + data["path"])
+        info_line("Audio file: " + str(data["file"]))
+        info_line("Children:")
         children = [re.sub(r"<.*>", "", i).split(".") for i in data["children"]]
         children = ["{0} '{1}'".format(i[1], i[0]) for i in children]
         info_list(children)
-        info_line("Path: " + data["path"])
-        info_line("Audio file: " + str(data["file"]))
 
 
     def list_projects(self):

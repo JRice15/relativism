@@ -189,7 +189,9 @@ class Settings():
                     method()
                 else:
                     raise AttributeError
-            except (AutofillError, AttributeError) as e:
+            except AutofillError as e:
+                err_mess("No process matches '{0}'!".format(e.word))
+            except AttributeError:
                 err_mess("No process matches '{0}'!".format(proc))
 
     @staticmethod

@@ -17,13 +17,14 @@ from src.process import process
 from src.project_loader import ProjectLoader
 from src.recording_obj import Recording
 from src.sampler import Sampler
+from src.property import RelProperty
 
 
 class Project(RelPublicObj, RelAudioObj):
     """
     """
 
-    TESTBPM = Units.bpm(120)
+    bpm = RelProperty(name="bpm", inpt_mode="bpm", desc="beats per minute")
 
     def __init__(self, parent=None, name=None, rel_id=None, mode="load", path=None,
             rate=None, reltype="Project", children=None, file=None, **kwargs):
@@ -44,18 +45,12 @@ class Project(RelPublicObj, RelAudioObj):
 
         self.children = children if children is not None else []
         self.rate = rate
-        # self.bpm_controller = "______" #TODO
         self.arr = None
         if file is not None:
             self.read_file()
 
         if mode == "create":
             self.save()
-
-    def __repr__(self):
-        return "{0} '{1}', stored at: {2}. {3} direct children objects".format(
-            self.reltype, self.name, self.path, len(self.children)
-        )
 
     @staticmethod
     def get_proj_path():
@@ -67,8 +62,7 @@ class Project(RelPublicObj, RelAudioObj):
 
     @staticmethod
     def get_bpm(context=None):
-        return Project.TESTBPM
-        return Project._instance.bpm_controller.get_bpm(context)
+        return RelGlobals.get_project_instance().bpm(context)
 
     def validate_child_name(self, child, name):
         for c in self.children:
@@ -126,7 +120,8 @@ class Project(RelPublicObj, RelAudioObj):
         cat: info
         desc: playback the most recent mix of this project
         args:
-            duration
+            [duration: beats or secs to playback for (enter 0 to playback all). Default 0]
+            [start: beats/secs to start playback at. Default 0]
         """
         self.arr.playback(duration, start)
     
@@ -157,8 +152,8 @@ class Project(RelPublicObj, RelAudioObj):
             child_name = inpt_validate(child_name, "name")
         try:
             child_name = autofill(child_name, [i.name for i in self.children])
-        except AutofillError:
-            err_mess("Child name '{0}' not found".format(child_name))
+        except AutofillError as e:
+            err_mess("Child name '{0}' not found".format(e.word))
             self.process_child()
             return
         child = None

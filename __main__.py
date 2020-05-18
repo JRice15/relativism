@@ -10,6 +10,9 @@ from src.utility import suppress_output
 from src.path import join_path
 from src.output_and_prompting import style
 
+with style("cyan, bold"):
+    print("\n***** RELATIVISM *****\n")
+
 # paths
 
 RELATIVISM_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,21 +28,16 @@ PROJFILE_NAME = "projects.relativism-data"
 MAX_SESS_LOGS = 20
 
 
-with style("cyan, bold"):
-    print("\n***** RELATIVISM *****\n")
+from src.relativism import *
+from src.debug import *
+from src.output_and_prompting import *
+from src.globals import RelGlobals, Settings, init_globals, save_globals
 
-with suppress_output(ERROR_LOG):
-
-    from src.relativism import *
-    from src.debug import *
-    from src.output_and_prompting import *
-    from src.globals import RelGlobals, Settings, init_globals, save_globals
-
-    #TODO load extensions dynamically
-    try:
-        from ext.autodrummer.autodrummer import *
-    except:
-        pass
+# TODO load extensions dynamically
+# try:
+#     from ext.autodrummer.autodrummer import *
+# except:
+#     pass
 
 
 RelGlobals.set_error_log(ERROR_LOG)

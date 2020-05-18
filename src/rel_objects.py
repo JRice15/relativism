@@ -4,13 +4,15 @@ import json
 import os
 import random as rd
 import re
+import types
 
 import soundfile as sf
+from pydub import AudioSegment as pd
 
 from src.data_types import *
 from src.errors import *
 from src.globals import RelGlobals, Settings
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.input_processing import inpt, inpt_validate, input_dir, input_file, autofill
 from src.method_ops import (ArgData, Category, RelData, _ClsRelData,
                             add_reldata, add_reldata_arg, get_reldata,
                             get_wrap_all_encloser, has_aliases,
@@ -46,6 +48,9 @@ class RelObject(abc.ABC):
                     print("a", type(getattr(self, attr)), getattr(self,attr).__name__)
                     new_val = rel_wrap(encloser)(getattr(self, attr))
                     setattr(self, attr, new_val)
+
+    def parse_write_meta(self, attrs):
+        return attrs
 
     @abc.abstractmethod
     def file_ref_repr(self):
@@ -129,14 +134,6 @@ class RelSavedObj(RelObject):
         self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
         if path is not None and reltype != "Program":
             os.makedirs(self.get_data_dir(), exist_ok=True)
-
-    def __repr__(self):
-        string = "'{0}'. {1} object".format(self.name, self.reltype)
-        if hasattr(self, "source_block"):
-            string += " from"
-            for key, val in self.source_block.items():
-                string += " {0}: {1};".format(key, val)
-        return string
 
     def get_data_dir(self):
         """
@@ -230,7 +227,6 @@ class RelSavedObj(RelObject):
             new_datafile = self.get_datafile_fullpath()
             os.rename(old_datafile, new_datafile)
 
-
     @public_process
     def save(self):
         """
@@ -268,19 +264,13 @@ class RelSavedObj(RelObject):
         override when applicable. remove attrs that shouldnt 
         be json encoded to file (e.g. audio data) by overriding this method
         """
-        return attrs
+        return super().parse_write_meta(attrs)
 
     def file_ref_repr(self):
         """
         don't override. how this object is referenced in other objects json data files
         """
         return self.get_data_filename()
-
-    def pre_process(self, method_obj):
-        """
-        override to provide pre-processing
-        """
-        raise NotImplementedError
 
     def post_process(self, method_obj):
         """
@@ -324,6 +314,7 @@ class RelAudioObj(RelSavedObj):
         override with super() call when applicable. remove attrs that shouldnt 
         be json encoded to file (e.g. audio data) by overriding this method
         """
+        attrs = super().parse_write_meta(attrs)
         del attrs['arr']
         if self.arr is None:
             attrs["file"] = None
@@ -387,7 +378,6 @@ class RelAudioObj(RelSavedObj):
 
 
 
-
 class RelPublicObj(RelObject):
     """
     methods to implement on classes that inherit from this:
@@ -407,6 +397,9 @@ class RelPublicObj(RelObject):
             section_head("Initializing {0}".format(reltype))
         elif mode == "load":
             info_line("Loading {0} '{1}'".format(reltype, name))
+        elif mode == "prop":
+            # property
+            pass
         else:
             raise UnexpectedIssue("Unknown mode '{0}'".format(mode))
 
@@ -428,18 +421,19 @@ class RelPublicObj(RelObject):
                 """
                 cat: edit
                 """
-                if prop_name not in props:
-                    raise NoSuchProcess("Property '{0}' does not exist")
+                try:
+                    prop_name = autofill(prop_name, props)
+                except AutofillError as e:
+                    raise NoSuchProcess("Property '{0}' does not exist".format(e.word))
                 # RelProp.process() method
                 getattr(self, prop_name).process()
 
-            self.edit_property = edit_property
+            self.edit_property = types.MethodType(edit_property, self)
             propstr = specialjoin(props, "', '", "', or '")
             desc = "edit a property. One of the following: '" + propstr + "'"
             add_reldata(self.edit_property, "desc", desc)
             add_reldata(self.edit_property, "category", Category.EDIT)
             add_reldata_arg(self.edit_property, "name: name of the property to edit")
-
 
     def _do_aliases(self):
         """
@@ -458,7 +452,6 @@ class RelPublicObj(RelObject):
                             self.__class__.__name__, alias))
                     alias_map[alias] = meth_name
 
-
     def get_process(self, name):
         """
         handles getting aliases too
@@ -472,12 +465,21 @@ class RelPublicObj(RelObject):
         except:
             raise AttributeError("Object '{0}' has not attribute '{1}'".format(self, name))
 
-
     def get_all_public_methods(self):
         """
         get the names of all public methods
         """
         return [func for func in dir(self) if is_public_process(getattr(self, func))]
+
+    def parse_write_meta(self, attrs):
+        """
+        override with super() call
+        """
+        attrs = super().parse_write_meta(attrs)
+        try:
+            del attrs["edit_property"]
+        except KeyError: pass
+        return attrs
 
     @public_process
     def options(self):
@@ -493,24 +495,22 @@ class RelPublicObj(RelObject):
         nl()
 
         meths = {}
-        for i in dir(self):
+        for i in self.get_all_public_methods():
             mth = getattr(self, i)
-            if is_public_process(mth):
-                cat = get_reldata(mth, "category")
-                try:
-                    meths[cat].append(mth)
-                except KeyError:
-                    meths[cat] = [mth]
+            cat = get_reldata(mth, "category")
+            try:
+                meths[cat].append(mth)
+            except KeyError:
+                meths[cat] = [mth]
 
         categories = list(meths.keys())
+        # sort by category.value, which is the string representation of that category
         categories.sort(key=lambda x: x.value)
         for cat in categories:
             with style("cyan"):
-                # category.value is the display version of the category
                 info_line(cat.value.upper(), indent=2)
             for method in meths[cat]:
                 method._rel_data.display()
-
 
     @public_process
     def quit(self):
@@ -519,6 +519,7 @@ class RelPublicObj(RelObject):
         desc: exit to parent process (shortcut 'q')
         dev: this is handled in input_processing
         """
+        # this is usually actually raised in process()
         raise Cancel
 
 

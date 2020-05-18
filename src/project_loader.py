@@ -143,6 +143,7 @@ class RelTypeEncoder(json.JSONEncoder):
 
             # RELSET handled by parse_container_obj_sets below
 
+        print(obj, type(obj))
         return json.JSONEncoder.default(self, obj)
 
     @staticmethod

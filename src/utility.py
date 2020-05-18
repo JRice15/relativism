@@ -37,7 +37,7 @@ def specialjoin(iterable, sep=", ", last_sep=", or "):
     if len(iterable) == 0:
         return ""
     if len(iterable) == 1:
-        return iterable[1]
+        return iterable[0]
     return sep.join(iterable[:-1]) + last_sep + iterable[-1]
     
 
@@ -51,17 +51,16 @@ def suppress_output(err_log_name="data/errors.log"):
         <suppressed zone>
     errors written to err log
     """
-    with open(os.devnull, "w") as devnull:
-        with open(err_log_name, "a") as errlog:
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            sys.stdout = devnull
-            sys.stderr = errlog
-            try:  
-                yield
-            finally:
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
+    with open(err_log_name, "a") as errlog:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = errlog
+        sys.stderr = errlog
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 

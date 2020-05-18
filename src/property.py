@@ -1,11 +1,33 @@
-from src.rel_objects import RelContainer, RelPublicObj, RelSavedObj
-from src.method_ops import public_process, is_public_process, rel_alias, is_alias
-from src.process import process
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error)
-from src.controller import Controller, ContinuousController
+from src.controller import ContinuousController, Controller
 from src.data_types import *
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.method_ops import (is_alias, is_public_process, public_process,
+                            rel_alias, add_reldata)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      section_head, show_error)
+from src.process import process
+from src.rel_objects import RelContainer, RelPublicObj, RelSavedObj
+
+"""
+This is the code I'm least/most proud of so far. RelProperty creates a 
+static class property that manages dynamic access to instance-specific property
+values. The point is to be able to set attributes normally, and have them type
+checked:
+
+x = classWithRelProp()  
+# this value will be passed to inpt_validate to see if it matches the property's declared type
+x.relprop = 4
+
+However, when accessing the attribute, it must be called, with optional context
+
+print(x.relprop) # prints a RelProperty object
+print(x.relprop()) # prints '4'
+print(x.relprop(context=context)) # print '4', but contextually
+
+The context is useful for accessing BPM and things that can vaary over time
+
+"""
 
 
 class RelProperty(RelContainer, RelPublicObj):
@@ -15,24 +37,28 @@ class RelProperty(RelContainer, RelPublicObj):
         name (str)
         inpt_mode (str): valid inpt() mode
         desc (str): user-viewable description
-        controllable (bool): whether property can be turned into a controller
         cont_type (str|None): "c" for default "continuous", None for not controllable, or any other value for discrete
     """
 
-    def __init__(self, name, inpt_mode, desc="", cont_type="c",
-            mode="load", reltype="Property"):
+    def __init__(self, name, inpt_mode, allowed=None, desc="", cont_type="c",
+            mode="prop", reltype="Property"):
         super().__init__(name=name, reltype=reltype, mode=mode)
         self.name = name
         self.inpt_mode = inpt_mode
+        self.allowed = allowed
         self.desc = desc
-        self.val = None
         self.cont_type = cont_type
         if self.cont_type is None:
-            self.control.__rel_public = False
+            # makes the control() method private again
+            add_reldata(self.control, "public", False)
+        self.caller = None
+
+    def attrname(self):
+        return "_relprop_" + self.name
 
     def file_ref_data(self):
-        # all the rest is statically generated every time
-        return self.val
+        # this should not be needed
+        raise UnexpectedIssue("Attemping to file_ref_repr a RelProperty")
     
     @staticmethod
     def load(data):
@@ -40,22 +66,33 @@ class RelProperty(RelContainer, RelPublicObj):
         return data
 
     def __call__(self, context=None):
-        return self.val.__call__(context)
+        if self.caller is None:
+            raise PropertyError("Property call not bound to a caller. Make sure to call all properties at the time of accessing them")
+        val = getattr(self.caller, self.attrname())
+        self.caller = None
+        if isinstance(val, Controller):
+            return val.__call__(context)
+        return val
 
     def __get__(self, instance, owner):
+        print("getting, caller=", self.caller, "instance=", instance)
+        self.caller = instance
         return self
 
     def __set__(self, instance, value):
-        if isinstance(value, (Units.Quant, Controller)):
-            self.val = value
-        else:
-            raise TypeError("Invalid type '{0}' of object '{1}' for RelProperty with units '{2}'".format(type(value), value, self.units))
+        print("setting", instance, value)
+        if not isinstance(value, (Units.Quant, Controller)):
+            value = inpt_validate(value, self.inpt_mode, self.allowed)
+        setattr(instance, self.attrname(), value)
 
     def process(self):
-        if isinstance(self.val, Units.Quant):
-            process(self)
+        if self.caller is None:
+            raise PropertyError("Property is not bound to a caller. Make sure to call properties at the time of access")
+        val = getattr(self.caller, self.attrname())
+        if isinstance(val, Controller):
+            process(val)
         else:
-            process(self.val)
+            process(self)
     
     @public_process
     def set(self, value):
@@ -64,7 +101,8 @@ class RelProperty(RelContainer, RelPublicObj):
         args:
             value: the new value of this property
         """
-        self.val = inpt_validate(value, self.inpt_mode)
+        value = inpt_validate(value, self.inpt_mode, self.allowed)
+        setattr(self.caller, self.attrname(), value)
 
     @public_process
     def control(self):
@@ -74,4 +112,3 @@ class RelProperty(RelContainer, RelPublicObj):
         """
         if self.cont_type == "c":
             cont = ContinuousController()
-

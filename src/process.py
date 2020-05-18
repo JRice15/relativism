@@ -62,33 +62,33 @@ def do_command(command, obj):
     """
     execute command
     """
-    try:
-        method_name, args = command[0], command[1:]
+    method_name, args = command[0], command[1:]
 
+    all_methods = obj.get_all_public_methods()
+    try:
         # get full method name with autofill
-        all_methods = obj.get_all_public_methods()
         method_name = autofill(method_name, all_methods, "arg")
         method = obj.get_process(method_name)
 
-        pre_process(obj, method)
+    # missing process
+    except Exception as e:
+        handle_not_found(e, command, obj)
+        return
 
-        # call process
-        try:
-            nl()
-            method(*args)
-        except TypeError as e:
-            if 'positional argument' in str(e):
-                command = process_complete_args(e, command, obj)
-                do_command(command, obj)
-                return
-            else:
-                raise e
-        
+    pre_process(obj, method)
+
+    nl()
+
+    # call process
+    try:
+        method(*args)
+    except Exception as e:
+        if isinstance(e, Cancel):
+            return
+        handle_bad_args(e, method_name, command[1:], obj)
+    else:
         post_process(obj, method)
 
-    # error handling & autofill
-    except Exception as e:
-        process_error_handling(e, command, obj)
 
 
 def pre_process(obj, method_obj):
@@ -103,52 +103,53 @@ def post_process(obj, method_obj):
     except (NotImplementedError, AttributeError):
         pass
 
-def process_complete_args(e, command, obj):
+
+def complete_args(e, method_name, args, obj):
     """
     handle wrong number of args
     """
-    if command[0] not in str(e):
+    if method_name not in str(e):
         show_error(e)
     err_mess("Wrong number of arguments: {0}".format(str(e)))
-    info_title("Args for {0}: ".format(command[0]))
-    info_line(obj.get_method(command[0]).oneline_arg_list(), indent=6)
+    info_title("Args for {0}: ".format(method_name))
+    info_line(obj.get_process(method_name)._rel_data.oneline_arg_list(), indent=6)
     # too many
-    command_str = "\n      " + command[0] + " "
+    command_str = "\n      " + method_name + " "
     if "were given" in str(e):
         p("Enter intended arguments", start=command_str)
         new_args = inpt('split', 'arg')
-        return [command[0]] + new_args
+        return [method_name] + new_args
     # not enough
     else:
-        if len(command[1:]) > 0:
-            command_str += " ".join(command[1:]) + " "
+        if len(args) > 0:
+            command_str += " ".join(args) + " "
         p("Complete arguments", start=command_str)
         new_args = inpt('split', 'arg')
-        return command + new_args
+        return [method_name] + args + new_args
 
 
+def handle_bad_args(e, method_name, args, obj):
+    message = str(e)
 
-def process_error_handling(e, command, obj):
-    """
-    recursive calls with UnknownError are for redirecting to the end else
-    """
+    if isinstance(e, TypeError) and 'positional argument' in message:
+        command = complete_args(e, method_name, args, obj)
+        do_command(command, obj)
+    elif isinstance(e, ValueError):
+        err_mess("Argument entered incorrectly: {0}".format(message))
+    else:
+        show_error(e)
+
+
+def handle_not_found(e, command, obj):
     process = command[0] if isinstance(command, list) else command
     message = str(e)
 
-    if isinstance(e, TypeError):
-        if 'object is not callable' in message:
-            process_error_handling(NoSuchProcess(message), process, obj)
-        elif 'positional argument' in message:
-            process_complete_args(e, command, obj)
-        else:
+    if isinstance(e, (TypeError, KeyError, AutofillError, NoSuchProcess)):
+        if isinstance(e, TypeError) and 'not callable' not in message:
             show_error(e)
-
-    elif isinstance(e, ValueError):
-        err_mess("Argument entered incorrectly: {0}".format(message))
-
-    elif isinstance(e, (KeyError, AutofillError, NoSuchProcess)):
+        if isinstance(e, AutofillError):
+            process = e.word
         err_mess("Process '{0}' does not exist: {1}".format(process, message))
-
     else:
         show_error(e)
 

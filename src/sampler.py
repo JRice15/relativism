@@ -199,7 +199,7 @@ class Rhythm(RelPublicObj, RelSavedObj):
     @public_process
     def add_beats(self):
         """
-        create beats through prompts or pass 'beat' param to set
+        dev: create beats through prompts or pass 'beat' param to set (??)
         """
         info_block("Creating new Rhythm '{0}'".format(self.name))
         while True:

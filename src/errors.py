@@ -4,12 +4,9 @@ class AutofillError(Exception):
     """
     autofill couldnt find a suitable match
     """
-
-class PathError(Exception):
-    """
-    Something wrong with path
-    """
-
+    def __init__(self, word, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.word = word
 
 class UnexpectedIssue(Exception):
     """
@@ -36,9 +33,6 @@ class NoSuchProcess(Exception):
     when command does not exist
     """
 
-class ArgumentError(Exception):
+class PropertyError(Exception):
     """
-    when process recieves too many or few arguments
     """
-
-

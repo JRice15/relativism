@@ -19,9 +19,10 @@ from enum import Enum, auto
 import random as rd
 import re
 from inspect import signature, Parameter
+import functools
 
 from src.errors import *
-from src.output_and_prompting import err_mess, info_block, info_list, info_line
+from src.output_and_prompting import err_mess, info_block, info_list, info_line, log_err
 
 
 """ Classes """
@@ -247,13 +248,15 @@ def get_wrap_all_encloser(clss):
 
 """ Public Processes and Decorators """
 
-def _do_public_process(method):
+def _do_public_process(method, name=None):
     """
     add reldata, convert docstring
     """
+    if name is None:
+        name = method.__name__
 
     add_reldata(method, "public", True)
-    add_reldata(method, "name", method.__name__, overwrite=False)
+    add_reldata(method, "name", name)
     add_reldata(method, "desc", "")
 
     doc = method.__doc__
@@ -304,6 +307,7 @@ def public_process(*modes, allowed=None):
     # called with args
     def called_on_process(method):
 
+        @functools.wraps(method)
         def public_process_wrapper(*args):
             nonlocal allowed, modes
             allowed = _expand_ellipses(len(modes), allowed)
@@ -329,7 +333,8 @@ def public_process(*modes, allowed=None):
             return method(*func_args)
 
         _bootstrap_reldata(public_process_wrapper, method)
-        return _do_public_process(public_process_wrapper)
+        newmethod = _do_public_process(public_process_wrapper, name=method.__name__)
+        return newmethod
 
     return called_on_process
 
@@ -363,6 +368,7 @@ def rel_wrap(encloser):
     # its wrap-ception baby
     def wrapper_wrapper(method):
 
+        @functools.wraps(method)
         def wrapper(*args, **kwargs):
             return encloser(method, *args, **kwargs)
         
