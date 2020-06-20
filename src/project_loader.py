@@ -90,7 +90,8 @@ class ProjectLoader:
             
             elif val.startswith("<RELSET>"):
                 filename = re.sub("<RELSET>", "", val)
-                with open(filename + "." + RelContainer.setfile_extension, "r") as f:
+                fullpath = join_path(self.current_path, filename, ext=RelContainer.setfile_extension)
+                with open(fullpath, "r") as f:
                     data = f.readlines()
                 mod_name = data.pop(0).strip()
                 clss_name = data.pop(0).strip()
@@ -175,7 +176,7 @@ class RelTypeEncoder(json.JSONEncoder):
                 with open(filename, "w") as fp:
                     fp.write(first_val.__class__.__module__ + "\n")
                     fp.write(first_val.__class__.__name__ + "\n")
-                    json.dump(new_attr, fp=fp)
+                    json.dump(new_attr, fp=fp, cls=RelTypeEncoder)
                 attrs[name] = "<RELSET>{0}".format(first_val.get_set_filename(name))
         
         return attrs

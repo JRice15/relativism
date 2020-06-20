@@ -211,13 +211,15 @@ def info_block(message, indent=None, hang=2, newlines=None, trailing_newline=Fal
     # splitting at spaces
     lines = [""]
     for char in str(message):
+        if char == "\n":
+            lines.append("")
         # hard break if super long with no spaces (url, path, etc)
-        if len(lines[-1]) >= 78:
+        elif len(lines[-1]) >= 78:
             if char != " ":
                 lines[-1] += " -"
                 lines.append("")
         # regular limit
-        if len(lines[-1]) >= 70:
+        elif len(lines[-1]) >= 70:
             last_space = lines[-1].rfind(" ")
             if last_space != -1:
                 text = lines[-1][last_space + 1:]

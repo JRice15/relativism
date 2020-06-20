@@ -95,12 +95,6 @@ class Recording(RelPublicObj, RelAudioObj):
             self.rename()
 
         # path
-        if self.path is None:
-            if self.parent is not None:
-                self.path = self.parent.get_data_dir()
-            else:
-                self.path = "./"
-            os.makedirs(self.get_data_dir(), exist_ok=False)
         os.makedirs(self.get_path("recents", "dir"), exist_ok=True)
 
         # audio data
@@ -586,8 +580,8 @@ class Recording(RelPublicObj, RelAudioObj):
         cat: edit
         """
         public_methods = self.get_all_public_methods()
-        public_edits = [i for i in public_methods if get_reldata(getattr(self, i)).category == Category.EDIT]
-        method = getattr(self, rd.choice(public_edits))
+        public_edits = [i for i in public_methods if get_reldata(i, "category") == Category.EDIT]
+        method = rd.choice(public_edits)
         args = method.get_random_defaults()
         try:
             method(*args)

@@ -124,13 +124,23 @@ class RelSavedObj(RelObject):
 
     datafile_extension = "rel-obj"
 
-    def __init__(self, rel_id, reltype, name, path, parent, **kwargs):
-        super().__init__(parent=parent, rel_id=rel_id, reltype=reltype, 
-            name=name, path=path, **kwargs)
+    def __init__(self, rel_id, reltype, name, path, parent, custom_path=False, **kwargs):
+        super().__init__(**kwargs)
         self.parent = parent
         self.reltype = reltype
         self.name = name
-        self.path = path # path not including object's own directory
+        if path is None and not custom_path:
+            if self.parent is not None:
+                self.path = self.parent.get_data_dir()
+            else:
+                if Settings.is_debug():
+                    err_mess("Warning: Setting relative path for {0} '{1}'".format(self.reltype, self.name))
+                    self.path = "./"
+                else:
+                    raise UnexpectedIssue("Path is None, with no parent")
+            os.makedirs(self.get_data_dir(), exist_ok=True)
+        else:
+            self.path = path # path not including object's own directory
         self.rel_id = rel_id if rel_id is not None else RelGlobals.get_next_id()
         if path is not None and reltype != "Program":
             os.makedirs(self.get_data_dir(), exist_ok=True)
@@ -227,13 +237,27 @@ class RelSavedObj(RelObject):
             new_datafile = self.get_datafile_fullpath()
             os.rename(old_datafile, new_datafile)
 
+    def save_props(self):
+        """
+        get attr names of all property values
+        """
+        from src.property import RelProperty
+        prop_attrs = [i for i in dir(self) if i.startswith(RelProperty.attr_prefix)]
+        for i in prop_attrs:
+            prop = getattr(self, i)
+            try:
+                prop.save()
+            except AttributeError:
+                pass
+
     @public_process
     def save(self):
         """
         cat: save
-        dev: default save method, just calls save_metadata. override for additional saving
+        dev: default save, calls save_meta and saves props. override for additional saving
         """
         self.save_metadata()
+        self.save_props()
 
     def save_metadata(self):
         """
@@ -306,7 +330,7 @@ class RelAudioObj(RelSavedObj):
         cat: save
         dev: default save method, just calls save_metadata. override for additional saving
         """
-        self.save_metadata()
+        super().save()
         self.save_audio()
 
     def parse_write_meta(self, attrs):
@@ -407,33 +431,6 @@ class RelPublicObj(RelObject):
         self.reltype = reltype
 
         self._do_aliases()
-        self._do_props()
-
-
-    def _do_props(self):
-        from src.property import RelProperty
-        props = [i for i in dir(self) if isinstance(getattr(self, i), RelProperty)]
-        if len(props) > 0:
-
-            # extra process to handle properties
-            @public_process
-            def edit_property(self, prop_name):
-                """
-                cat: edit
-                """
-                try:
-                    prop_name = autofill(prop_name, props)
-                except AutofillError as e:
-                    raise NoSuchProcess("Property '{0}' does not exist".format(e.word))
-                # RelProp.process() method
-                getattr(self, prop_name).process()
-
-            self.edit_property = types.MethodType(edit_property, self)
-            propstr = specialjoin(props, "', '", "', or '")
-            desc = "edit a property. One of the following: '" + propstr + "'"
-            add_reldata(self.edit_property, "desc", desc)
-            add_reldata(self.edit_property, "category", Category.EDIT)
-            add_reldata_arg(self.edit_property, "name: name of the property to edit")
 
     def _do_aliases(self):
         """
@@ -465,11 +462,19 @@ class RelPublicObj(RelObject):
         except:
             raise AttributeError("Object '{0}' has not attribute '{1}'".format(self, name))
 
-    def get_all_public_methods(self):
+    def get_all_public_method_names(self):
         """
         get the names of all public methods
         """
         return [func for func in dir(self) if is_public_process(getattr(self, func))]
+
+    def get_all_public_methods(self):
+        all_objs = [getattr(self, i) for i in dir(self)]
+        return [i for i in all_objs if is_public_process(i)]
+
+    def get_all_prop_names(self):
+        from src.property import RelProperty
+        return [i for i in dir(self) if "__" not in i and isinstance(getattr(self, i), RelProperty)]
 
     def parse_write_meta(self, attrs):
         """
@@ -480,6 +485,26 @@ class RelPublicObj(RelObject):
             del attrs["edit_property"]
         except KeyError: pass
         return attrs
+
+    @public_process
+    def property(self, prop_name):
+        """
+        cat: property
+        desc: edit a property
+        args:
+            property name: one of the following:
+        dev: the possible args are generated in options on display
+        """
+        all_prop_names = self.get_all_prop_names()
+        if not all_prop_names:
+            err_mess("This {0} has no properties to edit".format(self.reltype))
+        try:
+            prop_name = autofill(prop_name, all_prop_names)
+        except AutofillError as e:
+            err_mess("This {0} has property named '{1}'".format(self.reltype, e.word))
+        else:
+            # RelProp.process() method
+            getattr(self, prop_name).process()
 
     @public_process
     def options(self):
@@ -495,8 +520,7 @@ class RelPublicObj(RelObject):
         nl()
 
         meths = {}
-        for i in self.get_all_public_methods():
-            mth = getattr(self, i)
+        for mth in self.get_all_public_methods():
             cat = get_reldata(mth, "category")
             try:
                 meths[cat].append(mth)
@@ -511,6 +535,13 @@ class RelPublicObj(RelObject):
                 info_line(cat.value.upper(), indent=2)
             for method in meths[cat]:
                 method._rel_data.display()
+            if cat == Category.PROPERTY:
+                prop_names = self.get_all_prop_names()
+                if not prop_names:
+                    info_line("(no properties to edit)", indent=10)
+                else:
+                    for i in prop_names:
+                        info_line("* " + i, indent=10)
 
     @public_process
     def quit(self):

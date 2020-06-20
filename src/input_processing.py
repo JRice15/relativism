@@ -212,9 +212,9 @@ class _InptValidate:
     @rel_wrap(do_allowed)
     def bpm(val, mode, allowed):
         try:
-            return Units.bpm(val)
+            val = Units.bpm(val)
         except ValueError:
-            p("> Invalid beats-per-minute. Enter the intended value")
+            p("> Invalid beats-per-minute '{0}'. Enter the intended value as a single number (decimal allowed)".format(val))
             raise TryAgain
         if val.magnitude <= 0:
             info_block("> Value cannot be negative or zero. Enter intended value")
@@ -225,9 +225,9 @@ class _InptValidate:
     @rel_wrap(do_allowed)
     def rate(val, mode, allowed):
         try:
-            return Units.rate(val)
+            val = Units.rate(val)
         except ValueError:
-            p("> Invalid samplerate. Enter the intended value")
+            p("> Invalid samplerate '{0}'. Enter the intended value".format(val))
             raise TryAgain
         if val.magnitude <= 0:
             info_block("> Samplerate cannot be negative or zero. Enter intended value")

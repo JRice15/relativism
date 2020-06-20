@@ -20,6 +20,11 @@ def process(obj):
 
     while True:
 
+        try:
+            obj.process_message()
+        except AttributeError:
+            pass
+
         with style("cyan, bold"):
             print("\n{0} ".format(RelGlobals.get_process_num()), end="")
         p("What process to run on {0} '{1}'?".format(obj.reltype, obj.name), 
@@ -64,7 +69,7 @@ def do_command(command, obj):
     """
     method_name, args = command[0], command[1:]
 
-    all_methods = obj.get_all_public_methods()
+    all_methods = obj.get_all_public_method_names()
     try:
         # get full method name with autofill
         method_name = autofill(method_name, all_methods, "arg")
@@ -72,6 +77,8 @@ def do_command(command, obj):
 
     # missing process
     except Exception as e:
+        if isinstance(e, Cancel):
+            return
         handle_not_found(e, command, obj)
         return
 
@@ -111,8 +118,8 @@ def complete_args(e, method_name, args, obj):
     if method_name not in str(e):
         show_error(e)
     err_mess("Wrong number of arguments: {0}".format(str(e)))
-    info_title("Args for {0}: ".format(method_name))
-    info_line(obj.get_process(method_name)._rel_data.oneline_arg_list(), indent=6)
+    info_title("Arguments for {0}: ".format(method_name), indent=4)
+    obj.get_process(method_name)._rel_data.display_args()
     # too many
     command_str = "\n      " + method_name + " "
     if "were given" in str(e):

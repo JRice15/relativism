@@ -1,15 +1,17 @@
 import abc
+
 from scipy.interpolate import interp1d
 
-from src.output_and_prompting import (p, info_title, info_list, info_line, 
-    section_head, info_block, nl, err_mess, critical_err_mess, show_error,
-    rel_plot)
-from src.input_processing import inpt, inpt_validate, input_dir, input_file
-from src.utility import *
-from src.rel_objects import (RelSavedObj, RelPublicObj, RelContainer)
-from src.method_ops import public_process, is_public_process, rel_alias, is_alias, rel_wrap
+from src.data_types import *
 from src.errors import *
-
+from src.input_processing import inpt, inpt_validate, input_dir, input_file
+from src.method_ops import (is_alias, is_public_process, public_process,
+                            rel_alias, rel_wrap, get_reldata, add_reldata)
+from src.output_and_prompting import (critical_err_mess, err_mess, info_block,
+                                      info_line, info_list, info_title, nl, p,
+                                      rel_plot, section_head, show_error)
+from src.rel_objects import RelContainer, RelPublicObj, RelSavedObj
+from src.utility import *
 
 
 # testing
@@ -73,6 +75,9 @@ class DiscreteMarker(RelContainer):
         return self_clss(*data)
 
 class ContinuousMarker(DiscreteMarker):
+    """
+    change type is the change leading up to this marker
+    """
 
     def __init__(self, beatsec, value, change_type):
         self.beatsec = beatsec
@@ -88,24 +93,24 @@ class ContinuousMarker(DiscreteMarker):
 
 
 
-class Controller(RelPublicObj, abc.ABC):
+class Controller(RelPublicObj, RelSavedObj):
     """
     discrete controlling of an attribute (pan, volume, bpm, etc.) over time.
     args:
-        time_units: inpt mode either beats or secs
-        val_units: units of the value, inpt mode
+        time_units (str): inpt mode either beats or secs
+        val_units (str): units of the value, inpt mode
     """
 
-    def __init__(self, markers=None, time_units="beats", val_units="float", 
+    def __init__(self, name, val_units, time_units="beats", 
             val_allowed=None, time_allowed=None, start=None, reltype="Controller", 
-            rel_id=None, name=None, path=None, parent=None, mode="load"):
-        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, mode=mode)
+            rel_id=None, path=None, markers=None, parent=None, mode="create", **kwargs):
+        super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, mode=mode, **kwargs)
 
         self.start = start
         self.markers = {} if markers is None else markers # {sample_ind : ControllerMarker}
 
         if time_units is None or time_units not in ("beat", "beats", "sec", "secs", "second", "seconds"):
-            p("Select the timing units to be used for this controller, 'b' for beat/note notation, 's' for seconds")
+            p("Select the timing units to be used for this controller, 'b' for beats notation (recommended), 's' for seconds")
             time_mode = inpt("letter", allowed="bs")
             if time_mode == "b":
                 time_units = "beats"
@@ -114,22 +119,27 @@ class Controller(RelPublicObj, abc.ABC):
         self.time_units = time_units
         self.val_units = val_units
         self.val_allowed = val_allowed
-        self.time_allowed = time_allowed
+        self.time_allowed = (Units.beats("0b"), None)
 
+        desc = get_reldata(self.add, "desc")
         try:
-            self.add.__doc__ = self.add.__doc__.format(
+            new_desc = desc.format(
                 val_units=self.val_units, 
                 time_units=time_units
             )
         except:
-            pass 
             # if format fails, it means add docstring is overridden somewhere, 
             # and will be handled there
+            pass 
+        else:
+            add_reldata(self.add, "desc", new_desc)
 
     def add_marker(self, sample_ind, marker):
         """
         method to be called by add() process
         """
+        if isinstance(sample_ind, Units.Quant):
+            sample_ind = sample_ind.magnitude
         try:
             replaced = self.markers[sample_ind]
             info_line("Replacing marker '{0}' with '{1}'".format(replaced, marker))
@@ -148,7 +158,7 @@ class Controller(RelPublicObj, abc.ABC):
         dev: this docstring is .format()ed in init
         """
         beatsec = inpt_validate(location, self.time_units, allowed=self.time_allowed)
-        value = inpt_validate(value, self.val_units, self.val_allowed)
+        value = inpt_validate(value, self.val_units, allowed=self.val_allowed)
         sample_ind = beatsec.to_samps()
         self.add_marker(sample_ind, DiscreteMarker(beatsec, value))
 
@@ -156,6 +166,7 @@ class Controller(RelPublicObj, abc.ABC):
     @public_process
     def move(self, current, new):
         """
+        cat: edit
         desc: move a marker to a new location
         Args:
             current: the beat or sec of the marker to move
@@ -261,13 +272,13 @@ class ContinuousController(Controller):
 
     change_type_options = ('hard', 'linear', 'smooth')
 
-    def __init__(self, markers=None, time_units="beats", val_units="float", 
-            val_allowed=None, time_allowed=None, start=None, reltype="Controller", 
-            change_types="all", rel_id=None, name=None, path=None, parent=None, mode="load"):
+    def __init__(self, name, val_units, time_units=None, 
+            val_allowed=None, time_allowed=None, markers=None, start=None, reltype="Controller", 
+            change_types="all", rel_id=None, path=None, parent=None, mode="create", **kwargs):
 
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, path=path, parent=parent, 
             mode=mode, markers=markers, time_units=time_units, val_units=val_units,
-            val_allowed=val_allowed, time_allowed=time_allowed, start=start)
+            val_allowed=val_allowed, start=start, time_allowed=time_allowed, **kwargs)
             
         # validate change types
         if change_types == "all":
@@ -276,14 +287,20 @@ class ContinuousController(Controller):
             raise UnexpectedIssue("Unknown change_type in '{0}' in Controller constructor".format(change_types))
         self.valid_change_types = change_types
 
+        desc = get_reldata(self.add, "desc")
         try:
-            self.add.__doc__ = self.add.__doc__.format(
+            new_desc = desc.format(
                 val_units=self.val_units, 
                 time_units=time_units,
                 change_types="', '".join(self.valid_change_types)
             )
         except:
-            pass
+            # if format fails, it means add docstring is overridden somewhere, 
+            # and will be handled there
+            pass 
+        else:
+            add_reldata(self.add, "desc", new_desc)
+
 
     def validate_change_type(self, change_type):
         if change_type is None:
@@ -302,7 +319,7 @@ class ContinuousController(Controller):
         args:
             location: the time where this marker should occur, in '{time_units}'
             value: the value of this marker, in/as '{val_units}'
-            [change type: how this marker's value transitions the following one, one of '{change_types}']
+            [change type: how the value transitions from the previous marker to this one, one of '{change_types}']
         dev: this docstring is .format()ed in init
         """
         beatsec = inpt_validate(location, self.time_units, self.time_allowed)
@@ -311,28 +328,3 @@ class ContinuousController(Controller):
         change_type = self.validate_change_type(change_type)
         self.add_marker(sample_ind, ContinuousMarker(beatsec, value, change_type))
 
-
-
-
-class TestController(Controller):
-
-    def __init__(self, rate):
-        super().__init__(rate, "Volume")
-
-    
-    def validate_value(self, value):
-        return inpt_validate(value, 'float', allowed=[0, 10])
-    
-
-    def apply(self, rec_arr):
-        return rec_arr * self.markers[0]
-
-
-
-
-def controller_main():
-    pass
-
-
-if __name__ == "__main__":
-    controller_main()

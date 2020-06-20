@@ -38,6 +38,7 @@ class Category(Enum):
     INFO = "Object Info"
     SAVE = "Saving & Data Handling"
     EFFECT = "Effects"
+    PROPERTY = "Properties"
 
     @staticmethod
     def get(category, kind="std"):
@@ -56,6 +57,8 @@ class Category(Enum):
             val = Category.SAVE
         elif category in ("eff", "effects", "fx", "efx", "effx", "effect"):
             val = Category.EFFECT
+        elif category in ("prop", "property", "prp"):
+            val = Category.PROPERTY
         else:
             val = Category.OTHER
         if kind == "std":
@@ -100,6 +103,9 @@ class RelData:
                 message += "es"
             message += ": '" + "', '".join(self.aliases) + "')"
         info_list(message, hang=4)
+        self.display_args()
+    
+    def display_args(self):
         for i in self.args:
             info_line("• " + i.get_display(), indent=8)
 
@@ -208,7 +214,7 @@ def is_edit_meta(method):
     """
     if is catg that rec metadata should be save on
     """
-    return get_reldata(method, "category") in (Category.META)
+    return get_reldata(method, "category") in (Category.META, Category.PROPERTY)
 
 def is_public_process(method_obj):
     try:

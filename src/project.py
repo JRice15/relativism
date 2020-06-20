@@ -25,9 +25,10 @@ class Project(RelPublicObj, RelAudioObj):
     """
 
     bpm = RelProperty(name="bpm", inpt_mode="bpm", desc="beats per minute")
+    prop2 = RelProperty(name="prop2", inpt_mode="float", desc="number 2")
 
     def __init__(self, parent=None, name=None, rel_id=None, mode="load", path=None,
-            rate=None, reltype="Project", children=None, file=None, **kwargs):
+            rate=None, reltype="Project", children=None, file=None, custom_path=True, **kwargs):
         
         super().__init__(rel_id=rel_id, reltype=reltype, name=name, 
             path=path, parent=parent, mode=mode, **kwargs)
@@ -92,8 +93,7 @@ class Project(RelPublicObj, RelAudioObj):
         cat: save
         desc: save data
         """
-        self.save_metadata()
-        self.save_audio()
+        super().save()
         for child in self.children:
             child.save()
 
